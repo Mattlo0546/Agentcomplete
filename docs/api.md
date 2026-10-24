@@ -80,3 +80,21 @@ Context for the Refine inspector (no prompt text stored).
 
 ## Logging policy (D1/D2)
 Metadata only: request id, timestamps, operation/model, status, latency, token usage, sanitized error. 30-day retention via TimescaleDB retention policies on `api_call_log`, `ai_call_log`, `enhance_trace`.
+
+## Derived features (shared by `enhance_trace.features` and `outcome_event.features`)
+Written by the enhance pipeline, copied onto outcome events, exported to Snowflake. No raw text.
+```json
+{
+  "task_type": "code_change|debugging|writing|analysis|planning|question|other",
+  "missing_constraints": ["output_format", "scope", "language", "success_criteria", "context"],
+  "n_missing_constraints": 2,
+  "prompt_units": 117, "prompt_bucket": "xs|s|m|l|xl",
+  "n_tags": 5, "n_candidates": 5, "n_kept": 2,
+  "top_score": 0.89, "mean_kept_score": 0.875, "top_tag_similarity": 0.94,
+  "general": false,
+  "suggestion_type": "autocomplete|multiple_choice|none",
+  "n_options": 3, "n_edits": 2,
+  "latency_ms": 1704
+}
+```
+`prompt_bucket`: xs < 40, s < 120, m < 400, l < 1200, xl ≥ 1200 UTF-16 units.
