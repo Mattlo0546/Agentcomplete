@@ -56,6 +56,7 @@ svg.lucide { width: 16px; height: 16px; stroke-width: 1.75; flex: none; }
 .icon-btn.bordered { border: 1px solid var(--input); background: var(--card); }
 .input { height: 32px; border: 1px solid var(--input); border-radius: 6px; background: var(--card); padding: 0 10px; display: flex; align-items: center; gap: 8px; color: var(--muted-foreground); min-width: 0; }
 .input .val { color: var(--foreground); }
+.input span, .editor-foot .data { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .seg { display: inline-flex; padding: 2px; border-radius: 6px; background: var(--muted); gap: 2px; }
 .seg span { height: 28px; padding: 0 10px; border-radius: 4px; display: inline-flex; align-items: center; font-size: 12px; font-weight: 500; color: var(--muted-foreground); white-space: nowrap; }
 .seg span.on { background: var(--card); color: var(--foreground); box-shadow: 0 0 0 1px var(--border); }
