@@ -22,6 +22,7 @@ import httpx
 
 RETRYABLE = {429, 500, 502, 503, 504}
 
+
 async def get_with_retry(client: httpx.AsyncClient, url: str, attempts: int = 4) -> httpx.Response:
     for attempt in range(attempts):
         try:

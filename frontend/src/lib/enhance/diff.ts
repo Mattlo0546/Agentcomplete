@@ -11,16 +11,24 @@ const ELLIPSIS = "…";
 const isHigh = (code: number) => code >= 0xd800 && code <= 0xdbff;
 const isLow = (code: number) => code >= 0xdc00 && code <= 0xdfff;
 
-/** First `n` UTF-16 units without splitting a surrogate pair. */
+const WORD_SNAP = 15;
+
+/** First `n` UTF-16 units without splitting a surrogate pair, ending at a word boundary when one is near. */
 function head(text: string, n: number): string {
   const end = n > 0 && isHigh(text.charCodeAt(n - 1)) ? n - 1 : n;
-  return text.slice(0, end);
+  const cut = text.slice(0, end);
+  if (end >= text.length || /\s/.test(text[end])) return cut;
+  const space = cut.search(/\s\S*$/);
+  return space >= end - WORD_SNAP ? cut.slice(0, space) : cut;
 }
 
-/** Last `n` UTF-16 units without splitting a surrogate pair. */
+/** Last `n` UTF-16 units without splitting a surrogate pair, starting at a word boundary when one is near. */
 function tail(text: string, n: number): string {
   const start = text.length - n;
-  return text.slice(isLow(text.charCodeAt(start)) ? start + 1 : start);
+  const cut = text.slice(isLow(text.charCodeAt(start)) ? start + 1 : start);
+  if (start <= 0 || /\s/.test(text[start - 1])) return cut;
+  const space = cut.search(/\s/);
+  return space >= 0 && space <= WORD_SNAP ? cut.slice(space + 1) : cut;
 }
 
 /** Unchanged text kept around each edit; longer stretches collapse into a `gap` marker. */

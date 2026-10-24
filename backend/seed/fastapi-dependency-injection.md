@@ -12,11 +12,14 @@ Use when structuring FastAPI apps: database sessions, auth, settings, and testin
 from typing import Annotated
 from fastapi import Depends
 
+
 async def get_conn() -> AsyncIterator[AsyncConnection]:
     async with pool.connection() as conn:
-        yield conn            # code after yield runs on teardown, even on errors
+        yield conn  # code after yield runs on teardown, even on errors
+
 
 Conn = Annotated[AsyncConnection, Depends(get_conn)]
+
 
 @router.get("/items/{id}")
 async def read_item(id: UUID, conn: Conn) -> Item: ...

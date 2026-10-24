@@ -72,3 +72,16 @@ describe("diffStats", () => {
     expect(formatDiffStats({ edits: 1, added: 0, removed: 3 })).toBe("1 edit · +0 −3");
   });
 });
+
+describe("context word boundaries", () => {
+  it("does not start or end the context mid-word", () => {
+    const prompt = "Write a migration plan for moving our session store from Redis to Postgres.";
+    const segments = diffSegments(
+      prompt,
+      [{ start: prompt.length, end: prompt.length, text: " Use dual writes." }],
+      40,
+    );
+    const lead = segments.find((s) => s.kind === "same")!.text;
+    expect(lead.startsWith("session") || lead.startsWith("our")).toBe(true);
+  });
+});

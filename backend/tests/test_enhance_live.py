@@ -170,3 +170,19 @@ async def test_request_bounds(client: AsyncClient) -> None:
         assert response.json()["error"]["code"] == "invalid_request"
     data = await _enhance(client, "   ")
     assert data.type == "none"
+
+
+async def test_api_row_ai_calls_and_trace_share_the_body_request_id(client: AsyncClient) -> None:
+    from app.observability.writers import flush
+
+    rid = f"req_join{secrets.token_hex(4)}"
+    prompt = "Add structured logging to the checkout service so every request"
+    response = await client.post(
+        "/v1/enhance", json={"request_id": rid, "prompt": prompt, "prompt_revision": 1, "cursor": len(prompt)}
+    )
+    assert response.status_code == 200 and response.headers["X-Request-ID"] == rid
+    await flush()
+    detail = (await client.get(f"/v1/logs/{rid}")).json()
+    assert detail["api"]["path"] == "/v1/enhance"
+    assert {call["operation"] for call in detail["ai"]} >= {"enhance.tags", "enhance.generate"}
+    assert detail["trace"]["request_id"] == rid

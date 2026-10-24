@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import model_validator
 
 from app.observability.context import set_request_id
@@ -20,6 +20,8 @@ class _ValidatedEnhanceRequest(EnhanceRequest):
 
 
 @router.post("/enhance", response_model=EnhanceResponse)
-async def enhance(body: _ValidatedEnhanceRequest) -> EnhanceResponse:
-    set_request_id(body.request_id)  # AI-call logs group under the client's request id
+async def enhance(body: _ValidatedEnhanceRequest, request: Request) -> EnhanceResponse:
+    # The API-call log row and the AI-call logs both group under the client's request id.
+    request.state.request_id = body.request_id
+    set_request_id(body.request_id)
     return await run_enhance(body)

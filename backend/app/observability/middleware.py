@@ -20,6 +20,7 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
         started = time.perf_counter()
         response = await call_next(request)
+        request_id = getattr(request.state, "request_id", request_id)  # a handler may adopt the body's id
         response.headers[_REQUEST_ID_HEADER] = request_id
         path = request.url.path
         if request.method != "OPTIONS" and path.startswith("/v1/") and not path.startswith(_SKIP_PATHS):
