@@ -94,7 +94,7 @@ screens["refine-states"] = () => shell(
     <div class="label">Requesting</div>${editor({ text: "Add rate limiting to the public search endpoint", rev: 3, cursor: 47, state: "requesting" })}
     <div class="label">Error</div>
     <section class="editor idle"><div class="editor-text" style="min-height:0">Summarise the failing CI job and propose a fix<span class="caret"></span></div>
-      <div class="editor-foot"><span class="dot err"></span><span class="data" style="color:var(--destructive)">502 · upstream model timeout</span><button class="btn ghost sm">Retry</button><div class="grow"></div><span class="data">46</span><button class="btn primary sm">${i("send")}Send to Codex</button></div></section>
+      <div class="editor-foot"><span class="dot err"></span><span class="data err-msg" style="color:var(--destructive)">502 · upstream model timeout</span><button class="btn ghost sm">Retry</button><span class="data">46</span><button class="btn primary sm">${i("send")}Send to Codex</button></div></section>
   </div>`, null);
 
 /* ---------------- Knowledge ---------------- */
