@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     snowflake_connection_name: str = "prompt-enhance"
 
     tag_model: str = "gemini-3.5-flash-lite"
-    judge_model: str = "gemini-3.6-flash"
-    generate_model: str = "gemini-3.8-flash"
+    judge_model: str = "gemini-3.5-flash-lite"
+    generate_model: str = "gemini-3.6-flash"
     embed_model: str = "gemini-embedding-001"
     embed_dims: int = 768
 

@@ -30,6 +30,7 @@ small improvement that the user can accept or ignore. Choose exactly one respons
    or clearly about to state something whose content is obvious from the draft itself or from the knowledge.
    autocomplete_text is ONLY the new suffix (never repeat existing text); start it with a space when it begins a
    new word after a finished word; keep it to one short clause or sentence (max ~25 words).
+   Set completes_partial_word true only when the draft ends in the middle of a word and the suffix finishes it.
 2. "multiple_choice" - a short question with 2..max_options options. Use it when information that matters is
    missing or ambiguous (e.g. output format, scope, language, success criteria, context). Each option is a
    plausible, distinct answer the user might choose; choosing it applies that option's edits to the draft.

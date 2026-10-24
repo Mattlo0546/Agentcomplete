@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from pgvector.psycopg import register_vector_async
 from psycopg import AsyncConnection
@@ -44,7 +45,7 @@ def get_pool() -> AsyncConnectionPool:
 
 
 @asynccontextmanager
-async def connection() -> AsyncIterator[AsyncConnection]:
+async def connection() -> AsyncIterator[AsyncConnection[dict[str, Any]]]:
     """Borrow an autocommit connection whose rows are dicts. Use `conn.transaction()` for multi-statement writes."""
     async with get_pool().connection() as conn:
-        yield conn
+        yield conn  # type: ignore[misc]

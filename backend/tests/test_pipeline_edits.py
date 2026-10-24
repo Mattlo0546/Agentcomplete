@@ -99,6 +99,7 @@ def test_to_response_converts_anchors_and_ids() -> None:
     gen = Generation(
         type="multiple_choice",
         autocomplete_text="",
+        completes_partial_word=False,
         question="Output format?",
         options=[
             ModelOption(id="Table!", label="Table", edits=[ModelEdit(op="append", anchor="", text="Use a table.")]),
@@ -127,3 +128,12 @@ def test_allowed_types_and_helpers() -> None:
     body = "Intro text.\n\nUse exponential retry with jitter.\n\n" + "filler " * 400
     assert "retry" in excerpt(body, ["retry"], 200)
     assert len(excerpt(body, ["retry"], 200)) <= 200
+
+
+def test_join_suffix_adds_missing_word_gap() -> None:
+    from app.pipeline.generate import join_suffix
+
+    assert join_suffix("backoff and", "jitter.", False) == " jitter."
+    assert join_suffix("backoff and ", "jitter.", False) == "jitter."
+    assert join_suffix("backoff", ", with jitter", False) == ", with jitter"
+    assert join_suffix("Add retr", "ies with backoff", True) == "ies with backoff"

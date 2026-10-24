@@ -43,6 +43,7 @@ class ModelOption(BaseModel):
 class Generation(BaseModel):
     type: Literal["autocomplete", "multiple_choice", "none"]
     autocomplete_text: str
+    completes_partial_word: bool
     question: str
     options: list[ModelOption]
 
@@ -133,6 +134,14 @@ def _option_id(raw: str, index: int, seen: set[str]) -> str:
     return candidate
 
 
+def join_suffix(prompt: str, suffix: str, completes_partial_word: bool) -> str:
+    """Add the word gap the model sometimes omits ("…backoff and" + "jitter" → " jitter") unless it is
+    finishing a half-typed word ("…retr" + "y with backoff")."""
+    if not completes_partial_word and prompt and suffix and prompt[-1].isalnum() and suffix[0].isalnum():
+        return f" {suffix}"
+    return suffix
+
+
 def to_response(gen: Generation, prompt: str, request_id: str, prompt_revision: int, max_options: int) -> WireResponse:
     """Convert anchored model output to wire positions. Raises InvalidOutput when anchors do not resolve."""
     if gen.type == "none":
@@ -142,7 +151,7 @@ def to_response(gen: Generation, prompt: str, request_id: str, prompt_revision: 
             request_id=request_id,
             prompt_revision=prompt_revision,
             insert_at=utf16_len(prompt),
-            text=gen.autocomplete_text,
+            text=join_suffix(prompt, gen.autocomplete_text, gen.completes_partial_word),
         )
     seen: set[str] = set()
     options: list[Option] = []
