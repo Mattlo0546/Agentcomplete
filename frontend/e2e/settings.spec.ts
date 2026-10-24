@@ -11,9 +11,13 @@ test("settings persist to the backend and theme switches", async ({ page, reques
   const toggle = page.getByRole("switch", { name: "Questions" });
   const before = (await (await request.get(`${API}/v1/settings`)).json()).questions_enabled;
   await toggle.click();
-  await expect.poll(async () => (await (await request.get(`${API}/v1/settings`)).json()).questions_enabled).toBe(!before);
+  await expect
+    .poll(async () => (await (await request.get(`${API}/v1/settings`)).json()).questions_enabled)
+    .toBe(!before);
   await toggle.click();
-  await expect.poll(async () => (await (await request.get(`${API}/v1/settings`)).json()).questions_enabled).toBe(before);
+  await expect
+    .poll(async () => (await (await request.get(`${API}/v1/settings`)).json()).questions_enabled)
+    .toBe(before);
 
   await page.getByRole("radio", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveClass(/dark/);

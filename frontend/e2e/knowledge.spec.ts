@@ -23,7 +23,9 @@ test.describe("Knowledge", () => {
     await dialog.getByLabel("Title").fill(title);
     await dialog
       .getByLabel("Body")
-      .fill("# Feature flags\n\nGate risky rollouts behind a flag, ramp by percentage, and remove stale flags after full rollout.");
+      .fill(
+        "# Feature flags\n\nGate risky rollouts behind a flag, ramp by percentage, and remove stale flags after full rollout.",
+      );
     await dialog.getByRole("button", { name: /^Add$/ }).click();
     await expect(dialog.getByText("Save")).toBeVisible({ timeout: 45_000 });
     await expect(dialog.getByRole("button", { name: "Done" })).toBeEnabled({ timeout: 45_000 });
@@ -40,7 +42,10 @@ test.describe("Knowledge", () => {
       await page.getByRole("option", { name: new RegExp(title) }).click();
     }
     await page.getByRole("button", { name: "Delete" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: /Delete/ }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: /Delete/ })
+      .click();
     await expect.poll(async () => (await (await request.get(`${API}/v1/knowledge?q=${title}`)).json()).total).toBe(0);
   });
 });

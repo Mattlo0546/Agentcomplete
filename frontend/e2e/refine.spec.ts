@@ -15,13 +15,13 @@ test.describe("Refine", () => {
     const prompt = "Refactor the Stripe webhook handler so failed events are retried with exponential backoff";
     await editor.pressSequentially(prompt, { delay: 5 });
 
-    const ghost = page.getByRole("button", { name: "Accept suggestion" });
-    const question = page.getByRole("region", { name: "Question" }).or(page.getByLabel("Question"));
+    const ghost = page.locator("#prompt-ghost-status").getByText("Suggestion available");
+    const question = page.getByLabel("Question");
     await expect(ghost.or(question).first()).toBeVisible({ timeout: 30_000 });
 
-    if (await ghost.isVisible()) {
+    if (await ghost.count()) {
       await editor.press("Tab");
-      await expect(ghost).toBeHidden();
+      await expect(ghost).toHaveCount(0);
       expect((await editor.inputValue()).length).toBeGreaterThan(prompt.length);
       await expect(editor).toBeFocused();
     } else {
@@ -47,14 +47,14 @@ test.describe("Refine", () => {
     const prompt = "Write a migration plan for our database.";
     await editor.pressSequentially(prompt, { delay: 5 });
     const question = page.getByLabel("Question");
-    const ghost = page.getByRole("button", { name: "Accept suggestion" });
+    const ghost = page.locator("#prompt-ghost-status").getByText("Suggestion available");
     await expect(ghost.or(question).first()).toBeVisible({ timeout: 30_000 });
     if (await question.isVisible()) {
       await question.getByRole("button", { name: "Decline all options" }).click();
       await expect(question).toBeHidden();
     } else {
       await editor.press("Escape");
-      await expect(ghost).toBeHidden();
+      await expect(ghost).toHaveCount(0);
     }
     expect(await editor.inputValue()).toBe(prompt);
   });
