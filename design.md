@@ -173,7 +173,7 @@ Narrow: rows become 2-line items (operation + latency / request id + time).
 
 ### 4.11 LogDetail (Inspector)
 
-Request id (copy button), timeline of the pipeline calls with bars proportional to latency, status, tokens, sanitized error block (mono, destructive-soft). Payload sections appear **only** if payload logging is enabled (decision D1).
+Request id (copy button), timeline of the pipeline calls with bars proportional to latency, status, tokens, sanitized error block (mono, destructive-soft). No payload section: payloads are never stored (decision D1).
 
 ### 4.12 OutcomeSummary (Activity header)
 
@@ -185,7 +185,7 @@ Grouped forms with hairline separators; each group has a `section` heading only.
 - Backend: URL input, health status (dot + `data` latency), **Test** button.
 - Suggestions: Trigger delay (slider 150–1500 ms, default 400), Autocomplete on/off, Questions on/off, Max options (2–6).
 - Appearance: Theme (System / Light / Dark segmented).
-- Logging: Store payloads (switch, decision D1), Retention (select, decision D2), **Clear logs** (destructive).
+- Logging: Payloads `Not stored` and Retention `30 days` as read-only `data` values (decisions D1/D2 fixed them; no controls), stored entry count, **Clear logs** (destructive, confirm dialog).
 - Snowflake: export status, last export time, **Export now**, **Retrain**.
 
 ### 4.14 Feedback

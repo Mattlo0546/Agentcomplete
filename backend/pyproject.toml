@@ -1,0 +1,38 @@
+[project]
+name = "prompt-enhance-backend"
+version = "0.1.0"
+description = "Prompt Enhance API: tag extraction, knowledge retrieval, relevance judging and suggestion generation."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.4",
+  "psycopg[binary,pool]>=3.2",
+  "pgvector>=0.3",
+  "google-genai>=1.0",
+  "snowflake-connector-python>=3.12",
+  "sse-starlette>=2.1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "httpx>=0.27", "ruff>=0.6", "mypy>=1.11"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+markers = ["live: hits real Gemini/Tiger/Snowflake services"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true

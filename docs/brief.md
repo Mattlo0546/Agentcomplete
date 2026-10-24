@@ -1,6 +1,6 @@
 # Prompt Enhance — Product Brief
 
-Status: **draft, awaiting approval** (material changes to this brief return to this gate).
+Status: **approved 2026-10-24** together with the mockup set (material changes return to this gate).
 
 ## 1. What it is
 
@@ -26,7 +26,7 @@ Layout modes: **wide** (standalone window or wide panel, ≥ 1024 px) and **narr
 
 ## 3. Codex integration
 
-Research (`docs/integration.md`) found **no documented Codex API for a custom side panel or for replacing the composer**. Codex plugins bundle skills, MCP servers and hooks; custom MCP UI renders in ChatGPT, not confirmed in Codex. Proposed design (**decision D3**):
+Research (`docs/integration.md`) found **no documented Codex API for a custom side panel or for replacing the composer**. Codex plugins bundle skills, MCP servers and hooks; custom MCP UI renders in ChatGPT, not confirmed in Codex. **Decision D3 (approved):**
 
 - **Companion panel**: the Next.js app runs as its own window docked beside Codex (narrow layout = docked mode).
 - **Codex plugin** (`.codex-plugin/plugin.json`) ships an MCP server with `get_refined_prompt` / `enhance_prompt` tools and a skill, so Codex can pull the latest refined prompt (`@prompt-enhance`).
@@ -73,11 +73,11 @@ Train/evaluate a classifier predicting suggestion acceptance from **derived feat
 
 Default (approved by PRD): request id, timestamp, operation/model, status, latency, token usage, sanitized error. Credentials stay on the backend; secrets never logged.
 
-**Open decisions (must be answered before payload logging/retention is built):**
-- D1. Log full prompts, retrieved knowledge and model responses? (default proposal: **no** — metadata only)
-- D2. Log retention period? (default proposal: **30 days**, then delete)
+**Decisions (approved 2026-10-24):**
+- D1. **No payload logging** — prompts, retrieved knowledge bodies and model responses are never written to logs. Metadata only.
+- D2. **30-day retention** for API/AI call logs and enhance traces (TimescaleDB retention policies). Outcome events keep only derived features (no prompt text) and are retained for classifier training.
 
-The Settings mockup shows these as policy fields; they are placeholders until decided.
+Settings shows both as read-only policy values.
 
 ## 9. Acceptance (after design approval)
 
