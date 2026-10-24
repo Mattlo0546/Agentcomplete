@@ -10,7 +10,7 @@ Ghost-text autocomplete and multiple-choice clarifying questions for Codex promp
 | Outcome classifier | Snowflake ML classification on derived features | `backend/app/analytics/` |
 | Codex plugin | MCP server + skill | `plugin/` |
 
-Docs: [brief](docs/brief.md) · [API contract](docs/api.md) · [design system](design.md) · [mockups](docs/mockups/contact-sheet.html) · [Codex plugin](docs/codex-plugin.md)
+Docs: [architecture & performance](docs/architecture.md) · [brief](docs/brief.md) · [API contract](docs/api.md) · [design system](design.md) · [mockups](docs/mockups/contact-sheet.html) · [Codex plugin](docs/codex-plugin.md)
 
 ## Setup
 

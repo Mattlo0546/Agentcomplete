@@ -8,6 +8,7 @@ import json
 import time
 
 from app.db.pool import close_pool, connection, open_pool
+from app.observability.writers import flush
 from app.pipeline.run import run_enhance
 from app.schemas.enhance import EnhanceRequest, utf16_len
 
@@ -42,6 +43,7 @@ async def main() -> None:
         body = response.model_dump()
         detail = body.get("text") or body.get("question") or ""
         print(f"{total:5d}ms {body['type']:15s} {steps} kept={kept}\n        {json.dumps(detail)[:150]}")
+    await flush()
     await close_pool()
 
 
