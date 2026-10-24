@@ -1,5 +1,5 @@
-import { PageLayout } from "@/components/shell/page-layout";
+import { KnowledgeView } from "@/components/knowledge/knowledge-view";
 
 export default function KnowledgePage() {
-  return <PageLayout title="Knowledge">{null}</PageLayout>;
+  return <KnowledgeView />;
 }

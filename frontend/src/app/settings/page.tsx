@@ -1,5 +1,5 @@
-import { PageLayout } from "@/components/shell/page-layout";
+import { SettingsView } from "@/components/settings/settings-view";
 
 export default function SettingsPage() {
-  return <PageLayout title="Settings">{null}</PageLayout>;
+  return <SettingsView />;
 }

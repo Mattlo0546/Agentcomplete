@@ -1,5 +1,5 @@
-import { PageLayout } from "@/components/shell/page-layout";
+import { ActivityView } from "@/components/activity/activity-view";
 
 export default function ActivityPage() {
-  return <PageLayout title="Activity">{null}</PageLayout>;
+  return <ActivityView />;
 }

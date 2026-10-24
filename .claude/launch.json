@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "backend", "runtimeExecutable": "uv", "runtimeArgs": ["run", "--project", "backend", "--directory", "backend", "uvicorn", "app.main:app", "--port", "8000"], "port": 8000 },
+    { "name": "frontend", "runtimeExecutable": "pnpm", "runtimeArgs": ["--dir", "frontend", "dev", "--port", "3000"], "port": 3000 }
+  ]
+}
