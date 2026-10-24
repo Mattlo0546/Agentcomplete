@@ -1,0 +1,54 @@
+/* Mirrors design.md §2 exactly. */
+:root {
+  --background: oklch(0.985 0.004 85);
+  --foreground: oklch(0.235 0.012 70);
+  --card: oklch(1 0 0);
+  --muted: oklch(0.955 0.006 85);
+  --muted-foreground: oklch(0.52 0.012 70);
+  --ghost: oklch(0.68 0.01 75);
+  --border: oklch(0.905 0.007 80);
+  --input: oklch(0.88 0.008 80);
+  --ring: oklch(0.75 0.15 70);
+  --primary: oklch(0.235 0.012 70);
+  --primary-foreground: oklch(0.985 0.004 85);
+  --accent: oklch(0.955 0.006 85);
+  --marker: oklch(0.8 0.15 75);
+  --marker-soft: oklch(0.95 0.05 85);
+  --marker-foreground: oklch(0.3 0.06 60);
+  --insert: oklch(0.52 0.12 150);
+  --insert-soft: oklch(0.95 0.04 150);
+  --destructive: oklch(0.56 0.19 27);
+  --destructive-soft: oklch(0.96 0.03 25);
+  --success: oklch(0.6 0.13 150);
+  --warning: oklch(0.72 0.14 75);
+  --radius: 0.5rem;
+  --shadow-pop: 0 8px 24px -8px oklch(0.2 0.01 70 / 0.18);
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+.dark {
+  --background: oklch(0.165 0.006 70);
+  --foreground: oklch(0.93 0.008 85);
+  --card: oklch(0.2 0.007 70);
+  --muted: oklch(0.235 0.008 70);
+  --muted-foreground: oklch(0.68 0.01 80);
+  --ghost: oklch(0.52 0.01 75);
+  --border: oklch(0.29 0.008 70);
+  --input: oklch(0.32 0.008 70);
+  --ring: oklch(0.75 0.14 70);
+  --primary: oklch(0.93 0.008 85);
+  --primary-foreground: oklch(0.165 0.006 70);
+  --accent: oklch(0.26 0.008 70);
+  --marker: oklch(0.78 0.14 72);
+  --marker-soft: oklch(0.3 0.05 70);
+  --marker-foreground: oklch(0.9 0.08 85);
+  --insert: oklch(0.75 0.13 150);
+  --insert-soft: oklch(0.3 0.05 150);
+  --destructive: oklch(0.68 0.17 25);
+  --destructive-soft: oklch(0.3 0.06 25);
+  --success: oklch(0.72 0.13 150);
+  --warning: oklch(0.78 0.13 75);
+  --shadow-pop: 0 8px 24px -8px oklch(0 0 0 / 0.5);
+  color-scheme: dark;
+}

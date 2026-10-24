@@ -1,0 +1,78 @@
+// Realistic fixture content for mockups (mirrors the shapes the API will return).
+window.DATA = {
+  autocomplete: {
+    prompt: "Refactor the Stripe webhook handler in services/billing/webhooks.py so failed events are retried with exponential backoff",
+    ghost: " and jitter. Keep the handler's public signature unchanged and add tests that cover the retry path.",
+    rev: 14,
+  },
+  question: {
+    prompt: "Write a migration plan for moving our session store from Redis to Postgres. Cover schema, data backfill and rollback.",
+    rev: 9,
+    q: "How should traffic move to Postgres?",
+    options: [
+      { id: "dual", label: "Dual-write, then switch reads behind a flag" },
+      { id: "window", label: "One cutover in a maintenance window" },
+      { id: "shadow", label: "Shadow reads first, compare, then cut over" },
+    ],
+    selected: 0,
+    // edits relative to the prompt snapshot: replace "a migration plan" (6..22) and insert at end (118)
+    diffBefore: "Write ",
+    diffDel: "a migration plan",
+    diffIns: "a step-by-step migration runbook",
+    diffMid: " for moving our session store from Redis to Postgres. Cover schema, data backfill and rollback.",
+    diffEnd: "\nRollout: dual-write to Redis and Postgres, then switch reads behind a feature flag.",
+    stat: "2 edits · +115 −16",
+  },
+  used: [
+    { kind: "file-text", title: "python-retry-backoff", score: "0.91" },
+    { kind: "message-square-quote", title: "Refactor with tests first", score: "0.84" },
+    { kind: "file-text", title: "stripe-webhook-idempotency", score: "0.77" },
+  ],
+  dropped: 2,
+  usedQ: [
+    { kind: "file-text", title: "postgres-zero-downtime-migrations", score: "0.89" },
+    { kind: "file-text", title: "postgres-session-store", score: "0.86" },
+  ],
+  droppedQ: 3,
+  tagsQ: [["migrations", "0.94"], ["postgres", "0.92"], ["redis", "0.87"], ["sessions", "0.85"], ["rollout", "0.71"]],
+  pipelineQ: [
+    { step: "Tags", model: "gemini-3.5-flash-lite", ms: "171 ms" },
+    { step: "Retrieve", model: "pgvector · 5 tags → 5 candidates", ms: "41 ms" },
+    { step: "Judge", model: "gemini-3.6-flash · 5 calls", ms: "588 ms" },
+    { step: "Generate", model: "gemini-3.8-flash", ms: "904 ms" },
+  ],
+  tags: [["retry", "0.93"], ["webhooks", "0.90"], ["stripe", "0.88"], ["python", "0.81"], ["testing", "0.74"]],
+  pipeline: [
+    { step: "Tags", model: "gemini-3.5-flash-lite", ms: "184 ms" },
+    { step: "Retrieve", model: "pgvector · 5 tags → 5 candidates", ms: "38 ms" },
+    { step: "Judge", model: "gemini-3.6-flash · 5 calls", ms: "612 ms" },
+    { step: "Generate", model: "gemini-3.8-flash", ms: "731 ms" },
+  ],
+  knowledge: [
+    { kind: "file-text", title: "python-retry-backoff", sum: "Retry with exponential backoff and full jitter using tenacity; idempotency and max-attempt guidance.", tags: ["retry", "python", "resilience"], more: 1, date: "22 Oct" },
+    { kind: "file-text", title: "stripe-webhook-idempotency", sum: "Verify signatures, store event ids, return 2xx fast and process asynchronously.", tags: ["stripe", "webhooks", "idempotency"], more: 0, date: "22 Oct" },
+    { kind: "message-square-quote", title: "Refactor with tests first", sum: "Prompt pattern: characterise current behaviour with tests, then refactor in small steps.", tags: ["refactor", "testing"], more: 0, date: "21 Oct" },
+    { kind: "workflow", title: "Bug triage loop", sum: "Reproduce → isolate → hypothesise → verify; agent asks for logs when evidence is missing.", tags: ["debugging", "triage"], more: 2, date: "20 Oct" },
+    { kind: "file-text", title: "postgres-zero-downtime-migrations", sum: "Expand/contract migrations, concurrent indexes, backfills in batches, lock timeouts.", tags: ["postgres", "migrations"], more: 1, date: "19 Oct" },
+    { kind: "message-square-quote", title: "Explain a diff for review", sum: "Prompt pattern for summarising a change set by risk, with reviewer checklist output.", tags: ["code-review"], more: 0, date: "18 Oct" },
+    { kind: "file-text", title: "nextjs-app-router-data-fetching", sum: "Server components, route handlers, caching and revalidation rules for App Router.", tags: ["nextjs", "react"], more: 2, date: "17 Oct" },
+    { kind: "workflow", title: "Release notes from commits", sum: "Group commits by area, ask for audience, then draft notes in the chosen format.", tags: ["writing", "git"], more: 0, date: "15 Oct" },
+    { kind: "file-text", title: "fastapi-dependency-injection", sum: "Depends(), lifespan resources, per-request sessions and testing overrides.", tags: ["fastapi", "python"], more: 1, date: "14 Oct" },
+  ],
+  kdetail: {
+    body: "# python-retry-backoff\n\nUse when an operation can fail transiently\n(network, 5xx, rate limits).\n\n## Rules\n- Exponential backoff with full jitter:\n  sleep = random(0, base * 2**attempt)\n- Cap attempts and total wait.\n- Only retry idempotent operations, or\n  attach an idempotency key.\n- Log attempt number, never payloads.\n\n## tenacity\n@retry(wait=wait_random_exponential(\n    multiplier=0.5, max=20),\n  stop=stop_after_attempt(5))",
+  },
+  logs: [
+    { t: "14:02:31.418", kind: "api", op: "POST /v1/enhance", model: "—", st: 200, lat: "1.57 s", tok: "—", on: true },
+    { t: "14:02:29.866", kind: "ai", op: "extract_tags", model: "gemini-3.5-flash-lite", st: 200, lat: "184 ms", tok: "412 / 38", child: true },
+    { t: "14:02:30.051", kind: "ai", op: "embed_tags", model: "gemini-embedding-001", st: 200, lat: "96 ms", tok: "21 / —", child: true },
+    { t: "14:02:30.189", kind: "ai", op: "judge_relevance ×5", model: "gemini-3.6-flash", st: 200, lat: "612 ms", tok: "3.1k / 140", child: true },
+    { t: "14:02:30.687", kind: "ai", op: "generate_suggestion", model: "gemini-3.8-flash", st: 200, lat: "731 ms", tok: "2.4k / 61", child: true },
+    { t: "14:02:12.004", kind: "api", op: "POST /v1/enhance", model: "—", st: 200, lat: "1.12 s", tok: "—" },
+    { t: "14:01:57.730", kind: "api", op: "POST /v1/enhance", model: "—", st: 502, lat: "8.03 s", tok: "—" },
+    { t: "14:01:40.211", kind: "api", op: "POST /v1/knowledge", model: "—", st: 201, lat: "3.48 s", tok: "—" },
+    { t: "14:01:22.958", kind: "api", op: "GET /v1/knowledge", model: "—", st: 200, lat: "42 ms", tok: "—" },
+    { t: "14:00:48.317", kind: "api", op: "POST /v1/enhance", model: "—", st: 200, lat: "1.39 s", tok: "—" },
+    { t: "14:00:31.090", kind: "api", op: "POST /v1/enhance", model: "—", st: 422, lat: "6 ms", tok: "—" },
+  ],
+};

@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Contact sheet</title>
+<style>body{margin:0;padding:32px;background:#eceae6;font:500 13px/18px -apple-system,sans-serif;color:#333}
+h2{font-size:15px;margin:0 0 12px}.g{display:grid;gap:20px;margin-bottom:32px}
+.d{grid-template-columns:repeat(3,1fr)}.m{grid-template-columns:repeat(6,1fr)}
+figure{margin:0}img{width:100%;display:block;border:1px solid #ccc;border-radius:6px}figcaption{margin-top:6px;font-family:ui-monospace,monospace;font-size:11px}</style></head><body>
+<h2>Desktop · 1440×900</h2><div class="g d" id="d"></div><h2>Mobile / docked panel · 390×844</h2><div class="g m" id="m"></div>
+<script>
+const D=["refine-autocomplete","refine-autocomplete-dark","refine-question","refine-states","knowledge","knowledge-add","activity","settings","settings-toast"];
+const M=["refine-autocomplete","refine-context-sheet","refine-question","refine-question-dark","refine-states","knowledge","knowledge-detail-sheet","knowledge-add","activity","activity-detail-sheet","settings"];
+const f=(p,n)=>`<figure><img src="${p}-${n}.png"><figcaption>${p}-${n}</figcaption></figure>`;
+d.innerHTML=D.map(n=>f("desktop",n)).join("");m.innerHTML=M.map(n=>f("mobile",n)).join("");
+</script></body></html>

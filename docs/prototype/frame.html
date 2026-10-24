@@ -1,0 +1,6 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Frame</title>
+<style>html,body{margin:0;background:#fff}iframe{border:0;display:block;margin:0 auto}</style></head><body>
+<script>
+const p=new URLSearchParams(location.search),f=document.createElement("iframe");
+f.width=p.get("w");f.height=p.get("h");p.delete("w");p.delete("h");f.src="index.html?"+p;document.body.append(f);
+</script></body></html>
