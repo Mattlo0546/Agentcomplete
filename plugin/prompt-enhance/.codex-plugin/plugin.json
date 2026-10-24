@@ -1,0 +1,22 @@
+{
+  "name": "prompt-enhance",
+  "version": "0.1.0",
+  "description": "Pull the latest refined prompt from the Prompt Enhance companion app, enhance prompts and search saved knowledge.",
+  "author": { "name": "Prompt Enhance" },
+  "license": "MIT",
+  "keywords": ["prompt", "enhance", "knowledge"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Prompt Enhance",
+    "shortDescription": "Use your refined prompt from Prompt Enhance.",
+    "longDescription": "Connects Codex to the local Prompt Enhance backend: fetch the latest refined prompt sent from the companion panel, get enhancement suggestions for a draft, and search your saved knowledge.",
+    "developerName": "Prompt Enhance",
+    "category": "Productivity",
+    "capabilities": ["Read"],
+    "defaultPrompt": [
+      "Use my refined prompt from Prompt Enhance.",
+      "Enhance this prompt with Prompt Enhance."
+    ]
+  }
+}
