@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from app.db.pool import connection
 from app.llm import gemini
 from app.observability.context import set_request_id
+from app.observability.writers import flush
 
 
 class _Echo(BaseModel):
@@ -20,6 +21,7 @@ async def test_structured_generation_and_ai_log() -> None:
         schema=_Echo,
     )
     assert out.word.lower().strip() == "ok"
+    await flush()
     async with connection() as conn:
         row = await (
             await conn.execute(
@@ -38,6 +40,7 @@ async def test_embed_dimensions() -> None:
 async def test_request_id_echoed_and_api_logged(client: AsyncClient) -> None:
     response = await client.get("/v1/does-not-exist", headers={"X-Request-ID": "req_coretest0002"})
     assert response.headers["X-Request-ID"] == "req_coretest0002"
+    await flush()
     async with connection() as conn:
         row = await (
             await conn.execute("SELECT status FROM api_call_log WHERE request_id = %s", ("req_coretest0002",))

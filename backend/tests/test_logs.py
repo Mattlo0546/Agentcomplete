@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.db.pool import connection
-from app.observability.writers import record_ai_call, record_api_call
+from app.observability.writers import flush, record_ai_call, record_api_call
 
 
 @pytest.fixture
@@ -22,6 +22,7 @@ async def _seed(rid: str) -> None:
     await record_api_call(rid, "POST", "/v1/enhance", 200, 120, None)
     await record_ai_call(rid, "tags", "m1", "ok", 40, 10, 5, None)
     await record_ai_call(rid, "generate", "m2", "error", 80, None, None, "boom")
+    await flush()
     async with connection() as conn:
         await conn.execute(
             "INSERT INTO enhance_trace (request_id, prompt_revision, result_type, general, features)"

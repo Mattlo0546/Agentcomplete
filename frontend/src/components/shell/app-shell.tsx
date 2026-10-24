@@ -8,14 +8,18 @@ import { Rail } from "./rail";
 import { TabBar } from "./tab-bar";
 import { useLayoutMode } from "./use-layout-mode";
 
+/** Rail on ≥ 768 px, bottom tab bar below (CSS-driven so server and client markup match). */
 export function AppShell({ children }: { children: ReactNode }) {
-  const mode = useLayoutMode();
-  const narrow = mode === "narrow";
+  const narrow = useLayoutMode() === "narrow";
   return (
-    <div className={narrow ? "flex h-dvh flex-col" : "flex h-dvh"}>
-      {!narrow && <Rail />}
+    <div className="flex h-dvh flex-col md:flex-row">
+      <div className="hidden md:flex">
+        <Rail />
+      </div>
       <div className="flex min-h-0 min-w-0 flex-1">{children}</div>
-      {narrow && <TabBar />}
+      <div className="md:hidden">
+        <TabBar />
+      </div>
       <Toaster position={narrow ? "top-center" : "bottom-right"} />
     </div>
   );

@@ -1,5 +1,5 @@
-import { PageLayout } from "@/components/shell/page-layout";
+import { RefineView } from "@/components/refine/refine-view";
 
 export default function RefinePage() {
-  return <PageLayout title="Refine">{null}</PageLayout>;
+  return <RefineView />;
 }

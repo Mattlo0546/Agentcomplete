@@ -28,6 +28,7 @@ async def generate_structured[T: BaseModel](
     contents: str,
     schema: type[T],
     temperature: float = 0.2,
+    thinking_level: str | None = None,
 ) -> T:
     """Run one structured-output call and parse it into `schema`. Raises UpstreamError on any failure."""
     settings = get_settings()
@@ -36,6 +37,7 @@ async def generate_structured[T: BaseModel](
         response_mime_type="application/json",
         response_schema=schema,
         temperature=temperature,
+        thinking_config=types.ThinkingConfig(thinking_level=thinking_level) if thinking_level else None,  # type: ignore[arg-type]
     )
     started = time.perf_counter()
     usage: types.GenerateContentResponseUsageMetadata | None = None

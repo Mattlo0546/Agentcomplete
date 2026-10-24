@@ -8,7 +8,7 @@ from app.observability.context import new_request_id, set_request_id
 from app.observability.writers import record_api_call
 
 _REQUEST_ID_HEADER = "X-Request-ID"
-_SKIP_PATHS = ("/v1/logs", "/v1/stats", "/v1/health", "/docs", "/openapi.json")
+_SKIP_PATHS = ("/v1/logs", "/v1/stats", "/v1/health")
 
 
 class RequestLogMiddleware(BaseHTTPMiddleware):
@@ -21,8 +21,9 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
         started = time.perf_counter()
         response = await call_next(request)
         response.headers[_REQUEST_ID_HEADER] = request_id
-        if request.method != "OPTIONS" and not request.url.path.startswith(_SKIP_PATHS):
+        path = request.url.path
+        if request.method != "OPTIONS" and path.startswith("/v1/") and not path.startswith(_SKIP_PATHS):
             latency_ms = int((time.perf_counter() - started) * 1000)
             error = getattr(request.state, "error_summary", None)
-            await record_api_call(request_id, request.method, request.url.path, response.status_code, latency_ms, error)
+            await record_api_call(request_id, request.method, path, response.status_code, latency_ms, error)
         return response

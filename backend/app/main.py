@@ -23,6 +23,7 @@ from app.db.migrate import run_migrations
 from app.db.pool import close_pool, open_pool
 from app.errors import install_error_handlers
 from app.observability.middleware import RequestLogMiddleware
+from app.observability.writers import flush as flush_logs
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,6 +35,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     if applied:
         logging.getLogger(__name__).info("applied migrations: %s", ", ".join(applied))
     yield
+    await flush_logs()
     await close_pool()
 
 
