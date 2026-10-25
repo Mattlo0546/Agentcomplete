@@ -2,21 +2,40 @@
 
 A prompt companion for Codex. Retrieves relevant skills and examples, reviews them with Gemini, and suggests ghost text or clarifying edits while you type.
 
-[Architecture](docs/architecture.md) · [API reference](docs/api.md) · [Codex plugin](docs/codex-plugin.md) · [Performance](docs/performance.md)
+[Architecture](docs/architecture.md) · [Retrieval detail](#retrieval-architecture) · [API reference](docs/api.md) · [Codex plugin](docs/codex-plugin.md) · [Performance](docs/performance.md)
 
 ## Architecture
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-technical-dark.svg">
-  <img alt="Skill Issue technical architecture: browser and Codex MCP clients call a single FastAPI worker; retrieval, Gemini review and generation, and output validation connect to Tiger PostgreSQL, pgvector, TimescaleDB, and offline Snowflake analytics." src="docs/assets/architecture-technical-light.svg" width="1200">
+  <img alt="Skill Issue backend pipelines: one FastAPI worker tries the complete catalog, lexical, direct semantic, then tag/pgvector retrieval before fresh Gemini review and validation. Knowledge ingestion, Codex handoff, telemetry, and offline Snowflake training share Tiger PostgreSQL." src="docs/assets/architecture-technical-light.svg" width="1200">
 </picture>
 
-The deployed units are the companion, one API worker, and the external services. Retrieval and validation run **inside the API process**. The local EmbeddingGemma index marked † is active development; `main` currently uses the lexical route with tag/pgvector fallback.
+The runtime consists of the companion, one API worker, and external services. Retrieval and validation run **inside the API process**. The current default is **complete-catalog review**, followed by lexical, direct semantic, and tag/pgvector fallback routes. Local EmbeddingGemma retrieval is implemented on `main` and requires optional model files and dependencies.
 
-1. **Retrieve.** A fresh in-process knowledge snapshot nominates up to three candidates for eligible autocomplete requests. Otherwise, Gemini extracts tags and `gemini-embedding-001` produces 768-dimensional vectors for pgvector search.
+1. **Select context.** A fresh Tiger snapshot sends every knowledge body to review when the catalog fits 64 items and 80,000 serialized characters. Otherwise, eligible autocomplete requests try a lexical shortlist, then a direct semantic index, then Gemini tags and pgvector. The first usable route wins; semantic-first is an explicit override.
 2. **Review and generate.** One structured `gemini-3.5-flash-lite` call reviews every candidate and returns a suffix, a question with edits, or `none`. Keeping a candidate requires an explicit keep decision and a score of at least 0.5.
-3. **Validate and return.** Python checks response types, anchored UTF-16 edits, and source freshness. Invalid output gets one retry. The editor rejects stale revisions and supports Tab to accept, Escape to dismiss, and IME composition.
-4. **Record.** Tiger stores knowledge, handoffs, outcomes, and metadata traces. Snowflake receives explicit exports for offline classifier training; it is outside the suggestion path.
+3. **Validate and return.** Python checks response types, partial-word suffixes, anchored UTF-16 edits, and source freshness. Invalid output gets one retry. The editor enforces request/revision checks and bounded exact-prefix adoption of older suffixes.
+4. **Maintain knowledge and hand off.** Knowledge ingestion summarizes and tags concurrently, embeds new tags, saves atomically, and invalidates retrieval caches. Send to Codex stores one latest prompt for the MCP plugin to fetch.
+5. **Record and learn offline.** Metadata traces and usage counts persist in the background; reactions create outcome events. Explicit exports feed Snowflake classifier training, outside the suggestion path.
+
+## Retrieval architecture
+
+The retrieval router chooses the knowledge supplied to Gemini. It tries the routes below in order and stops at the first usable result. Each route runs inside the same FastAPI worker.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/retrieval-router-dark.svg">
+  <img alt="Detailed retrieval router: complete catalog, lexical shortlist, direct semantic index, then tags and pgvector. Each usable result joins fresh Gemini review and generation, followed by output validation and source-freshness checks. Side panels describe the shared Tiger snapshot, Retrieval result contract, and fallback semantics." src="docs/assets/retrieval-router-light.svg" width="1200">
+</picture>
+
+- **Complete catalog:** send every full body when the catalog fits 64 documents and 80,000 serialized characters.
+- **Lexical:** eligible end-cursor autocomplete uses metadata overlap and weighted term ranking to select up to three candidates.
+- **Direct semantic:** compare a query embedding with precomputed document chunks; return up to three documents with their best matching evidence.
+- **Tags / pgvector:** extract tags, reuse safe previous context or embed tags, then retrieve up to five documents through matching stored tags.
+
+An unavailable route falls through. An empty result is usable and proceeds to draft-only generation. Every candidate is freshly reviewed; rejecting all candidates does not start another retrieval pass. `SEMANTIC_FIRST_ENABLED` can swap lexical and semantic attempts, while complete-catalog review stays first. Source freshness is checked again before output returns.
+
+See the [retrieval router deep dive](docs/architecture.md#retrieval-router) for algorithms, cache reuse, route controls, and failure behavior.
 
 ## Stack
 

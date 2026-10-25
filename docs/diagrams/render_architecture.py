@@ -2,7 +2,7 @@
 
 No rendering dependencies. Run from any directory: python3 docs/diagrams/render_architecture.py
 Visual convention: solid lines are request/response; dashed lines are maintenance.
-The semantic index is shown as development work until its runtime change lands on main.
+Route ordering and bounds describe the main runtime at commit 78e7821.
 """
 
 from html import escape
@@ -37,13 +37,13 @@ THEMES = {
 
 def render(t):
     out = [
-        f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1000" viewBox="0 0 1200 1000" role="img" aria-labelledby="title desc">
+        f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1280" viewBox="0 0 1200 1280" role="img" aria-labelledby="title desc">
 <title id="title">Skill Issue — technical architecture</title>
-<desc id="desc">The Next.js browser and Codex MCP client call a single FastAPI worker. Its retrieval router uses a lexical snapshot or Gemini tag and pgvector fallback; a local EmbeddingGemma index is in development. Gemini reviews candidates and generates structured output, then Python validates UTF-16 edits and freshness. Tiger Data PostgreSQL stores knowledge, vectors, and telemetry. Snowflake receives explicit offline exports. Solid arrows show requests and responses; dashed arrows show persistence and background refresh.</desc>
+<desc id="desc">The browser and Codex MCP client call one FastAPI worker. The first usable retrieval route wins: complete catalog review (64 items, 80,000 serialized characters), eligible lexical shortlist, optional direct semantic index, then Gemini tags and pgvector. One Gemini call reviews candidates and generates output; Python validates reviews, suffixes, edits, and source freshness. Knowledge ingestion, handoff, and telemetry use Tiger PostgreSQL. Explicit outcome export and classifier training use Snowflake outside suggestion requests. Solid arrows show requests or synchronous data access; dashed arrows show refresh or background persistence.</desc>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="{t["ink"]}" stroke-width="1.4"/></marker>
 <marker id="muted-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="{t["edge"]}" stroke-width="1.4"/></marker></defs>
 <style>text{{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:{t["ink"]};font-size:16px}}.title{{font-size:20px;font-weight:600}}.meta{{font-size:14px;fill:{t["muted"]}}}.label{{font-size:13px;fill:{t["muted"]};letter-spacing:1.2px}}.small{{font-size:13px;fill:{t["muted"]}}}</style>
-<rect width="1200" height="1000" fill="{t["bg"]}"/>
+<rect width="1200" height="1280" fill="{t["bg"]}"/>
 '''
     ]
 
@@ -74,116 +74,157 @@ def render(t):
         text(x + w / 2, y + 18, s, "small", "middle")
 
     text(42, 31, "CLIENTS", "label")
-    text(1148, 31, "SINGLE-USER TOPOLOGY", "label", "end")
+    text(1158, 31, "SINGLE USER / SINGLE API WORKER", "label", "end")
     rect(42, 52, 350, 88)
     text(62, 84, "Browser companion", "title")
     text(62, 111, "Next.js 16 / React 19", "meta")
     rect(444, 52, 350, 88)
     text(464, 84, "Codex", "title")
     text(464, 111, "MCP server + skill", "meta")
-    text(910, 89, "REQUEST CONTRACT", "label")
-    text(910, 115, "prompt · cursor", "meta")
-    text(910, 139, "request_id · revision", "meta")
-    # Worker boundary contains the actual Python responsibilities, not extra services.
-    rect(42, 205, 752, 489, fill="group", stroke="edge", dash="5 5", r=8)
-    text(62, 232, "BACKEND PROCESS", "label")
-    text(470, 232, "Python / one worker", "meta", "middle")
+    text(848, 77, "REQUEST CONTRACT", "label")
+    text(848, 105, "draft · UTF-16 cursor", "meta")
+    text(848, 131, "request_id · revision", "meta")
+
+    rect(42, 205, 1116, 630, fill="group", stroke="edge", dash="5 5", r=8)
+    text(64, 232, "BACKEND PROCESS", "label")
+    text(1136, 232, "Python / in-process routing, caches and validation", "meta", "end")
     line("M217 140 V262")
     line("M619 140 V262")
     pill(141, 166, 152, "HTTP / JSON")
     pill(550, 166, 138, "MCP → HTTP")
-    rect(64, 262, 708, 78, stroke="edge")
+    rect(64, 262, 1072, 78, stroke="edge")
     text(86, 291, "FastAPI", "title")
-    text(749, 291, "POST /v1/enhance", "", "end")
-    text(86, 319, "settings cache · request cancellation · previous_request_id", "meta")
-    line("M217 340 V385")
-    rect(64, 385, 340, 267, stroke="edge")
-    text(84, 418, "Retrieval router", "title")
-    rule(64, 435, 404)
-    text(84, 463, "Lexical shortlist")
-    text(84, 487, "metadata overlap · top 3", "meta")
-    rule(64, 505, 404)
-    text(84, 532, "Tag + vector fallback")
-    text(84, 556, "Gemini tags → pgvector · top 5", "meta")
-    rule(64, 574, 404)
-    text(84, 601, "Local semantic index †")
-    text(84, 626, "EmbeddingGemma 2 / ONNX / 768d", "meta")
-    # Fresh review belongs to the shared generation call.
-    line("M404 463 H450")
-    rect(450, 385, 322, 132, stroke="edge")
-    text(470, 417, "Review + generate", "title")
-    text(470, 446, "One structured Gemini call", "meta")
-    text(470, 473, "Every candidate reviewed", "meta")
-    text(470, 498, "keep=true AND score ≥ 0.5", "meta")
-    line("M611 517 V558")
-    rect(450, 558, 322, 94, stroke="edge")
-    text(470, 590, "Output validation", "title")
-    text(470, 617, "UTF-16 edits · source freshness", "meta")
-    text(470, 638, "invalid → retry once → none", "small")
-    # Return payload: explicit boundary crossing, without a line through the boxes.
-    line("M450 614 H427 V674 H20 V96 H42")
-    out.append(
-        '<text x="14" y="547" class="small" transform="rotate(-90 14 547)">validated response</text>'
+    text(
+        1114,
+        291,
+        "/v1/enhance · /knowledge · /handoff · /outcomes · /analytics",
+        "meta",
+        "end",
     )
-    # Remote inference is outside the worker; retrieval can also invoke it.
-    text(848, 232, "EXTERNAL SERVICES", "label")
-    rect(848, 262, 310, 390, stroke="edge")
-    text(868, 297, "Google Gemini", "title")
-    rule(848, 315, 1158)
-    text(868, 345, "Review / generation", "")
-    text(868, 370, "gemini-3.5-flash-lite", "meta")
-    line("M772 407 H848", both=True)
-    pill(783, 372, 55, "HTTPS")
-    rule(848, 431, 1158)
-    text(868, 461, "Fallback tagging")
-    text(868, 486, "gemini-3.5-flash-lite", "meta")
-    text(868, 528, "Fallback embeddings")
-    text(868, 553, "gemini-embedding-001", "meta")
-    text(868, 580, "768d / SEMANTIC_SIMILARITY", "small")
-    text(868, 624, "Invoked only when needed", "small")
-    # The remote fallback route exits the retrieval box below the generation path.
-    line("M404 542 H417 V710 H825 V543 H848")
-    pill(579, 697, 210, "tags + embed fallback")
-    # Shared source of truth; a dedicated telemetry write path is distinct from reads.
-    line("M150 652 V779")
-    pill(66, 730, 160, "pgvector SQL")
-    line("M303 779 V652", dashed=True)
-    pill(231, 730, 158, "snapshot refresh")
-    text(303, 770, "10s / TTL 15s", "small", "middle")
-    line("M611 652 V779", dashed=True)
-    pill(620, 739, 166, "metadata + outcomes")
-    rect(42, 779, 752, 146, stroke="edge")
-    text(62, 813, "Tiger Data / PostgreSQL", "title")
-    text(774, 813, "SOURCE OF TRUTH", "label", "end")
-    rule(42, 832, 794)
-    text(62, 861, "Knowledge + config")
-    text(62, 887, "knowledge / app_settings", "small")
-    text(62, 909, "handoff / tag", "small")
-    out.append(f'<path d="M322 832 V925 M539 832 V925" stroke="{t["faint"]}"/>')
-    text(342, 861, "pgvector")
-    text(342, 887, "tag embeddings", "small")
-    text(342, 909, "vector(768)", "small")
-    text(559, 861, "TimescaleDB")
-    text(559, 887, "traces / outcomes", "small")
-    text(559, 909, "logs: 30-day retention", "small")
-    rect(848, 779, 310, 146, stroke="edge")
-    text(868, 813, "Snowflake", "title")
-    text(868, 850, "ML Classification")
-    text(868, 879, "Derived outcome features", "meta")
-    text(868, 909, "OFFLINE · EXPLICIT TRAINING", "small")
-    line("M794 852 H848", dashed=True)
-    text(821, 841, "export", "small", "middle")
+    text(
+        86,
+        319,
+        "settings cache · input bounds · disconnect cancellation · previous draft context",
+        "meta",
+    )
+    line("M249 340 V385")
+
+    rect(64, 385, 370, 405, stroke="edge")
+    text(84, 417, "Context selection", "title")
+    text(84, 443, "FIRST USABLE ROUTE WINS", "label")
+    rule(64, 460, 434)
+    text(84, 488, "1  Complete catalog", "title")
+    text(84, 514, "≤64 items / ≤80,000 serialized chars", "meta")
+    text(84, 537, "All bodies · no tag / embedding call", "meta")
+    rule(64, 554, 434)
+    text(84, 583, "2  Lexical shortlist")
+    text(84, 608, "Eligible end-cursor input · top 3", "meta")
+    rule(64, 625, 434)
+    text(84, 654, "3  Direct semantic index")
+    text(84, 679, "EmbeddingGemma 2 / ONNX · top 3", "meta")
+    text(84, 702, "Optional local files; Gemini override", "small")
+    rule(64, 719, 434)
+    text(84, 748, "4  Tags + pgvector")
+    text(84, 774, "Gemini tag vectors · ≥0.88 · top 5", "meta")
+
+    line("M434 488 H478")
+    rect(478, 385, 300, 155, stroke="edge")
+    text(498, 417, "Review + generate", "title")
+    text(498, 447, "One structured Gemini call", "meta")
+    text(498, 474, "Every candidate reviewed", "meta")
+    text(498, 501, "keep=true AND score ≥ 0.5", "meta")
+    text(498, 524, "No kept items → draft alone", "small")
+    line("M778 462 H822")
+    rect(822, 385, 314, 155, stroke="edge")
+    text(842, 417, "Validate + return", "title")
+    text(842, 447, "Reviews · suffix · UTF-16 edits", "meta")
+    text(842, 474, "Invalid → retry once → none", "meta")
+    text(842, 501, "Wait for trace capacity", "meta")
+    text(842, 524, "Stale source → discard", "small")
+    line("M1136 462 H1180 V16 H217 V52")
+    out.append(
+        '<text x="1194" y="450" class="small" transform="rotate(-90 1194 450)">validated response to client</text>'
+    )
+
+    text(498, 590, "SUPPORTING API PIPELINES", "label")
+    rect(478, 610, 300, 180, stroke="edge")
+    text(498, 644, "Knowledge lifecycle", "title")
+    text(498, 674, "Gemini summary + tags", "meta")
+    text(498, 700, "Run concurrently; embed tags", "meta")
+    text(498, 726, "Atomic knowledge / tag save", "meta")
+    text(498, 752, "Commit → invalidate caches", "meta")
+    text(498, 775, "SSE progress; PATCH / DELETE", "small")
+    rect(822, 610, 314, 180, stroke="edge")
+    text(842, 644, "Handoff + telemetry", "title")
+    text(842, 674, "Store / fetch latest prompt", "meta")
+    text(842, 700, "Trace + use counts: async", "meta")
+    text(842, 726, "Outcomes: separate API writes", "meta")
+    text(842, 752, "Metadata logs; bounded queue", "meta")
+    text(842, 775, "MCP reads handoff via API", "small")
+
+    # Provider calls and source maintenance cross the worker boundary.
+    line("M227 790 V915")
+    line("M628 540 V565 H456 V851 H227 V915")
+    pill(80, 866, 294, "Gemini calls: review / fallback")
+    line("M540 915 V889 H446 V766 H434", dashed=True)
+    text(468, 883, "snapshot / index refresh", "small")
+    line("M414 790 V902 H500 V915")
+    text(382, 815, "SQL", "small")
+    line("M688 790 V915", both=True)
+    pill(620, 843, 135, "Tiger access")
+    line("M979 790 V865 H808 V915", dashed=True)
+    text(852, 853, "handoff / telemetry", "small")
+
+    text(42, 909, "EXTERNAL SERVICES", "label")
+    rect(42, 935, 370, 270, stroke="edge")
+    # Extend the two provider paths to the external service box.
+    line("M227 915 V935")
+    text(62, 970, "Google Gemini", "title")
+    rule(42, 990, 412)
+    text(62, 1021, "gemini-3.5-flash-lite")
+    text(62, 1047, "Review + generation / tag inference", "meta")
+    text(62, 1073, "Knowledge summary + tag generation", "meta")
+    rule(42, 1092, 412)
+    text(62, 1122, "gemini-embedding-001")
+    text(62, 1148, "Tag embeddings / 768 dimensions", "meta")
+    text(62, 1174, "Optional direct semantic backend", "meta")
+    text(62, 1195, "GENERATION REMAINS REMOTE", "small")
+
+    rect(478, 915, 420, 290, stroke="edge")
+    text(498, 950, "Tiger Data / PostgreSQL", "title")
+    text(498, 977, "SOURCE OF TRUTH", "label")
+    rule(478, 995, 898)
+    text(498, 1025, "knowledge · tag · knowledge_tag")
+    text(498, 1052, "app_settings · handoff · analytics_state", "small")
+    text(498, 1090, "pgvector: tag vectors / 768d")
+    text(498, 1128, "TimescaleDB: traces / outcomes / logs", "meta")
+    text(498, 1156, "Snapshot: refresh 10s / expire 15s", "meta")
+    text(498, 1184, "Logs + traces: 30-day retention", "meta")
+
+    rect(948, 915, 210, 290, stroke="edge")
+    text(968, 950, "Snowflake", "title")
+    text(968, 977, "OFFLINE ANALYTICS", "label")
+    rule(948, 995, 1158)
+    text(968, 1025, "Derived features", "meta")
+    text(968, 1052, "Explicit export", "meta")
+    text(968, 1090, "ML Classification", "meta")
+    text(968, 1117, "Explicit training", "meta")
+    text(968, 1156, "≥20 labeled requests", "small")
+    text(968, 1184, "Both outcome classes", "small")
+    line("M898 1045 H948", dashed=True)
+    text(923, 1033, "export", "small", "middle")
+
     text(
         42,
-        958,
-        "† Local semantic index: active development; main uses lexical → tag/pgvector.",
+        1234,
+        "Defaults shown. Semantic-first swaps routes 2 / 3; complete catalog still runs first.",
         "small",
     )
-    line("M42 982 H80")
-    text(90, 987, "request / response", "small")
-    line("M330 982 H368", dashed=True)
-    text(378, 987, "persistence / background refresh", "small")
-    text(1158, 987, "2026-10-25", "small", "end")
+    line("M42 1261 H80")
+    text(90, 1266, "request / data access", "small")
+    line("M350 1261 H388", dashed=True)
+    text(398, 1266, "refresh / persistence / export", "small")
+    text(1158, 1266, "main 78e7821 · 2026-10-25", "small", "end")
     out.append("</svg>")
     return "\n".join(out)
 

@@ -55,13 +55,35 @@ function inspect(id) {
     $("detail-kicker").textContent = "LOCAL LEXICAL NOMINATION";
     $("detail-title").textContent = "Match locally. Review freshly.";
     $("detail-body").textContent =
-      "If direct semantic retrieval is unavailable, eligible end-cursor requests can rank documents in a fresh Tiger snapshot. Title, summary, or tag overlap must support the match. Uncertain matches continue to remote tag retrieval.";
+      "After complete review cannot serve, eligible end-cursor requests can rank documents in a fresh Tiger snapshot. Title, summary, or tag overlap must support the match. Uncertain matches continue to direct semantic retrieval, then remote tags. Semantic-first swaps these two shortlist attempts.";
     setFacts([
       ["Remote retrieval calls", "None on this route"],
       ["Candidates", "Up to 3"],
       ["Relevance verdict", "Fresh Gemini review"],
     ]);
     $("detail-source").href = repository + "backend/app/pipeline/catalog.py";
+  }
+  if (id === "retrieval" && activeRoute === "catalog") {
+    $("detail-kicker").textContent = "DEFAULT FIRST ROUTE";
+    $("detail-title").textContent = "Complete catalog review";
+    $("detail-body").textContent = routes.catalog.copy;
+    setFacts([
+      ["Items", "At most 64"],
+      ["Serialized context", "At most 80,000 characters"],
+      ["Body truncation", "None; oversized falls through"],
+    ]);
+    $("detail-source").href = repository + "backend/app/pipeline/catalog.py";
+  }
+  if (id === "retrieval" && activeRoute === "semantic") {
+    $("detail-kicker").textContent = "DIRECT SEMANTIC FALLBACK";
+    $("detail-title").textContent = "Document / query similarity";
+    $("detail-body").textContent = routes.semantic.copy;
+    setFacts([
+      ["Default encoder", "EmbeddingGemma 2 / ONNX CPU"],
+      ["Candidates", "Up to 3 + matched source chunk"],
+      ["Requirements", "Current index + optional files"],
+    ]);
+    $("detail-source").href = repository + "backend/app/pipeline/semantic.py";
   }
   for (const [key, button] of [...labels, ...componentButtons])
     button.setAttribute("aria-pressed", String(key === id));
@@ -81,13 +103,15 @@ function setRoute(id) {
   for (const [key, button] of labels)
     button.classList.toggle("dimmed", !route.nodes.includes(key));
   labels.get("retrieval").querySelector("strong").textContent =
-    id === "fallback" ? "Remote retrieval" : "Local retrieval";
+    id === "fallback" ? "Remote retrieval" : "Context selection";
   labels.get("retrieval").querySelector("span").textContent =
     id === "fallback"
       ? "GEMINI TAGS → PGVECTOR"
       : id === "lexical"
         ? "METADATA-SUPPORTED SHORTLIST"
-        : "EMBEDDINGGEMMA 2 → LEXICAL";
+        : id === "semantic"
+          ? "EMBEDDINGGEMMA 2 / ONNX"
+          : "COMPLETE CATALOG FIRST";
   viewer?.route(route);
   if (route.selected) inspect(route.selected);
   else {
@@ -96,7 +120,7 @@ function setRoute(id) {
     $("detail-kicker").textContent = "THE SYSTEM";
     $("detail-title").textContent = "Grounded, then generated.";
     $("detail-body").textContent =
-      "A fast shortlist brings relevant knowledge into one fresh Gemini review and generation call. Each result is validated before it reaches the editor.";
+      "The complete bounded catalog or a fallback shortlist goes to one fresh Gemini review and generation call. Each result is validated before it reaches the editor.";
     setFacts(route.facts);
     $("detail-source").href = repository + "backend/app/pipeline/run.py";
     for (const button of [...labels.values(), ...componentButtons.values()])

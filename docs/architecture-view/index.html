@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Skill Issue architecture: local retrieval, Gemini review and generation, Tiger Data, Codex, and Snowflake."
+      content="Skill Issue backend: complete catalog review, retrieval fallbacks, knowledge ingestion, Codex handoff, Tiger Data, and offline Snowflake analytics."
     />
     <title>Skill Issue · Architecture</title>
     <link rel="stylesheet" href="styles.css" />
@@ -24,11 +24,14 @@
         <h1>Skill Issue <span>/ Architecture</span></h1>
         <nav class="route-nav" aria-label="Explore a request path">
           <button data-route="overview" aria-pressed="true">Full system</button>
-          <button data-route="semantic" aria-pressed="false">
-            Local semantic
+          <button data-route="catalog" aria-pressed="false">
+            Complete catalog
           </button>
           <button data-route="lexical" aria-pressed="false">
             Lexical fallback
+          </button>
+          <button data-route="semantic" aria-pressed="false">
+            Local semantic
           </button>
           <button data-route="fallback" aria-pressed="false">
             Remote fallback
@@ -45,8 +48,7 @@
         <div class="stage-caption">
           <strong>Skill Issue</strong
           ><span
-            >Semantic retrieval → fresh Gemini review → validated
-            suggestion</span
+            >Complete catalog → fresh Gemini review → validated suggestion</span
           >
         </div>
         <div class="stage-note">LOGICAL COMPONENTS · SINGLE API WORKER</div>
@@ -95,12 +97,13 @@
       </section>
       <section class="description" aria-live="polite">
         <div>
-          <h2 id="route-title">One fresh review. Three ways to retrieve.</h2>
+          <h2 id="route-title">
+            Complete catalog first. Fresh review on every route.
+          </h2>
           <p id="route-copy">
-            Prefer local document/query embeddings, then eligible lexical
-            matching. If neither can serve the request, use Gemini tags and
-            Tiger pgvector. Every route finishes with fresh review and validated
-            output.
+            Try the complete bounded catalog, then eligible lexical matching,
+            direct semantic retrieval, and Gemini tags with Tiger pgvector. The
+            first usable result goes to fresh review and validated output.
           </p>
         </div>
         <p class="sr-only" id="route-kicker"></p>
