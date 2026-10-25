@@ -8,15 +8,16 @@ A prompt companion for Codex. Retrieves relevant skills and examples, reviews th
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture-technical-dark.svg">
-  <img alt="Skill Issue technical architecture: browser and Codex MCP clients call a single FastAPI worker; retrieval, Gemini review and generation, and output validation connect to Tiger PostgreSQL, pgvector, TimescaleDB, and offline Snowflake analytics." src="docs/assets/architecture-technical-light.svg" width="1200">
+  <img alt="Skill Issue backend pipelines: one FastAPI worker tries the complete catalog, lexical, direct semantic, then tag/pgvector retrieval before fresh Gemini review and validation. Knowledge ingestion, Codex handoff, telemetry, and offline Snowflake training share Tiger PostgreSQL." src="docs/assets/architecture-technical-light.svg" width="1200">
 </picture>
 
-The deployed units are the companion, one API worker, and the external services. Retrieval and validation run **inside the API process**. The local EmbeddingGemma index marked † is active development; `main` currently uses the lexical route with tag/pgvector fallback.
+The runtime consists of the companion, one API worker, and external services. Retrieval and validation run **inside the API process**. The current default is **complete-catalog review**, followed by lexical, direct semantic, and tag/pgvector fallback routes. Local EmbeddingGemma retrieval is implemented on `main` and requires optional model files and dependencies.
 
-1. **Retrieve.** A fresh in-process knowledge snapshot nominates up to three candidates for eligible autocomplete requests. Otherwise, Gemini extracts tags and `gemini-embedding-001` produces 768-dimensional vectors for pgvector search.
+1. **Select context.** A fresh Tiger snapshot sends every knowledge body to review when the catalog fits 64 items and 80,000 serialized characters. Otherwise, eligible autocomplete requests try a lexical shortlist, then a direct semantic index, then Gemini tags and pgvector. The first usable route wins; semantic-first is an explicit override.
 2. **Review and generate.** One structured `gemini-3.5-flash-lite` call reviews every candidate and returns a suffix, a question with edits, or `none`. Keeping a candidate requires an explicit keep decision and a score of at least 0.5.
-3. **Validate and return.** Python checks response types, anchored UTF-16 edits, and source freshness. Invalid output gets one retry. The editor rejects stale revisions and supports Tab to accept, Escape to dismiss, and IME composition.
-4. **Record.** Tiger stores knowledge, handoffs, outcomes, and metadata traces. Snowflake receives explicit exports for offline classifier training; it is outside the suggestion path.
+3. **Validate and return.** Python checks response types, partial-word suffixes, anchored UTF-16 edits, and source freshness. Invalid output gets one retry. The editor enforces request/revision checks and bounded exact-prefix adoption of older suffixes.
+4. **Maintain knowledge and hand off.** Knowledge ingestion summarizes and tags concurrently, embeds new tags, saves atomically, and invalidates retrieval caches. Send to Codex stores one latest prompt for the MCP plugin to fetch.
+5. **Record and learn offline.** Metadata traces and usage counts persist in the background; reactions create outcome events. Explicit exports feed Snowflake classifier training, outside the suggestion path.
 
 ## Stack
 

@@ -27,6 +27,7 @@ try {
   await page.locator("#labels button").first().waitFor();
   assert.equal(await page.locator("#labels button").count(), 8);
   for (const route of [
+    "catalog",
     "lexical",
     "semantic",
     "fallback",
@@ -42,6 +43,17 @@ try {
       "true",
     );
   }
+  await page.locator('[data-route="catalog"]').click();
+  assert.equal(
+    await page.locator("#detail-title").innerText(),
+    "Complete catalog review",
+  );
+  assert.match(await page.locator("#detail-facts").innerText(), /80,000/);
+  await page.locator('[data-route="semantic"]').click();
+  assert.equal(
+    await page.locator("#detail-title").innerText(),
+    "Document / query similarity",
+  );
   await page.locator(".component-index").evaluate((el) => {
     el.open = true;
   });
@@ -150,7 +162,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Architecture verified: 6 routes, 8 component labels, model inspector, camera orbit/reset, pause/resume, mobile, and WebGL fallback. Screenshot saved to docs/assets/architecture.png.",
+    "Architecture verified: 7 routes, 8 component labels, model inspector, camera orbit/reset, pause/resume, mobile, and WebGL fallback. Screenshot saved to docs/assets/architecture.png.",
   );
 } finally {
   await browser.close();
