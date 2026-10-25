@@ -12,7 +12,7 @@ SR = 44100
 BPM = 128
 BEAT = 60 / BPM
 BAR = BEAT * 4
-BARS = 30
+BARS = 32
 N = int(BARS * BAR * SR)
 rng = np.random.default_rng(7)
 
@@ -107,15 +107,15 @@ def supersaw(freq, dur, voices=7, detune=0.18):
 def section(bar):
     if bar < 2:
         return "intro"
-    if bar < 6:
+    if bar < 7:
         return "groove"
-    if bar < 8:
+    if bar < 9:
         return "break"
-    if bar < 25:
+    if bar < 27:
         return "drop"
-    if bar < 28:
+    if bar < 30:
         return "outro"
-    if bar == 28:
+    if bar == 30:
         return "hit"
     return "tail"
 
@@ -144,12 +144,12 @@ for bar in range(BARS):
             both(H, start + 3 * BEAT / 4, 0.35, pan=-0.3)
 
 # breakdown snare roll accelerating across bar 7
-roll_start = 7 * BAR
+roll_start = 8 * BAR
 for k, frac in enumerate(np.concatenate([np.arange(0, 0.5, 1 / 8), np.arange(0.5, 0.75, 1 / 16), np.arange(0.75, 1.0, 1 / 32)])):
     both(C, roll_start + frac * BAR, 0.25 + 0.6 * frac)
 
 # riser noise over bars 6-7
-rs = int(6 * BAR * SR)
+rs = int(7 * BAR * SR)
 rn = int(2 * BAR * SR)
 tt = t_of(rn)
 noise = rng.standard_normal(rn)
@@ -162,7 +162,7 @@ L[rs : rs + rn] += riser
 R[rs : rs + rn] += riser
 
 # impacts on section downbeats
-for bar in (0, 8, 15, 25, 28):
+for bar in (0, 9, 16, 20, 27, 30):
     both(crash(), bar * BAR, 0.9 if bar else 0.5)
     both(boom(), bar * BAR, 0.8)
 
