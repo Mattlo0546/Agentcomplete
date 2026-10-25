@@ -25,7 +25,7 @@ LINES = [
     ("08", 21.7, "Your <em>skills, stack and knowledge.</em> Pulled in instantly."),
     ("09", 25.55, "It finishes the thought <em>for you.</em>"),
     ("10", 27.6, "Hit <em>Tab.</em> Done."),
-    ("11", 30.1, "Here it is. <em>Live.</em>"),
+    ("11", 30.1, "Here it is, <em>in action.</em>"),
     ("12", 32.8, "Type the <em>big idea.</em>"),
     ("13", 34.55, "Send it with <em>full context.</em>"),
     ("14", 37.6, "Match. Review. Write. <em>In about a second.</em>"),
