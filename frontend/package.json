@@ -9,9 +9,10 @@
     "lint": "eslint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:offline": "playwright test --config playwright.offline.config.ts"
   },
   "dependencies": {
     "@mantine/hooks": "^9.7.3",

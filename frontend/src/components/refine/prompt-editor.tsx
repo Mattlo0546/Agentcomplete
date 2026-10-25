@@ -1,5 +1,6 @@
 "use client";
 
+import { ContextMenu } from "radix-ui";
 import { useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 
 import { KeyCap } from "@/components/common/key-cap";
@@ -22,6 +23,7 @@ type PromptEditorProps = {
   onComposingChange: (composing: boolean) => void;
   onAcceptGhost: () => void;
   onEscape: () => void;
+  onSaveSuggestion: (prompt: string, suggestion: string) => void;
   footer: ReactNode;
 };
 
@@ -33,6 +35,7 @@ type PromptEditorProps = {
 export function PromptEditor(props: PromptEditorProps) {
   const { prompt, selectionStart, selectionEnd, ghost, quiet, narrow, textareaRef, footer } = props;
   const caretRef = useRef<HTMLSpanElement>(null);
+  const menuSnapshot = useRef({ prompt, ghost });
 
   // Keep the DOM selection in step with state (accepting/applying moves the cursor) and keep the caret visible.
   useLayoutEffect(() => {
@@ -109,7 +112,27 @@ export function PromptEditor(props: PromptEditorProps) {
                 data-source-revision={props.ghostSource?.sourceRevision}
                 data-render-revision={props.ghostSource?.revision}
               >
-                <span className="text-ghost">{ghost}</span>
+                <ContextMenu.Root
+                  onOpenChange={(open) => {
+                    if (open) menuSnapshot.current = { prompt, ghost };
+                  }}
+                >
+                  <ContextMenu.Trigger asChild>
+                    <span className="pointer-events-auto text-ghost" onMouseDown={(event) => event.preventDefault()}>
+                      {ghost}
+                    </span>
+                  </ContextMenu.Trigger>
+                  <ContextMenu.Portal>
+                    <ContextMenu.Content className="z-50 min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                      <ContextMenu.Item
+                        onSelect={() => props.onSaveSuggestion(menuSnapshot.current.prompt, menuSnapshot.current.ghost)}
+                        className="flex min-h-11 cursor-default items-center rounded-sm px-3 text-sm outline-none data-highlighted:bg-accent"
+                      >
+                        Save as prompt version
+                      </ContextMenu.Item>
+                    </ContextMenu.Content>
+                  </ContextMenu.Portal>
+                </ContextMenu.Root>
                 <button
                   type="button"
                   tabIndex={-1}

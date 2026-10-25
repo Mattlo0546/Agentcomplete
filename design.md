@@ -194,6 +194,16 @@ Grouped forms with hairline separators; each group has a `section` heading only.
 - Inline error in editor footer when `/enhance` fails: destructive dot + `data` status (`502 · upstream model`) + **Retry** text button.
 - Empty states: a single label + one action (e.g. "No knowledge yet" + **Add knowledge**). No illustrations, no explanatory sentences.
 
+### 4.15 Prompt history
+
+- Refine header actions: Lucide `bookmark-plus` to save the current draft and pending autocomplete; Lucide `history` to open saved versions. Both have accessible names and 44 px targets.
+- Only the unaccepted ghost suffix exposes a context menu with **Save as prompt version**. A two-finger trackpad click uses the same browser context-menu event. The committed draft retains its native text menu. Header Save provides the keyboard equivalent.
+- Saving opens a focused dialog with optional Name and Description, a read-only snapshot preview, Cancel and Save version. The preview uses the existing green proof marks for the pending suffix. Saving never accepts the suggestion or changes the draft.
+- History is a right sheet, up to 900 px wide. Saved versions occupy a 256 px list beside the detail pane. Below 640 px, the list and detail alternate with an **All versions** back action. Rows show real names, descriptions and timestamps; fetch additional pages through **Load more versions**.
+- Details contain editable Name/Description, a **Compare with** selector (current draft or another loaded version), inline proof-mark diff, and explicit **Restore version** / **Delete** actions. Deletion requires inline confirmation. Diff additions are underlined green; deletions are red and struck through. Large unrelated prompts use a bounded replacement diff.
+- Restore asks before replacing a different, nonempty current draft, invalidates outstanding requests, creates a new editor revision and persists the restored draft. Prompt text in saved versions remains immutable; metadata edits do not rewrite it.
+- The editor footer offers a Codex/Claude destination selector. Send stores the shared latest handoff and copies the text; the chosen host names the action and notification.
+
 ## 5. Accessibility
 
 - All icon-only buttons have accessible names; tabs are `role="tablist"`.

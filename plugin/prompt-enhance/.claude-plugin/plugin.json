@@ -1,0 +1,16 @@
+{
+  "name": "prompt-enhance",
+  "displayName": "Prompt Enhance",
+  "version": "0.2.0",
+  "description": "Refine prompts, retrieve a companion-panel handoff and browse saved prompt versions.",
+  "author": { "name": "Prompt Enhance" },
+  "repository": "https://github.com/Mattlo0546/Agentcomplete",
+  "keywords": ["prompt", "enhance", "knowledge", "history"],
+  "mcpServers": {
+    "prompt-enhance": {
+      "command": "uv",
+      "args": ["run", "--quiet", "--frozen", "--no-dev", "--project", "${CLAUDE_PLUGIN_ROOT}/mcp", "prompt-enhance-mcp"],
+      "env": { "PROMPT_ENHANCE_API_URL": "http://127.0.0.1:8000" }
+    }
+  }
+}

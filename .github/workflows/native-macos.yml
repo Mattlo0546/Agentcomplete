@@ -1,0 +1,25 @@
+name: Native macOS input method
+
+on:
+  pull_request:
+    paths:
+      - native/macos/**
+      - .github/workflows/native-macos.yml
+  push:
+    branches: [main]
+    paths:
+      - native/macos/**
+      - .github/workflows/native-macos.yml
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test native text composition and local API client
+        run: native/macos/test.sh
+      - name: Build and verify the input-method bundle
+        run: native/macos/build.sh

@@ -7,20 +7,21 @@ import { postHandoff } from "@/lib/enhance/api";
 
 class ClipboardError extends Error {}
 
-/** Send to Codex (brief §3): store the hand-off, then copy the prompt. User text only ever goes to the clipboard. */
-export function useSendToCodex() {
+/** Store the shared agent handoff and copy text; never execute the prompt. */
+export function useSendToCodex(target: "Codex" | "Claude" = "Codex") {
   const mutation = useMutation({
     mutationFn: async (prompt: string) => {
       await postHandoff(prompt);
       try {
         await navigator.clipboard.writeText(prompt);
       } catch {
-        throw new ClipboardError("Saved for Codex, but copying to the clipboard failed");
+        throw new ClipboardError(`Saved for ${target}, but copying to the clipboard failed`);
       }
+      return target;
     },
-    onSuccess: () => toast.success("Copied for Codex"),
+    onSuccess: (destination) => toast.success(`Copied for ${destination}`),
     onError: (error, prompt) =>
-      toast.error(error instanceof ClipboardError ? error.message : `Send to Codex failed · ${error.message}`, {
+      toast.error(error instanceof ClipboardError ? error.message : `Send to ${target} failed · ${error.message}`, {
         action: { label: "Retry", onClick: () => mutation.mutate(prompt) },
       }),
   });
