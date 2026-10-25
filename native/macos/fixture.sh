@@ -34,8 +34,10 @@ xcrun clang "${common[@]}" -fobjc-arc \
   "$source_dir/Sources/PEBackendClient.m" \
   "$source_dir/Sources/PECompletionEngine.m" \
   "$source_dir/Sources/PECoordinator.m" \
+  "$source_dir/Sources/PEAccessibilityClient.m" \
+  "$source_dir/Sources/PEDiagnostics.m" \
   "$source_dir/Tests/ComposerFixture.m" \
-  -framework AppKit \
+  -framework AppKit -framework ApplicationServices \
   -o "$macos_dir/PromptEnhanceFixture"
 
 codesign --force --sign - --timestamp=none "$bundle_dir"

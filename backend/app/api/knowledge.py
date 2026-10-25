@@ -17,6 +17,7 @@ from app.knowledge.models import (
     KnowledgeList,
     KnowledgePatch,
 )
+from app.pipeline.retrieve import invalidate_cache
 
 router = APIRouter(tags=["knowledge"])
 
@@ -65,4 +66,5 @@ async def delete_knowledge(knowledge_id: UUID) -> Response:
     async with connection() as conn:
         if not await repository.delete(conn, knowledge_id):
             raise NotFoundError("not_found", "Knowledge not found")
+        invalidate_cache()
     return Response(status_code=204)

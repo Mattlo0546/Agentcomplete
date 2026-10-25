@@ -18,9 +18,11 @@ class Settings(BaseSettings):
 
     tag_model: str = "gemini-3.5-flash-lite"
     judge_model: str = "gemini-3.5-flash-lite"
-    generate_model: str = "gemini-3.6-flash"
+    generate_model: str = "gemini-3.5-flash-lite"
+    autocomplete_model: str = "gemini-3.5-flash-lite"
     embed_model: str = "gemini-embedding-001"
     embed_dims: int = 768
+    fast_autocomplete_enabled: bool = True
 
     llm_timeout_s: float = 8.0
     retention_days: int = 30

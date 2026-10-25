@@ -3,6 +3,8 @@
 #import "PECoordinator.h"
 
 @interface PECoordinatorFixtureTextView : NSTextView <PETextClient>
+@property(nonatomic) BOOL usesSyntheticCaret;
+@property(nonatomic) NSRect syntheticCaret;
 @end
 @implementation PECoordinatorFixtureTextView
 - (NSInteger)length { return (NSInteger)self.string.length; }
@@ -17,12 +19,20 @@
 - (void)insertText:(id)text replacementRange:(NSRange)replacementRange {
     [super insertText:text replacementRange:replacementRange];
 }
+- (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(NSRangePointer)actualRange {
+    if (self.usesSyntheticCaret) {
+        if (actualRange) *actualRange = range;
+        return self.syntheticCaret;
+    }
+    return [super firstRectForCharacterRange:range actualRange:actualRange];
+}
 @end
 
 @interface PECoordinator (Tests)
 - (void)saveCurrent:(id)sender;
 - (void)showHistory:(id)sender;
 - (void)restoreVersion:(NSMenuItem *)sender;
+- (void)updatePalette;
 @end
 
 static NSDictionary *PELastSaveBody;
@@ -115,6 +125,13 @@ static PEBackendClient *PECoordinatorBackend(void) {
     return backend;
 }
 
+static BOOL PEFrameIntersectsVisibleScreen(NSRect frame) {
+    for (NSScreen *screen in NSScreen.screens) {
+        if (NSIntersectsRect(frame, screen.visibleFrame)) return YES;
+    }
+    return NO;
+}
+
 int PECoordinatorTests(void) {
     @autoreleasepool {
         [NSApplication sharedApplication];
@@ -162,6 +179,16 @@ int PECoordinatorTests(void) {
         view.selectedRange = NSMakeRange(view.string.length, 0);
         [coordinator restoreVersion:staleRestore];
         PECoordinatorRequire([view.string isEqualToString:@"The user changed this draft after opening history."], @"stale history selection cannot overwrite a changed native draft");
+
+        NSScreen *screen = NSScreen.mainScreen ?: NSScreen.screens.firstObject;
+        PECoordinatorRequire(screen != nil, @"test host has a screen for palette placement");
+        PECoordinatorRequire(!window.isKeyWindow, @"palette positioning does not require a key fixture window");
+        view.usesSyntheticCaret = YES;
+        view.syntheticCaret = NSMakeRect(NSMinX(screen.visibleFrame) - 500, NSMinY(screen.visibleFrame) - 500, 0, 18);
+        [coordinator updatePalette];
+        NSPanel *palette = [coordinator valueForKey:@"palette"];
+        PECoordinatorRequire(palette.isVisible, @"palette remains visible for an offscreen zero-width caret");
+        PECoordinatorRequire(PEFrameIntersectsVisibleScreen(palette.frame), @"palette origin is clamped into a visible screen");
         [coordinator close];
         puts("Native coordinator save/history/restore checks passed");
     }

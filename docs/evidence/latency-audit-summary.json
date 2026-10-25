@@ -1,0 +1,158 @@
+{
+  "scope": "Recomputed from existing benchmark metadata; these are not new end-to-end benchmark runs. Mean stage shares use the same rows; counterfactuals subtract per request, then take median.",
+  "latency-optimized.json": {
+    "round_1": {
+      "n": 9,
+      "stage_mean_ms": {
+        "tags": 690.3333333333334,
+        "retrieve": 495.1111111111111,
+        "generate": 973.3333333333334,
+        "outside_stage_spans": 102.66666666666652
+      },
+      "stage_share_percent": {
+        "tags": 30.52621235198743,
+        "retrieve": 21.893578342259126,
+        "generate": 43.04033803370511,
+        "outside_stage_spans": 4.53987127204834
+      },
+      "counterfactual_zero_retrieval_median_ms": 1799,
+      "counterfactual_zero_tags_and_retrieval_median_ms": 1110,
+      "reused_context_count": 0,
+      "request_median_ms": 2308,
+      "request_mean_ms": 2261.4444444444443,
+      "transport": "http"
+    },
+    "round_2": {
+      "n": 9,
+      "stage_mean_ms": {
+        "tags": 0.1111111111111111,
+        "retrieve": 108.22222222222223,
+        "generate": 979.2222222222222,
+        "outside_stage_spans": 30.2222222222224
+      },
+      "stage_share_percent": {
+        "tags": 0.009940357852882702,
+        "retrieve": 9.681908548707753,
+        "generate": 87.60437375745526,
+        "outside_stage_spans": 2.7037773359841113
+      },
+      "counterfactual_zero_retrieval_median_ms": 1059,
+      "counterfactual_zero_tags_and_retrieval_median_ms": 1059,
+      "reused_context_count": 0,
+      "request_median_ms": 1192,
+      "request_mean_ms": 1117.7777777777778,
+      "transport": "http"
+    }
+  },
+  "latency-incremental.json": {
+    "all": {
+      "n": 9,
+      "stage_mean_ms": {
+        "tags": 723.5555555555555,
+        "retrieve": 263.55555555555554,
+        "generate": 1000.4444444444445,
+        "outside_stage_spans": 59.55555555555543
+      },
+      "stage_share_percent": {
+        "tags": 35.34520191055145,
+        "retrieve": 12.874511506730352,
+        "generate": 48.871037776812855,
+        "outside_stage_spans": 2.9092488059053347
+      },
+      "counterfactual_zero_retrieval_median_ms": 1690,
+      "counterfactual_zero_tags_and_retrieval_median_ms": 1059,
+      "reused_context_count": 0,
+      "request_median_ms": 1933,
+      "request_mean_ms": 2047.111111111111,
+      "transport": "http"
+    }
+  },
+  "latency-edits-linked.json": {
+    "all": {
+      "n": 9,
+      "stage_mean_ms": {
+        "tags": 783.5555555555555,
+        "retrieve": 350.55555555555554,
+        "generate": 1054.7777777777778,
+        "outside_stage_spans": 88.4444444444448
+      },
+      "stage_share_percent": {
+        "tags": 34.40671350507416,
+        "retrieve": 15.393247462919593,
+        "generate": 46.316354410616704,
+        "outside_stage_spans": 3.8836846213895546
+      },
+      "counterfactual_zero_retrieval_median_ms": 1812,
+      "counterfactual_zero_tags_and_retrieval_median_ms": 1053,
+      "reused_context_count": 3,
+      "request_median_ms": 2225,
+      "request_mean_ms": 2277.3333333333335,
+      "transport": "in_process"
+    },
+    "autocomplete": {
+      "n": 7,
+      "stage_mean_ms": {
+        "tags": 793.7142857142857,
+        "retrieve": 270.2857142857143,
+        "generate": 964.5714285714286,
+        "outside_stage_spans": 112.85714285714312
+      },
+      "stage_share_percent": {
+        "tags": 37.064709806537685,
+        "retrieve": 12.621747831887925,
+        "generate": 45.04336224149433,
+        "outside_stage_spans": 5.270180120080065
+      },
+      "counterfactual_zero_retrieval_median_ms": 1787,
+      "counterfactual_zero_tags_and_retrieval_median_ms": 1000,
+      "reused_context_count": 3,
+      "request_median_ms": 2174,
+      "request_mean_ms": 2141.4285714285716,
+      "transport": "in_process"
+    },
+    "reused_context": {
+      "n": 3,
+      "stage_mean_ms": {
+        "tags": 769.3333333333334,
+        "retrieve": 0,
+        "generate": 907,
+        "outside_stage_spans": 60.666666666666515
+      },
+      "stage_share_percent": {
+        "tags": 44.29092304739974,
+        "retrieve": 0.0,
+        "generate": 52.21646516983304,
+        "outside_stage_spans": 3.4926117827672143
+      },
+      "counterfactual_zero_retrieval_median_ms": 1787,
+      "counterfactual_zero_tags_and_retrieval_median_ms": 961,
+      "reused_context_count": 3,
+      "request_median_ms": 1787,
+      "request_mean_ms": 1737,
+      "transport": "in_process"
+    }
+  },
+  "latency-edits-unlinked.json": {
+    "all": {
+      "n": 9,
+      "stage_mean_ms": {
+        "tags": 783.2222222222222,
+        "retrieve": 461,
+        "generate": 1094.3333333333333,
+        "outside_stage_spans": 106.22222222222217
+      },
+      "stage_share_percent": {
+        "tags": 32.03654047175385,
+        "retrieve": 18.856519565513793,
+        "generate": 44.76207789846839,
+        "outside_stage_spans": 4.344862064263962
+      },
+      "counterfactual_zero_retrieval_median_ms": 1889,
+      "counterfactual_zero_tags_and_retrieval_median_ms": 1125,
+      "reused_context_count": 0,
+      "request_median_ms": 2321,
+      "request_mean_ms": 2444.777777777778,
+      "transport": "in_process"
+    }
+  }
+}

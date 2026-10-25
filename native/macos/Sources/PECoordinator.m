@@ -1,6 +1,7 @@
 #import "PECoordinator.h"
 #import "PEBackendClient.h"
 #import "PEDiagnostics.h"
+#import "PEAccessibilityClient.h"
 
 @interface PEPalettePanel : NSPanel
 @end
@@ -9,12 +10,42 @@
 - (BOOL)canBecomeMainWindow { return NO; }
 @end
 
+@interface PECoordinator (PreviewMenu)
+- (void)showActionsAtPoint:(NSPoint)point;
+@end
+@interface PEPreviewTextField : NSTextField
+@property(nonatomic, weak) PECoordinator *coordinator;
+@end
+@implementation PEPreviewTextField
+- (BOOL)acceptsFirstMouse:(NSEvent *)event { return YES; }
+- (void)rightMouseDown:(NSEvent *)event {
+    NSPoint point = event.window ? [event.window convertPointToScreen:event.locationInWindow] : event.locationInWindow;
+    [self.coordinator showActionsAtPoint:point];
+}
+- (void)mouseDown:(NSEvent *)event { [self.coordinator dismiss]; }
+@end
+
+static NSScreen *PEScreenForCaretPoint(NSPoint point) {
+    NSScreen *screen = NSScreen.mainScreen ?: NSScreen.screens.firstObject;
+    for (NSScreen *candidate in NSScreen.screens) {
+        if (NSPointInRect(point, candidate.frame)) return candidate;
+    }
+    return screen;
+}
+
+static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat maximum) {
+    return MIN(MAX(value, minimum), MAX(minimum, maximum));
+}
+
 @interface PECoordinator ()
 @property(nonatomic, strong) id<PETextClient> textClient; // Adapter, never the IMK proxy.
+@property(nonatomic, strong) id<PETextClient> nativeClient;
 @property(nonatomic, strong) PEBackendClient *backend;
 @property(nonatomic, copy) PEMenuPresenter menuPresenter;
 @property(nonatomic, strong) PECompletionEngine *engine;
 @property(nonatomic, strong) PEPalettePanel *palette;
+@property(nonatomic, strong) PEPalettePanel *preview;
+@property(nonatomic, strong) PEPreviewTextField *previewText;
 @property(nonatomic, strong) NSTextField *caption;
 @property(nonatomic, strong) NSButton *saveButton;
 @property(nonatomic, strong) NSURLSessionDataTask *autocompleteTask;
@@ -35,6 +66,7 @@
                  menuPresenter:(PEMenuPresenter)menuPresenter {
     if ((self = [super init])) {
         _textClient = client;
+        _nativeClient = client;
         _backend = backend;
         _menuPresenter = [menuPresenter copy];
         __weak typeof(self) weakSelf = self;
@@ -62,6 +94,13 @@
 - (void)activate {
     self.sessionEpoch++;
     self.diagnosticFailureWritten = NO;
+    BOOL provider = [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.promptenhance.inputmethod.PromptEnhance"];
+    NSString *bundleID = [self.nativeClient bundleIdentifier];
+    BOOL scope = [bundleID isEqualToString:@"com.openai.codex"] || [bundleID isEqualToString:@"com.promptenhance.input.fixture"];
+    id<PETextClient> client = self.nativeClient;
+    if (provider && scope && [PEAccessibilityClient isTrusted]) client = [[PEAccessibilityClient alloc] initWithNativeClient:self.nativeClient];
+    self.textClient = client;
+    [self.engine attachClient:client];
     [self.engine activate];
     [self recordDiagnosticActivation];
 }
@@ -72,6 +111,7 @@
     [self.historyTask cancel];
     [self.engine deactivate];
     [self.palette orderOut:nil];
+    [self.preview orderOut:nil];
 }
 - (void)close {
     [self deactivate];
@@ -79,6 +119,7 @@
     self.engine.stateDidChange = nil;
     [self.engine attachClient:nil];
     self.textClient = nil;
+    self.nativeClient = nil;
 }
 - (void)dismiss {
     self.requestEpoch++;
@@ -159,7 +200,12 @@
     [self addAction:@"Prompt history…" selector:@selector(showHistory:) menu:menu object:nil];
     [self addAction:@"Save current prompt version" selector:@selector(saveCurrent:) menu:menu object:nil];
     [self addAction:@"Dismiss suggestion" selector:@selector(dismissAction:) menu:menu object:nil];
+    [self addAction:@"Prompt Enhance setup…" selector:@selector(openSetup:) menu:menu object:nil];
     return menu;
+}
+- (void)openSetup:(id)sender {
+    NSURL *url = [NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Applications/Prompt Enhance Setup.app"]];
+    [NSWorkspace.sharedWorkspace openApplicationAtURL:url configuration:NSWorkspaceOpenConfiguration.configuration completionHandler:nil];
 }
 - (void)addAction:(NSString *)title selector:(SEL)action menu:(NSMenu *)menu object:(id)object {
     NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:action keyEquivalent:@""];
@@ -208,24 +254,68 @@
     return button;
 }
 - (void)updatePalette {
-    if (!self.engine.active || !self.engine.enabled) { [self.palette orderOut:nil]; return; }
+    if (!self.engine.active || !self.engine.enabled) { [self.palette orderOut:nil]; [self.preview orderOut:nil]; return; }
     NSRange selection = [self.textClient selectedRange];
-    if (selection.location == NSNotFound) { [self.palette orderOut:nil]; return; }
+    if (selection.location == NSNotFound) { [self.palette orderOut:nil]; [self.preview orderOut:nil]; return; }
     NSRect caret = [self.textClient firstRectForCharacterRange:NSMakeRange(selection.location, 0) actualRange:NULL];
     if (caret.size.height <= 0 && [self.textClient respondsToSelector:@selector(caretRect)]) caret = [self.textClient caretRect];
-    if (!isfinite(caret.origin.x) || !isfinite(caret.origin.y) || caret.size.height <= 0) { [self.palette orderOut:nil]; return; }
+    if (!isfinite(caret.origin.x) || !isfinite(caret.origin.y) || caret.size.height <= 0) { [self.palette orderOut:nil]; [self.preview orderOut:nil]; return; }
     [self ensurePalette];
     self.caption.stringValue = self.engine.suggestion.length ? @"Tab to accept" : (self.engine.safeError ?: self.status ?: @"Prompt Enhance");
     self.caption.toolTip = self.caption.stringValue;
     self.saveButton.enabled = self.engine.prompt.length > 0 || [self.engine readCurrentPrompt].length > 0;
-    NSScreen *screen = NSScreen.mainScreen;
-    for (NSScreen *candidate in NSScreen.screens) if (NSIntersectsRect(candidate.frame, caret)) { screen = candidate; break; }
+    NSScreen *screen = PEScreenForCaretPoint(caret.origin);
+    if (!screen) { [self.palette orderOut:nil]; return; }
     NSRect visible = screen.visibleFrame;
-    CGFloat x = MIN(MAX(caret.origin.x, NSMinX(visible) + 4), NSMaxX(visible) - 200);
-    CGFloat y = NSMinY(caret) - 42;
-    if (y < NSMinY(visible)) y = NSMaxY(caret) + 6;
+    if (NSIsEmptyRect(visible)) visible = screen.frame;
+    if (NSIsEmptyRect(visible)) { [self.palette orderOut:nil]; return; }
+    NSSize paletteSize = self.palette.frame.size;
+    CGFloat inset = 4;
+    CGFloat x = PEClampPaletteCoordinate(caret.origin.x, NSMinX(visible) + inset, NSMaxX(visible) - paletteSize.width - inset);
+    CGFloat y = NSMinY(caret) - paletteSize.height - 6;
+    if (y < NSMinY(visible) + inset) y = NSMaxY(caret) + 6;
+    y = PEClampPaletteCoordinate(y, NSMinY(visible) + inset, NSMaxY(visible) - paletteSize.height - inset);
     [self.palette setFrameOrigin:NSMakePoint(x, y)];
     [self.palette orderFrontRegardless];
+    [self updateExternalPreviewAtCaret:caret screen:screen];
+}
+- (void)updateExternalPreviewAtCaret:(NSRect)caret screen:(NSScreen *)screen {
+    BOOL external = [self.textClient respondsToSelector:@selector(usesExternalPreview)] && [self.textClient usesExternalPreview];
+    if (!external || !self.engine.suggestion.length || !screen) { [self.preview orderOut:nil]; return; }
+    if (!self.preview) {
+        self.preview = [[PEPalettePanel alloc] initWithContentRect:NSMakeRect(0, 0, 400, 52)
+            styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel backing:NSBackingStoreBuffered defer:NO];
+        self.preview.level = NSPopUpMenuWindowLevel;
+        self.preview.opaque = NO;
+        self.preview.backgroundColor = NSColor.clearColor;
+        self.preview.hasShadow = NO;
+        self.preview.hidesOnDeactivate = NO;
+        self.preview.collectionBehavior = NSWindowCollectionBehaviorMoveToActiveSpace | NSWindowCollectionBehaviorFullScreenAuxiliary;
+        self.previewText = [[PEPreviewTextField alloc] initWithFrame:NSMakeRect(0, 0, 400, 52)];
+        self.previewText.editable = NO;
+        self.previewText.selectable = NO;
+        self.previewText.bordered = NO;
+        self.previewText.drawsBackground = NO;
+        self.previewText.textColor = NSColor.secondaryLabelColor;
+        self.previewText.maximumNumberOfLines = 3;
+        self.previewText.lineBreakMode = NSLineBreakByTruncatingTail;
+        self.previewText.coordinator = self;
+        self.previewText.accessibilityLabel = @"Autocomplete suggestion. Tab accepts; right-click saves a version.";
+        self.preview.contentView = self.previewText;
+    }
+    NSRect visible = screen.visibleFrame;
+    CGFloat x = PEClampPaletteCoordinate(NSMinX(caret) + 2, NSMinX(visible) + 4, NSMaxX(visible) - 124);
+    CGFloat width = MIN(560, MAX(120, NSMaxX(visible) - x - 8));
+    CGFloat height = MAX(22, MIN(60, caret.size.height * 3));
+    CGFloat y = PEClampPaletteCoordinate(NSMaxY(caret) - height, NSMinY(visible) + 4, NSMaxY(visible) - height - 4);
+    self.previewText.font = [NSFont systemFontOfSize:MAX(12, MIN(17, caret.size.height * 0.8))];
+    self.previewText.stringValue = self.engine.suggestion;
+    self.previewText.frame = NSMakeRect(0, 0, width, height);
+    [self.preview setFrame:NSMakeRect(x, y, width, height) display:YES];
+    [self.preview orderFrontRegardless];
+    NSPoint bar = self.palette.frame.origin;
+    bar.y = PEClampPaletteCoordinate(y - 42, NSMinY(visible) + 4, NSMaxY(visible) - 40);
+    [self.palette setFrameOrigin:bar];
 }
 - (void)showActionsAtPoint:(NSPoint)point {
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Prompt Enhance"];
@@ -338,5 +428,6 @@
     [_autocompleteTask cancel];
     [_historyTask cancel];
     [_palette orderOut:nil];
+    [_preview orderOut:nil];
 }
 @end

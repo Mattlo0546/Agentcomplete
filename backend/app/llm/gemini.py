@@ -29,6 +29,7 @@ async def generate_structured[T: BaseModel](
     schema: type[T],
     temperature: float = 0.2,
     thinking_level: str | None = None,
+    max_output_tokens: int | None = None,
 ) -> T:
     """Run one structured-output call and parse it into `schema`. Raises UpstreamError on any failure."""
     settings = get_settings()
@@ -37,6 +38,7 @@ async def generate_structured[T: BaseModel](
         response_mime_type="application/json",
         response_schema=schema,
         temperature=temperature,
+        max_output_tokens=max_output_tokens,
         thinking_config=types.ThinkingConfig(thinking_level=thinking_level) if thinking_level else None,  # type: ignore[arg-type]
     )
     started = time.perf_counter()
@@ -50,6 +52,9 @@ async def generate_structured[T: BaseModel](
         parsed = (
             response.parsed if isinstance(response.parsed, schema) else schema.model_validate_json(response.text or "")
         )
+    except asyncio.CancelledError:
+        await _log(operation, model, started, usage, "cancelled")
+        raise
     except TimeoutError as exc:
         await _log(operation, model, started, usage, f"timeout after {settings.llm_timeout_s:.0f}s")
         raise UpstreamError("upstream_timeout", f"{operation} timed out") from exc
@@ -71,7 +76,7 @@ async def embed(texts: list[str], *, operation: str = "embed") -> list[list[floa
         response = await asyncio.wait_for(
             _client().aio.models.embed_content(
                 model=settings.embed_model,
-                contents=texts,  # type: ignore[arg-type]
+                contents=texts,
                 config=types.EmbedContentConfig(
                     output_dimensionality=settings.embed_dims, task_type="SEMANTIC_SIMILARITY"
                 ),
@@ -81,6 +86,11 @@ async def embed(texts: list[str], *, operation: str = "embed") -> list[list[floa
         vectors = [list(e.values or []) for e in response.embeddings or []]
         if len(vectors) != len(texts):
             raise ValueError("embedding count mismatch")
+    except asyncio.CancelledError:
+        await record_ai_call(
+            get_request_id(), operation, settings.embed_model, "error", _ms(started), None, None, "cancelled"
+        )
+        raise
     except Exception as exc:
         await record_ai_call(
             get_request_id(), operation, settings.embed_model, "error", _ms(started), None, None, sanitize_error(exc)

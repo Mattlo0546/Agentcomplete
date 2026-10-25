@@ -7,11 +7,14 @@
 @property (nonatomic) NSRange marked;
 @property (nonatomic, copy) NSString *bundle;
 @property (nonatomic, copy) NSString *markedText;
+@property (nonatomic) BOOL externalPreview;
+@property (nonatomic) BOOL replaceResult;
+@property (nonatomic) NSUInteger replaceCalls;
 @end
 
 @implementation PEMockClient
 - (instancetype)initWithText:(NSString *)text bundle:(NSString *)bundle {
-    if ((self = [super init])) { _text = [text copy]; _bundle = [bundle copy]; _selection = NSMakeRange(text.length, 0); _marked = NSMakeRange(NSNotFound, 0); }
+    if ((self = [super init])) { _text = [text copy]; _bundle = [bundle copy]; _selection = NSMakeRange(text.length, 0); _marked = NSMakeRange(NSNotFound, 0); _replaceResult = YES; }
     return self;
 }
 - (NSRange)selectedRange { return _selection; }
@@ -33,6 +36,14 @@
 }
 - (NSString *)bundleIdentifier { return _bundle; }
 - (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(NSRangePointer)actualRange { if (actualRange) *actualRange = range; return NSZeroRect; }
+- (BOOL)usesExternalPreview { return _externalPreview; }
+- (BOOL)replaceEntireDraft:(NSString *)prompt expectedPrompt:(NSString *)expectedPrompt {
+    _replaceCalls++;
+    if (!_replaceResult || ![_text isEqualToString:expectedPrompt]) return NO;
+    _text = [prompt copy];
+    _selection = NSMakeRange(prompt.length, 0);
+    return YES;
+}
 @end
 
 static void Require(BOOL condition, NSString *message) { if (!condition) { NSLog(@"FAIL: %@", message); exit(1); } }
@@ -113,4 +124,57 @@ static void TestRestoreGuard(void) {
     Require(![engine restorePrompt:@"other" expectedPrompt:@"draft"], @"restore refuses a stale history click");
 }
 
-int PEEngineTests(void) { @autoreleasepool { TestAcceptDismissAndUTF16(); TestStaleAndMouseBlurSafety(); TestDebounceSamplesAfterHostEdit(); TestAcceptRequiresUnchangedPrefix(); TestScopeAndUnsafeRanges(); TestRestoreGuard(); NSLog(@"PECompletionEngine tests passed"); } return 0; }
+static void TestExternalPreviewDefersEditsUntilTab(void) {
+    __block PECompletionResponse completion;
+    PEMockClient *client = [[PEMockClient alloc] initWithText:@"Draft an accessibility-safe completion" bundle:@"com.openai.codex"];
+    client.externalPreview = YES;
+    PECompletionEngine *engine = EngineWithCapture(^(PECompletionResponse response, NSString *prompt, NSUInteger cursor) { completion = response; });
+    [engine attachClient:client]; [engine activate]; [engine scheduleSuggestion]; Drain(); completion(@" with tests", nil); Drain();
+    Require([engine.suggestion isEqualToString:@" with tests"], @"external preview exposes a suggestion");
+    Require([client.text isEqualToString:@"Draft an accessibility-safe completion"] && client.marked.location == NSNotFound, @"external preview never edits or marks the draft before Tab");
+    Require([engine acceptSuggestion], @"Tab accepts an unchanged external preview");
+    Require([client.text hasSuffix:@" with tests"] && !engine.suggestion, @"external preview commits only its suffix on Tab");
+}
+
+static void TestExternalPreviewRejectsStaleAcceptAndDelegatesRestore(void) {
+    __block PECompletionResponse completion;
+    PEMockClient *client = [[PEMockClient alloc] initWithText:@"Write a safe AX adapter" bundle:@"com.openai.codex"];
+    client.externalPreview = YES;
+    PECompletionEngine *engine = EngineWithCapture(^(PECompletionResponse response, NSString *prompt, NSUInteger cursor) { completion = response; });
+    [engine attachClient:client]; [engine activate]; [engine scheduleSuggestion]; Drain(); completion(@" with tests", nil); Drain();
+    client.text = @"Write a safer AX adapter";
+    client.selection = NSMakeRange(client.text.length, 0);
+    Require(![engine acceptSuggestion], @"external preview refuses a stale Tab acceptance");
+    Require([client.text isEqualToString:@"Write a safer AX adapter"], @"stale external preview does not alter the draft");
+
+    client.replaceResult = NO;
+    Require(![engine restorePrompt:@"Saved prompt" expectedPrompt:client.text], @"external restore fails closed when its transaction fails");
+    Require(client.replaceCalls == 1 && [client.text isEqualToString:@"Write a safer AX adapter"], @"failed external restore leaves the draft intact");
+    client.replaceResult = YES;
+    Require([engine restorePrompt:@"Saved prompt" expectedPrompt:client.text], @"external restore delegates an exact transaction");
+    Require(client.replaceCalls == 2 && [client.text isEqualToString:@"Saved prompt"], @"external restore never falls back to direct replacement");
+}
+
+static void TestExternalPreviewAppendFailureFailsClosed(void) {
+    __block PECompletionResponse completion;
+    PEMockClient *client = [[PEMockClient alloc] initWithText:@"Apply this completion safely" bundle:@"com.openai.codex"];
+    client.externalPreview = YES;
+    PECompletionEngine *engine = EngineWithCapture(^(PECompletionResponse response, NSString *prompt, NSUInteger cursor) { completion = response; });
+    [engine attachClient:client]; [engine activate]; [engine scheduleSuggestion]; Drain(); completion(@" now", nil); Drain();
+    client.replaceResult = NO;
+    Require(![engine acceptSuggestion], @"external Tab reports failure when its draft transaction fails");
+    Require(client.replaceCalls == 1 && [client.text isEqualToString:@"Apply this completion safely"], @"failed external Tab never appends through a fallback API");
+    Require(!engine.suggestion && [engine.safeError isEqualToString:@"Could not apply Codex completion."], @"failed external Tab clears its preview with a safe error");
+}
+
+static void TestUnsupportedCodeDraftRangeFailsClosed(void) {
+    __block NSUInteger calls = 0;
+    PEMockClient *client = [[PEMockClient alloc] initWithText:@"" bundle:@"com.openai.codex"];
+    client.selection = NSMakeRange(4, 0); // Observed Codex failure: zero reported length with a nonzero caret.
+    PECompletionEngine *engine = EngineWithCapture(^(PECompletionResponse response, NSString *prompt, NSUInteger cursor) { calls++; });
+    [engine attachClient:client]; [engine activate]; [engine scheduleSuggestion]; Drain();
+    Require(calls == 0 && !engine.suggestion, @"unsupported Codex draft ranges never request or show a completion");
+    Require([engine.safeError isEqualToString:@"Codex did not provide a supported draft range."], @"unsupported Codex draft ranges report a safe error");
+}
+
+int PEEngineTests(void) { @autoreleasepool { TestAcceptDismissAndUTF16(); TestStaleAndMouseBlurSafety(); TestDebounceSamplesAfterHostEdit(); TestAcceptRequiresUnchangedPrefix(); TestScopeAndUnsafeRanges(); TestRestoreGuard(); TestExternalPreviewDefersEditsUntilTab(); TestExternalPreviewRejectsStaleAcceptAndDelegatesRestore(); TestExternalPreviewAppendFailureFailsClosed(); TestUnsupportedCodeDraftRangeFailsClosed(); NSLog(@"PECompletionEngine tests passed"); } return 0; }

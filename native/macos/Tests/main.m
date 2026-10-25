@@ -2,6 +2,7 @@
 int PEEngineTests(void);
 int PEBackendClientTests(void);
 int PETextSystemTests(void);
+int PEAccessibilityClientTests(void);
 int PECoordinatorTests(void);
 int PEBridgeTests(void);
 int main(void) {
@@ -9,6 +10,7 @@ int main(void) {
         if (PEEngineTests() != 0) return 1;
         if (PEBackendClientTests() != 0) return 1;
         if (PETextSystemTests() != 0) return 1;
+        if (PEAccessibilityClientTests() != 0) return 1;
         if (PECoordinatorTests() != 0) return 1;
         if (PEBridgeTests() != 0) return 1;
     }

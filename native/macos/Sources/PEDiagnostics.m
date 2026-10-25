@@ -1,6 +1,7 @@
 #import "PEDiagnostics.h"
 #import <fcntl.h>
 #import <unistd.h>
+#import <ApplicationServices/ApplicationServices.h>
 
 @implementation PEDiagnostics
 
@@ -20,6 +21,7 @@
                           safeError:(NSString *)safeError {
     // Fixtures and unit-test processes must not overwrite a live host report.
     if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.promptenhance.inputmethod.PromptEnhance"]) return;
+    if (!enabled || ![clientBundleID isEqualToString:@"com.openai.codex"]) return;
     NSURL *directory = [NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Logs/Prompt Enhance"] isDirectory:YES];
     NSError *directoryError = nil;
     [[NSFileManager defaultManager] createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions: @0700} error:&directoryError];
@@ -29,6 +31,7 @@
         @"buildVersion": [self safeBuildVersion:buildVersion],
         @"clientBundleID": [self safeBundleID:clientBundleID],
         @"active": @(active),
+        @"accessibilityTrusted": @(AXIsProcessTrusted()),
         @"enabled": @(enabled),
         @"selectedRangeSupported": @(selectedRangeSupported),
         @"documentLengthSupported": @(documentLengthSupported),

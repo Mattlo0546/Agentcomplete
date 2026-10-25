@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ContextMenu } from "radix-ui";
 import { useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 
@@ -19,6 +18,7 @@ type PromptEditorProps = {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   onChange: (prompt: string, selectionStart: number, selectionEnd: number) => void;
   onSelect: (selectionStart: number, selectionEnd: number) => void;
+  onComposingChange: (composing: boolean) => void;
   onAcceptGhost: () => void;
   onEscape: () => void;
   onSaveSuggestion: (prompt: string, suggestion: string) => void;
@@ -34,7 +34,6 @@ export function PromptEditor(props: PromptEditorProps) {
   const { prompt, selectionStart, selectionEnd, ghost, quiet, narrow, textareaRef, footer } = props;
   const caretRef = useRef<HTMLSpanElement>(null);
   const menuSnapshot = useRef({ prompt, ghost });
-  const reduced = useReducedMotion();
 
   // Keep the DOM selection in step with state (accepting/applying moves the cursor) and keep the caret visible.
   useLayoutEffect(() => {
@@ -86,6 +85,12 @@ export function PromptEditor(props: PromptEditorProps) {
               props.onChange(event.target.value, event.target.selectionStart, event.target.selectionEnd)
             }
             onSelect={(event) => syncSelection(event.currentTarget)}
+            onCompositionStart={() => props.onComposingChange(true)}
+            onCompositionEnd={(event) => {
+              const target = event.currentTarget;
+              props.onChange(target.value, target.selectionStart, target.selectionEnd);
+              props.onComposingChange(false);
+            }}
             onKeyDown={handleKeyDown}
             className="col-start-1 row-start-1 m-0 resize-none overflow-hidden border-0 bg-transparent p-0 [overflow-wrap:break-word] whitespace-pre-wrap text-foreground outline-none"
           />
@@ -93,52 +98,41 @@ export function PromptEditor(props: PromptEditorProps) {
             {prompt.slice(0, selectionEnd)}
             <span ref={caretRef} />
             {prompt.slice(selectionEnd)}
-            <AnimatePresence>
-              {ghost && (
-                <motion.span
-                  key={ghost}
-                  data-testid="ghost-text"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, transition: { duration: 0 } }}
-                  transition={{ duration: reduced ? 0 : 0.12, ease: "easeOut" }}
+            {ghost && (
+              <span data-testid="ghost-text">
+                <ContextMenu.Root
+                  onOpenChange={(open) => {
+                    if (open) menuSnapshot.current = { prompt, ghost };
+                  }}
                 >
-                  <ContextMenu.Root
-                    onOpenChange={(open) => {
-                      if (open) menuSnapshot.current = { prompt, ghost };
-                    }}
-                  >
-                    <ContextMenu.Trigger asChild>
-                      <span className="pointer-events-auto text-ghost" onMouseDown={(event) => event.preventDefault()}>
-                        {ghost}
-                      </span>
-                    </ContextMenu.Trigger>
-                    <ContextMenu.Portal>
-                      <ContextMenu.Content className="z-50 min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
-                        <ContextMenu.Item
-                          onSelect={() =>
-                            props.onSaveSuggestion(menuSnapshot.current.prompt, menuSnapshot.current.ghost)
-                          }
-                          className="flex min-h-11 cursor-default items-center rounded-sm px-3 text-sm outline-none data-highlighted:bg-accent"
-                        >
-                          Save as prompt version
-                        </ContextMenu.Item>
-                      </ContextMenu.Content>
-                    </ContextMenu.Portal>
-                  </ContextMenu.Root>
-                  <button
-                    type="button"
-                    tabIndex={-1}
-                    aria-label="Accept suggestion"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={props.onAcceptGhost}
-                    className="pointer-events-auto relative ml-2 inline-block align-[1px] before:absolute before:-inset-3"
-                  >
-                    <KeyCap marker>Tab</KeyCap>
-                  </button>
-                </motion.span>
-              )}
-            </AnimatePresence>
+                  <ContextMenu.Trigger asChild>
+                    <span className="pointer-events-auto text-ghost" onMouseDown={(event) => event.preventDefault()}>
+                      {ghost}
+                    </span>
+                  </ContextMenu.Trigger>
+                  <ContextMenu.Portal>
+                    <ContextMenu.Content className="z-50 min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                      <ContextMenu.Item
+                        onSelect={() => props.onSaveSuggestion(menuSnapshot.current.prompt, menuSnapshot.current.ghost)}
+                        className="flex min-h-11 cursor-default items-center rounded-sm px-3 text-sm outline-none data-highlighted:bg-accent"
+                      >
+                        Save as prompt version
+                      </ContextMenu.Item>
+                    </ContextMenu.Content>
+                  </ContextMenu.Portal>
+                </ContextMenu.Root>
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  aria-label="Accept suggestion"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={props.onAcceptGhost}
+                  className="pointer-events-auto relative ml-2 inline-block align-[1px] before:absolute before:-inset-3"
+                >
+                  <KeyCap marker>Tab</KeyCap>
+                </button>
+              </span>
+            )}
             {"​"}
           </div>
         </div>

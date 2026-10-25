@@ -246,6 +246,35 @@ describe("Refine journeys", () => {
     await waitFor(() => expect(outcomes().map((o) => o.event)).toContain("dismissed"));
   });
 
+  it("lets the user type through a visible ghost and accept its remainder without another request", async () => {
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    await screen.findByTestId("ghost-text");
+    await typeInto(user, editor, " and");
+    expect(screen.getByTestId("ghost-text")).toHaveTextContent("jitter.");
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(enhanceCalls()).toHaveLength(1);
+    await user.keyboard("{Tab}");
+    expect(editor.value).toBe("Retry and jitter.");
+    expect(outcomes()).toEqual([
+      expect.objectContaining({ event: "shown", prompt_revision: 5 }),
+      expect.objectContaining({ event: "accepted", prompt_revision: 5 }),
+    ]);
+  });
+
+  it("waits for composition to finish before requesting an enhancement", async () => {
+    const { editor } = setup();
+    editor.focus();
+    fireEvent.compositionStart(editor);
+    fireEvent.change(editor, { target: { value: "日本", selectionStart: 2, selectionEnd: 2 } });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(enhanceCalls()).toHaveLength(0);
+    fireEvent.compositionEnd(editor);
+    await screen.findByTestId("ghost-text");
+    expect(enhanceCalls()).toHaveLength(1);
+    expect(enhanceCalls()[0].prompt).toBe("日本");
+  });
+
   it("ignores a stale response after further typing", async () => {
     let releaseFirst!: () => void;
     enhanceHandler = (body) => {
@@ -373,7 +402,9 @@ describe("Refine journeys", () => {
       json({ schema_version: 1, request_id: body.request_id, prompt_revision: body.prompt_revision, type: "none" });
     const { user, editor } = setup();
     await typeInto(user, editor, "Ship it; rm -rf $(echo hi)");
-    expect(JSON.parse(window.localStorage.getItem("pe.refine.draft")!)).toBe("Ship it; rm -rf $(echo hi)");
+    await waitFor(() =>
+      expect(JSON.parse(window.localStorage.getItem("pe.refine.draft")!)).toBe("Ship it; rm -rf $(echo hi)"),
+    );
 
     await user.click(screen.getByRole("button", { name: "Send to Codex" }));
     expect(await screen.findByText("Copied for Codex")).toBeInTheDocument();

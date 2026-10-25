@@ -12,6 +12,7 @@ from app.knowledge import repository, tags
 from app.knowledge.models import Analysis, KnowledgeCreate, KnowledgeDetail, KnowledgePatch, TagUse
 from app.knowledge.prompts import SUMMARISE_SYSTEM, item_prompt
 from app.llm import gemini
+from app.pipeline.retrieve import invalidate_cache
 
 
 async def summarise(kind: str, title: str, body: str) -> str:
@@ -56,6 +57,7 @@ async def ingest(data: KnowledgeCreate) -> AsyncIterator[tuple[str, dict[str, An
             async with conn.transaction():
                 kid = await repository.insert(conn, data.kind, data.title, data.body, summary)
                 created = await repository.replace_tags(conn, kid, names, vectors)
+            invalidate_cache()
             row = await repository.get_detail(conn, kid)
         yield "step", {"step": "save", "status": "done"}
         assert row is not None
@@ -108,6 +110,8 @@ async def patch(kid: UUID, data: KnowledgePatch) -> KnowledgeDetail:
                 await repository.replace_tags(conn, kid, names, vectors)
                 if not fields:
                     await repository.update_fields(conn, kid, {"title": title})
+        if fields or names is not None:
+            invalidate_cache()
         row = await repository.get_detail(conn, kid)
     if row is None:
         raise NotFoundError("not_found", "Knowledge not found")

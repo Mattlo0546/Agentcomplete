@@ -22,6 +22,8 @@ Right-click (including a two-finger trackpad click) an unaccepted autocomplete t
 
 Sending a prompt publishes one shared latest handoff for Codex and Claude. In the destination agent, explicitly ask to use or view that handoff. Switching the destination does not create a separate queue or run a task automatically.
 
+Autocomplete: [measured improvements](docs/performance.md) · [provider research](docs/provider-latency-options.md). All sponsor providers are retained; `GENERATE_MODEL=gemini-3.6-flash` opts into the stronger full-suggestion model.
+
 ## Setup
 
 Credentials live in the git-ignored `.env` (see `.env.example`). Set secrets without echoing them:

@@ -2,11 +2,29 @@
 
 import os
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
 
 from .edits import apply_edits, utf16_len
+
+_client: httpx.AsyncClient | None = None
+
+
+@asynccontextmanager
+async def backend_session() -> AsyncIterator[None]:
+    """Keep local HTTP connections warm for the lifetime of the MCP server."""
+    global _client
+    async with httpx.AsyncClient(
+        timeout=30.0, limits=httpx.Limits(max_connections=8, max_keepalive_connections=8)
+    ) as client:
+        _client = client
+        try:
+            yield
+        finally:
+            _client = None
 
 
 class BackendError(Exception):
@@ -20,6 +38,9 @@ def base_url() -> str:
 async def _request(method: str, path: str, **kwargs: Any) -> httpx.Response:
     url = base_url() + path
     try:
+        if _client is not None:
+            return await _client.request(method, url, **kwargs)
+        # Direct library callers may not run the MCP lifespan.
         async with httpx.AsyncClient(timeout=30.0) as client:
             return await client.request(method, url, **kwargs)
     except httpx.TransportError as exc:
@@ -83,9 +104,7 @@ async def search_knowledge(query: str, limit: int = 5) -> dict[str, Any]:
     if resp.is_error:
         raise BackendError(_error_message(resp))
     data = resp.json()
-    items = [
-        {k: it.get(k) for k in ("id", "kind", "title", "summary", "tags")} for it in data.get("items", [])
-    ]
+    items = [{k: it.get(k) for k in ("id", "kind", "title", "summary", "tags")} for it in data.get("items", [])]
     return {
         "total": data.get("total", len(items)),
         "items": items,

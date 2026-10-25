@@ -101,11 +101,23 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
 - (BOOL)acceptSuggestion {
     PEAssertMainThread();
     id<PETextClient> client = self.client;
-    if (![self canAcceptOwnedSuggestionInClient:client]) {
+    BOOL accepted = [self usesExternalPreviewForClient:client]
+        ? [self canAcceptExternalPreviewSuggestionInClient:client]
+        : [self canAcceptOwnedSuggestionInClient:client];
+    if (!accepted) {
         [self dismissSuggestion];
         return NO;
     }
-    [client insertText:self.suggestion replacementRange:NSMakeRange(NSNotFound, 0)];
+    if ([self usesExternalPreviewForClient:client]) {
+        NSString *completedPrompt = [self.prompt stringByAppendingString:self.suggestion];
+        if (![client respondsToSelector:@selector(replaceEntireDraft:expectedPrompt:)] || ![client replaceEntireDraft:completedPrompt expectedPrompt:self.prompt]) {
+            [self setSafeError:@"Could not apply Codex completion."];
+            [self dismissSuggestion];
+            return NO;
+        }
+    } else {
+        [client insertText:self.suggestion replacementRange:NSMakeRange(NSNotFound, 0)];
+    }
     [self forgetSuggestion];
     _requestGeneration++;
     _revision++;
@@ -117,7 +129,7 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
     _requestGeneration++;
     _revision++;
     id<PETextClient> client = self.client;
-    if ([self ownsExactlyMarkedSuggestionInClient:client]) {
+    if (![self usesExternalPreviewForClient:client] && [self ownsExactlyMarkedSuggestionInClient:client]) {
         [client setMarkedText:@"" selectionRange:NSMakeRange(0, 0) replacementRange:NSMakeRange(NSNotFound, 0)];
     }
     [self forgetSuggestion];
@@ -145,7 +157,15 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
         [self setSafeError:@"The Codex draft changed before this version could be restored."];
         return NO;
     }
-    [self.client insertText:prompt replacementRange:NSMakeRange(0, snapshot.text.length)];
+    id<PETextClient> client = self.client;
+    if ([self usesExternalPreviewForClient:client]) {
+        if (![client respondsToSelector:@selector(replaceEntireDraft:expectedPrompt:)] || ![client replaceEntireDraft:prompt expectedPrompt:expectedPrompt]) {
+            [self setSafeError:@"The Codex draft changed before this version could be restored."];
+            return NO;
+        }
+    } else {
+        [client insertText:prompt replacementRange:NSMakeRange(0, snapshot.text.length)];
+    }
     self.prompt = prompt;
     _requestGeneration++;
     _revision++;
@@ -160,11 +180,13 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
     if (!suffix.length || suffix.length > PE_MAX_SUGGESTION_UNITS || snapshot.text.length + suffix.length > PE_MAX_PROMPT_UNITS) return;
     PECompletionSnapshot *now = [self snapshotForClient:client requireNoMarkedText:YES];
     if (!now || now.cursor != snapshot.cursor || ![now.text isEqualToString:snapshot.text]) return;
-    NSAttributedString *ghost = [[NSAttributedString alloc] initWithString:suffix attributes:@{
-        NSForegroundColorAttributeName: NSColor.secondaryLabelColor,
-        NSUnderlineStyleAttributeName: @(NSUnderlineStyleSingle),
-    }];
-    [client setMarkedText:ghost selectionRange:NSMakeRange(0, 0) replacementRange:NSMakeRange(NSNotFound, 0)];
+    if (![self usesExternalPreviewForClient:client]) {
+        NSAttributedString *ghost = [[NSAttributedString alloc] initWithString:suffix attributes:@{
+            NSForegroundColorAttributeName: NSColor.secondaryLabelColor,
+            NSUnderlineStyleAttributeName: @(NSUnderlineStyleSingle),
+        }];
+        [client setMarkedText:ghost selectionRange:NSMakeRange(0, 0) replacementRange:NSMakeRange(NSNotFound, 0)];
+    }
     self.prompt = snapshot.text;
     self.suggestion = suffix;
     [self notifyState];
@@ -178,7 +200,10 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
         return nil;
     }
     NSRange selection = [client selectedRange];
-    if (selection.location == NSNotFound || selection.length != 0 || selection.location != (NSUInteger)documentLength) return nil;
+    if (selection.location == NSNotFound || selection.length != 0 || selection.location != (NSUInteger)documentLength) {
+        [self setSafeError:@"Codex did not provide a supported draft range."];
+        return nil;
+    }
     NSRange marked = [client markedRange];
     // Some native clients represent "no composition" as { caret, 0 } instead
     // of { NSNotFound, 0 }. A non-empty composition is always left alone.
@@ -197,6 +222,10 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
 - (BOOL)clientIsAllowed:(id<PETextClient>)client {
     NSString *bundleIdentifier = [client bundleIdentifier];
     return [bundleIdentifier isEqualToString:@"com.openai.codex"] || [bundleIdentifier isEqualToString:@"com.promptenhance.input.fixture"];
+}
+
+- (BOOL)usesExternalPreviewForClient:(id<PETextClient>)client {
+    return client && [client respondsToSelector:@selector(usesExternalPreview)] && [client usesExternalPreview];
 }
 
 - (BOOL)ownsExactlyMarkedSuggestionInClient:(id<PETextClient>)client {
@@ -218,6 +247,12 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
     if (documentLength == NSNotFound || documentLength < 0 || (NSUInteger)documentLength != prefixLength + suffixLength || selection.location != prefixLength || selection.length != 0) return NO;
     NSAttributedString *prefix = [client attributedSubstringFromRange:NSMakeRange(0, prefixLength)];
     return [prefix.string isEqualToString:self.prompt];
+}
+
+- (BOOL)canAcceptExternalPreviewSuggestionInClient:(id<PETextClient>)client {
+    if (!self.active || !self.enabled || ![self clientIsAllowed:client] || !self.prompt || !self.suggestion.length) return NO;
+    PECompletionSnapshot *snapshot = [self snapshotForClient:client requireNoMarkedText:YES];
+    return snapshot && snapshot.cursor == self.prompt.length && [snapshot.text isEqualToString:self.prompt];
 }
 
 - (void)forgetSuggestion {

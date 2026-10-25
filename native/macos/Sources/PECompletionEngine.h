@@ -14,6 +14,11 @@ NS_ASSUME_NONNULL_BEGIN
 @optional
 - (NSRect)caretRect;
 - (BOOL)isPointInMarkedText:(NSPoint)point;
+/// When enabled by an accessibility-authorized adapter, the coordinator draws
+/// the preview itself. The engine must not use the host's marked-text APIs.
+- (BOOL)usesExternalPreview;
+/// Atomically replaces a whole verified draft, or returns NO without editing.
+- (BOOL)replaceEntireDraft:(NSString *)prompt expectedPrompt:(NSString *)expectedPrompt;
 @end
 
 typedef void (^PECompletionResponse)(NSString * _Nullable suffix, NSString * _Nullable safeError);

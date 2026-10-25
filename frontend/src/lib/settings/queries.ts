@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { apiJson } from "@/lib/api/client";
 import type { AnalyticsStatus, AppSettings } from "@/lib/api/types";
 
+import { DEFAULT_TRIGGER_DELAY_MS } from "./defaults";
+
 export type EditableSettings = Pick<
   AppSettings,
   "trigger_delay_ms" | "autocomplete_enabled" | "questions_enabled" | "max_options"
@@ -22,7 +24,7 @@ export function useUpdateSettings() {
     mutationFn: (patch: Partial<EditableSettings>) => {
       const current = queryClient.getQueryData<AppSettings>(SETTINGS_KEY);
       const body: EditableSettings = {
-        trigger_delay_ms: current?.trigger_delay_ms ?? 400,
+        trigger_delay_ms: current?.trigger_delay_ms ?? DEFAULT_TRIGGER_DELAY_MS,
         autocomplete_enabled: current?.autocomplete_enabled ?? true,
         questions_enabled: current?.questions_enabled ?? true,
         max_options: current?.max_options ?? 4,
