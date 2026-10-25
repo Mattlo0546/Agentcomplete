@@ -12,6 +12,8 @@ Ghost-text autocomplete and multiple-choice clarifying questions for Codex and C
 
 Docs: [architecture & performance](docs/architecture.md) · [brief](docs/brief.md) · [API contract](docs/api.md) · [design system](design.md) · [mockups](docs/mockups/contact-sheet.html) · [Codex plugin](docs/codex-plugin.md) · [Claude plugin](docs/claude-plugin.md)
 
+For automatic suggestions in the existing Codex textbox on macOS, see the experimental [native input-method workaround](docs/native-composer.md). It is separate from MCP plugin installation and requires selecting its macOS input source. Codex host compatibility must be verified before treating it as supported.
+
 ## Plugins and prompt history
 
 Install the Codex plugin from the included local marketplace or the Claude Code plugin from this GitHub repository; see the host-specific guides above. Both connect to the same running local backend. They expose prompt enhancement, clarifying questions, knowledge search, handoff retrieval and saved-version retrieval. The companion panel provides the editor, ghost text and History UI; the plugins do not replace either host's native text box.

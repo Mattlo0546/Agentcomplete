@@ -2,6 +2,8 @@
 
 The plugin packages an MCP server and a skill for Codex. It uses the running Prompt Enhance backend at `http://127.0.0.1:8000`; the companion panel remains the editor for ghost text and prompt history. It does not replace the native Codex composer. OpenAI supports the included `.codex-plugin/plugin.json` compatibility manifest alongside its newer portable format ([packaging reference](https://developers.openai.com/plugins/build/plugins)).
 
+The separate [macOS input-method workaround](native-composer.md) attempts automatic inline suggestions and in-place history in the existing composer through Apple's text-input protocol. It is experimental and requires manual Codex compatibility verification; the MCP tests below do not establish native textbox support.
+
 ## Install from this repository
 
 Requires Python 3.11+, `uv`, and a Codex installation with plugin support. Clone the repository, then run these commands from its root:

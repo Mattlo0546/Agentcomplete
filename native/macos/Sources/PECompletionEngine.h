@@ -1,0 +1,47 @@
+#import <Foundation/Foundation.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@protocol PETextClient <NSObject>
+- (NSRange)selectedRange;
+- (NSRange)markedRange;
+- (nullable NSAttributedString *)attributedSubstringFromRange:(NSRange)range;
+- (NSInteger)length;
+- (void)setMarkedText:(id)string selectionRange:(NSRange)selectionRange replacementRange:(NSRange)replacementRange;
+- (void)insertText:(id)string replacementRange:(NSRange)replacementRange;
+- (nullable NSString *)bundleIdentifier;
+- (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(nullable NSRangePointer)actualRange;
+@optional
+- (NSRect)caretRect;
+- (BOOL)isPointInMarkedText:(NSPoint)point;
+@end
+
+typedef void (^PECompletionResponse)(NSString * _Nullable suffix, NSString * _Nullable safeError);
+typedef void (^PECompletionRequestHandler)(NSString *prompt, NSUInteger revision, NSUInteger cursor, PECompletionResponse completion);
+
+/// Owns only the temporary marked suffix it created. It never accepts text on
+/// its own; the InputMethodKit controller calls -acceptSuggestion for Tab only.
+@interface PECompletionEngine : NSObject
+- (instancetype)initWithRequestHandler:(PECompletionRequestHandler)requestHandler;
+
+@property (nonatomic, weak, readonly, nullable) id<PETextClient> client;
+@property (nonatomic, copy, readonly, nullable) NSString *prompt;
+@property (nonatomic, copy, readonly, nullable) NSString *suggestion;
+@property (nonatomic, copy, readonly, nullable) NSString *safeError;
+@property (nonatomic, readonly, getter=isEnabled) BOOL enabled;
+@property (nonatomic, readonly, getter=isActive) BOOL active;
+@property (nonatomic) NSTimeInterval debounceInterval;
+@property (nonatomic, copy, nullable) dispatch_block_t stateDidChange;
+
+- (void)attachClient:(nullable id<PETextClient>)client;
+- (void)activate;
+- (void)deactivate;
+- (void)textWillChange;
+- (void)scheduleSuggestion;
+- (BOOL)acceptSuggestion;
+- (void)dismissSuggestion;
+- (nullable NSString *)readCurrentPrompt;
+- (BOOL)restorePrompt:(NSString *)prompt expectedPrompt:(NSString *)expectedPrompt;
+@end
+
+NS_ASSUME_NONNULL_END

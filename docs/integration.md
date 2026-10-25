@@ -1,4 +1,4 @@
-# Integration research (2026-10-24)
+# Integration research (updated 2026-10-25)
 
 Findings gathered by a research agent; items marked *uncertain* need verification during implementation.
 
@@ -6,8 +6,9 @@ Findings gathered by a research agent; items marked *uncertain* need verificatio
 - Extension points: plugins (bundle skills, MCP servers, hooks), AGENTS.md. Docs: https://learn.chatgpt.com/docs/plugins
 - Plugins install via `/plugins` in Codex CLI or the app's Plugins tab; not available in the Codex IDE extension.
 - Manifest *(uncertain)*: `.codex-plugin/plugin.json` (kebab-case `name` required); `skills/`, `hooks/`, `.mcp.json` at plugin root; marketplace `.agents/plugins/marketplace.json`. Verify against `plugin-creator` in github.com/openai/skills.
-- Custom UI: MCP Apps / Apps SDK widgets render in ChatGPT iframes; Codex is documented as a no-UI client. No documented side-panel/webview or composer override API.
-- Consequence: companion panel + MCP hand-off (brief §3, decision D3). A `UserPromptSubmit` hook could enrich prompts at submit time *(event availability uncertain)*.
+- Custom UI: the current [OpenAI extension reference](https://developers.openai.com/plugins/build/extensions) supports conversation panels and searchable composer mentions in the desktop host. This does not establish support for observing an unsent draft or rendering a custom inline completion. The installed MCP package implements tools and a skill, without an MCP App UI.
+- The [formal extension protocol](https://github.com/openai/mcp-extensions/blob/main/docs/spec.md) documents mentions and appending content to editable drafts; it does not document a live composer-change hook, custom ghost-text provider or native history-button slot.
+- Scope correction: the owner explicitly requires automatic suggestions in the existing Codex textbox. The companion-only D3 assumption in the original brief does not satisfy that request. The separate [macOS InputMethodKit workaround](native-composer.md) uses normal text composition rather than a Codex plugin hook. It is experimental until the actual Codex editor is verified.
 
 ## CopilotKit test patterns
 - Vitest for unit/component tests in `__tests__/` beside source; `*.e2e.test.tsx` = jsdom component journeys against a mocked agent; Playwright for real-browser tests.
