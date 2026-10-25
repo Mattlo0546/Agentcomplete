@@ -43,10 +43,12 @@
 
 @interface PEPermissionCoordinator : PECoordinator
 @property(nonatomic) BOOL setupOpened;
+@property(nonatomic) BOOL accessibilityTrusted;
+@property(nonatomic) BOOL inputMethodProvider;
 @end
 @implementation PEPermissionCoordinator
-- (BOOL)isInputMethodProvider { return YES; }
-- (BOOL)isAccessibilityTrusted { return NO; }
+- (BOOL)isInputMethodProvider { return self.inputMethodProvider; }
+- (BOOL)isAccessibilityTrusted { return self.accessibilityTrusted; }
 - (void)openSetup:(id)sender { self.setupOpened = YES; }
 @end
 
@@ -243,6 +245,7 @@ int PECoordinatorTests(void) {
         blockedView.string = @"This draft must not be read without Accessibility.";
         blockedView.selectedRange = NSMakeRange(blockedView.string.length, 0);
         PEPermissionCoordinator *blocked = [[PEPermissionCoordinator alloc] initWithClient:blockedView backend:PECoordinatorBackend() menuPresenter:nil];
+        blocked.inputMethodProvider = YES;
         [blocked activate];
         NSPanel *permissionPalette = [blocked valueForKey:@"palette"];
         NSButton *setup = [blocked valueForKey:@"setupButton"];
@@ -259,6 +262,19 @@ int PECoordinatorTests(void) {
         [setup performClick:nil];
         PECoordinatorRequire(blocked.setupOpened, @"the permission bar's first-click setup action is connected");
         PECoordinatorRequire([[[blocked inputMenu] itemAtIndex:0].title containsString:@"Accessibility"], @"the input menu gives the same actionable permission state");
+
+        // The coordinator must recover on the first host event after a grant.
+        // This test uses the regular fixture text client after the transition;
+        // PEAccessibilityClient's exact-focused-field behavior is exercised by
+        // AccessibilityClientTests. That keeps this coordinator regression
+        // deterministic without requesting real Accessibility access.
+        blocked.accessibilityTrusted = YES;
+        blocked.inputMethodProvider = NO;
+        blockedEngine.debounceInterval = 0.01;
+        requestCount = PEEnhancementRequestCount;
+        PECoordinatorRequire(![blocked handleEvent:key], @"the first post-grant key remains pass-through");
+        PECoordinatorWait(^BOOL { return PEEnhancementRequestCount > requestCount; });
+        PECoordinatorRequire(blockedEngine.enabled && [[blocked valueForKey:@"textClient"] isEqual:blockedView], @"a newly granted session reattaches the current Codex draft and resumes requests");
         [blocked close];
         puts("Native coordinator save/history/restore checks passed");
     }

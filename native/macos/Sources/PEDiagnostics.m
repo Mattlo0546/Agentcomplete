@@ -21,7 +21,11 @@
                           safeError:(NSString *)safeError {
     // Fixtures and unit-test processes must not overwrite a live host report.
     if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.promptenhance.inputmethod.PromptEnhance"]) return;
-    if (!enabled || ![clientBundleID isEqualToString:@"com.openai.codex"]) return;
+    if (![clientBundleID isEqualToString:@"com.openai.codex"]) return;
+    // A denied Accessibility grant deliberately leaves the engine disabled.
+    // Keep a capability-only report for that state so Setup never displays a
+    // stale result from an older helper build. No draft text or geometry is
+    // included in this report.
     NSURL *directory = [NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:@"Library/Logs/Prompt Enhance"] isDirectory:YES];
     NSError *directoryError = nil;
     [[NSFileManager defaultManager] createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions: @0700} error:&directoryError];

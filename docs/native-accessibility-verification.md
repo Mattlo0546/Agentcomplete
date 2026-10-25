@@ -24,3 +24,13 @@ In Setup, click **Allow Accessibility…**, then enable `~/Library/Input Methods
 The helper stores only capability booleans and generic failures in its diagnostic report; it does not log draft text, selection positions or API credentials. Gemini credentials remain in the existing backend.
 
 The existing backend was restarted on the merged code while preserving its private configuration and Tiger Cloud database. One actual Gemini 3.5 Flash Lite request returned a nonempty, schema-valid autocomplete in 1.15 seconds; health reported the database ready.
+
+## Signing and permission mismatch investigation
+
+The running build 9 helper reported `accessibilityTrusted: false` in its fresh, per-process permission report while the macOS Accessibility list showed Prompt Enhance enabled. Restarting the unchanged helper and toggling the existing grant did not change that result. The older build 8 native-session report was stale and did not describe the running process.
+
+The installed development helper has a CDHash-only ad-hoc designated requirement. Backups of successive builds have different CDHashes. This is consistent with a grant referring to a previous signing identity; Apple explains that ad-hoc requirements are tied to a particular code version in [TN3127](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements). A release build should use a stable signing identity. No valid signing identity is currently available on this Mac.
+
+The build script now accepts and validates `PROMPT_ENHANCE_SIGN_IDENTITY`. Installation preserves an identical signed bundle, and changed ad-hoc replacements explain the required permission refresh. An isolated installer regression confirms that an unchanged bundle retains its inode and avoids a replacement/backup. A coordinator regression confirms that requests resume on the first key event after permission is granted. All six native test groups pass. Diagnostics now retain a current permission-blocked Codex report rather than hiding it behind an enabled-engine guard.
+
+These source changes do not replace the installed build 9 during permission recovery. Actual Codex autocomplete, saving and restoration still require the final host check after macOS reports the current helper trusted.
