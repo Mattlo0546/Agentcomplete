@@ -55,7 +55,7 @@ function inspect(id) {
     $("detail-kicker").textContent = "LOCAL LEXICAL NOMINATION";
     $("detail-title").textContent = "Match locally. Review freshly.";
     $("detail-body").textContent =
-      "After complete review cannot serve, eligible end-cursor requests can rank documents in a fresh Tiger snapshot. Title, summary, or tag overlap must support the match. Uncertain matches continue to direct semantic retrieval, then remote tags. Semantic-first swaps these two shortlist attempts.";
+      "After complete review cannot serve, eligible end-cursor requests can rank documents in a fresh Tiger snapshot. Title, summary, or tag overlap must support the match. Uncertain matches continue to Gemini tag extraction and pgvector retrieval.";
     setFacts([
       ["Remote retrieval calls", "None on this route"],
       ["Candidates", "Up to 3"],
@@ -68,22 +68,11 @@ function inspect(id) {
     $("detail-title").textContent = "Complete catalog review";
     $("detail-body").textContent = routes.catalog.copy;
     setFacts([
-      ["Items", "At most 64"],
+      ["Items", "At most 16"],
       ["Serialized context", "At most 80,000 characters"],
       ["Body truncation", "None; oversized falls through"],
     ]);
     $("detail-source").href = repository + "backend/app/pipeline/catalog.py";
-  }
-  if (id === "retrieval" && activeRoute === "semantic") {
-    $("detail-kicker").textContent = "DIRECT SEMANTIC FALLBACK";
-    $("detail-title").textContent = "Document / query similarity";
-    $("detail-body").textContent = routes.semantic.copy;
-    setFacts([
-      ["Default encoder", "EmbeddingGemma 2 / ONNX CPU"],
-      ["Candidates", "Up to 3 + matched source chunk"],
-      ["Requirements", "Current index + optional files"],
-    ]);
-    $("detail-source").href = repository + "backend/app/pipeline/semantic.py";
   }
   for (const [key, button] of [...labels, ...componentButtons])
     button.setAttribute("aria-pressed", String(key === id));
@@ -109,9 +98,7 @@ function setRoute(id) {
       ? "GEMINI TAGS → PGVECTOR"
       : id === "lexical"
         ? "METADATA-SUPPORTED SHORTLIST"
-        : id === "semantic"
-          ? "EMBEDDINGGEMMA 2 / ONNX"
-          : "COMPLETE CATALOG FIRST";
+        : "COMPLETE CATALOG FIRST";
   viewer?.route(route);
   if (route.selected) inspect(route.selected);
   else {

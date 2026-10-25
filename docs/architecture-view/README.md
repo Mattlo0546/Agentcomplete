@@ -2,7 +2,7 @@
 
 The repository README uses a flat technical architecture diagram as its main presentation. The 3D model is a secondary visualization you can rotate directly inside GitHub. This optional **Three.js r180** viewer contains only the scene, route buttons, and a short description. Select a model to open its source-backed details. It honors reduced motion, supports keyboard access through native buttons, and retains text/component navigation if WebGL is unavailable.
 
-The viewer reflects `main` at `78e7821`: complete-catalog review first, then lexical, direct semantic, and tag/pgvector fallback. Local semantic retrieval is implemented and requires optional dependencies/model files. See the [backend pipeline overview](../architecture.md#backend-pipelines-at-a-glance) for ingestion, maintenance, handoff, feedback, and offline analytics.
+The viewer reflects the current route order: complete-catalog review, lexical shortlist, then tags/pgvector. See the [backend pipeline overview](../architecture.md#backend-pipelines-at-a-glance) for ingestion, maintenance, handoff, feedback, and offline analytics.
 
 The models are real procedural 3D meshes built in `models.js`: a companion laptop, FastAPI server rack, context-selection processor, Gemini symbol, validation documents, Codex terminal, Tiger database, and Snowflake symbol. They are conceptual models, not vendor-provided 3D assets. Retrieval and validation are responsibilities inside the API process, not extra deployed services.
 

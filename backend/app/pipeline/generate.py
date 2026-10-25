@@ -24,7 +24,7 @@ from app.settings_store import AppSettings
 
 EXCERPT_CHARS = 1200
 KNOWLEDGE_BUDGET_CHARS = 6000
-COMPLETE_CATALOG_MAX_DOCUMENTS = 64
+COMPLETE_CATALOG_MAX_DOCUMENTS = 16
 COMPLETE_CATALOG_MAX_CHARS = 80_000
 
 WireResponse = AutocompleteResponse | MultipleChoiceResponse | NoneResponse
@@ -136,16 +136,10 @@ def build_contents(
     elif knowledge:
         budget = KNOWLEDGE_BUDGET_CHARS
         for index, item in enumerate(knowledge):
-            # Direct retrieval may match a later source chunk. Show that complete bounded
-            # chunk instead of silently replacing its evidence with the document's opening.
-            text = (
-                item.evidence_excerpt[: min(1800, max(budget, 0))]
-                if item.evidence_excerpt is not None
-                else excerpt(
-                    item.body,
-                    extraction.tags if extraction else item.matched_tags,
-                    min(EXCERPT_CHARS, max(budget, 0)),
-                )
+            text = excerpt(
+                item.body,
+                extraction.tags if extraction else item.matched_tags,
+                min(EXCERPT_CHARS, max(budget, 0)),
             )
             budget -= len(text)
             parts += [

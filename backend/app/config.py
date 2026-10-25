@@ -1,6 +1,5 @@
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,10 +24,6 @@ class Settings(BaseSettings):
     embed_dims: int = 768
     catalog_review_enabled: bool = True
     fast_autocomplete_enabled: bool = True
-    direct_semantic_enabled: bool = True
-    semantic_first_enabled: bool = False
-    semantic_embed_backend: Literal["local", "gemini"] = "local"
-    local_embedding_model_dir: Path = REPO_ROOT / "backend" / ".cache" / "embeddinggemma2"
 
     llm_timeout_s: float = 8.0
     retention_days: int = 30

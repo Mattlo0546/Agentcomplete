@@ -53,8 +53,6 @@ class Candidate:
     body: str
     similarity: float
     matched_tags: list[str] = field(default_factory=list)
-    # Exact source chunk selected by a direct document index; the original body remains available.
-    evidence_excerpt: str | None = None
 
 
 @dataclass
