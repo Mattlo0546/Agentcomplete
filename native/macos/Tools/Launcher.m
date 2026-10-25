@@ -63,7 +63,7 @@ static NSString *PESafeRuntimeDiagnosticSummary(void) {
     }
     NSDictionary<NSString *, id> *report = decoded;
     NSString *safeError = [report[@"safeError"] isKindOfClass:NSString.class] ? report[@"safeError"] : nil;
-    if (safeError.length > 240 || [safeError rangeOfCharacterFromSet:NSCharacterSet.controlCharacterSet].location != NSNotFound) {
+    if (safeError != nil && (safeError.length > 240 || [safeError rangeOfCharacterFromSet:NSCharacterSet.controlCharacterSet].location != NSNotFound)) {
         safeError = @"Input method reported an invalid diagnostic error.";
     }
     NSString *errorText = safeError.length ? safeError : @"none";
