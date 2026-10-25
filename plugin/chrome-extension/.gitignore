@@ -1,0 +1,5 @@
+.runtime.json
+*.log
+__pycache__/
+.local-data.sqlite3*
+tests/.artifacts/

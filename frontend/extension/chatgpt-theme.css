@@ -1,0 +1,186 @@
+/* Extension-only adapter: shared webapp components inherit ChatGPT's component grammar. */
+:root {
+  --radius: 1rem;
+  --background: #fff;
+  --foreground: #0d0d0d;
+  --card: #fff;
+  --card-foreground: #0d0d0d;
+  --popover: #fff;
+  --popover-foreground: #0d0d0d;
+  --primary: #0d0d0d;
+  --primary-foreground: #fff;
+  --secondary: #f4f4f4;
+  --secondary-foreground: #0d0d0d;
+  --muted: #f7f7f8;
+  --muted-foreground: #666;
+  --accent: #f4f4f4;
+  --accent-foreground: #0d0d0d;
+  --border: #e5e5e5;
+  --input: #dedede;
+  --ring: #8b8b8b;
+  --ghost: #707070;
+  --marker: #7a7a7a;
+  --marker-soft: #f1f1f1;
+  --marker-foreground: #242424;
+  --insert: #157a4b;
+  --insert-soft: #e8f4ec;
+  --shadow-pop: 0 8px 28px -8px #0002;
+  --font-geist-sans:
+    -apple-system-body, ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.dark {
+  --background: #212121;
+  --foreground: #ececec;
+  --card: #2f2f2f;
+  --card-foreground: #ececec;
+  --popover: #2f2f2f;
+  --popover-foreground: #ececec;
+  --primary: #ececec;
+  --primary-foreground: #212121;
+  --secondary: #303030;
+  --secondary-foreground: #ececec;
+  --muted: #282828;
+  --muted-foreground: #b4b4b4;
+  --accent: #383838;
+  --accent-foreground: #ececec;
+  --border: #424242;
+  --input: #505050;
+  --ring: #ababab;
+  --ghost: #a8a8a8;
+  --marker: #929292;
+  --marker-soft: #383838;
+  --marker-foreground: #ececec;
+  --insert: #8ad7ac;
+  --insert-soft: #243b2e;
+  --shadow-pop: 0 8px 28px -8px #0008;
+}
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+body {
+  font-family: var(--font-geist-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--background);
+  color: var(--foreground);
+}
+button,
+a,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+button,
+[data-slot="button"] {
+  border-radius: 999px;
+}
+input,
+select,
+[data-slot="select-trigger"] {
+  border-radius: 10px;
+}
+textarea {
+  caret-color: var(--foreground);
+}
+::selection {
+  background: #b7d7ff;
+  color: #0d0d0d;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.extension-shell > div {
+  height: 100%;
+}
+.extension-workspace section[aria-label="Prompt"] {
+  border-radius: 20px;
+  background: var(--card);
+}
+.extension-workspace section[aria-label="Prompt"] > div:first-child > div {
+  min-height: 180px;
+  padding: 20px;
+}
+.extension-workspace section[aria-label="Question"] {
+  border-radius: 20px;
+}
+.extension-workspace [role="radio"] {
+  border-radius: 12px;
+}
+.extension-workspace .text-label {
+  font-family: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.extension-titlebar {
+  background: var(--background);
+}
+.extension-editor-footer {
+  border-radius: 0 0 20px 20px;
+}
+.extension-workspace nav[aria-label="Tabs"] {
+  background: var(--background);
+}
+.extension-workspace .text-prompt {
+  font-family: var(--font-geist-sans);
+  font-size: 16px;
+  line-height: 1.7;
+}
+.extension-workspace .text-title {
+  font-size: 16px;
+}
+.extension-workspace .text-data {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+@media (max-width: 767px) {
+  .extension-workspace section[aria-label="Prompt"] > div:first-child > div {
+    min-height: 160px;
+    padding: 16px;
+  }
+  .extension-editor-footer {
+    gap: 6px;
+    padding: 8px 12px;
+  }
+  .extension-editor-footer > [role="status"],
+  .extension-editor-footer > [role="alert"] {
+    flex-basis: 100%;
+  }
+  .extension-titlebar {
+    min-height: 48px;
+  }
+  .extension-workspace section[aria-label="Question"] {
+    border-radius: 20px 20px 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
+}
+
+/* Keep the fixed workspace header stationary when shared controls restore focus. */
+.extension-root > .extension-app {
+  overflow: clip;
+}
+.extension-root .extension-workspace {
+  overflow: clip;
+}
+.extension-root [data-sonner-toaster] {
+  max-width: calc(100% - 24px);
+  font-family: var(--font-geist-sans);
+}
+.extension-root [data-sonner-toast] {
+  border-radius: 12px;
+  box-shadow: var(--shadow-pop);
+}

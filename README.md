@@ -2,6 +2,8 @@
 
 A prompt companion for Codex. Retrieves relevant skills and examples, reviews them with Gemini, and suggests ghost text or clarifying edits while you type.
 
+For the companion workspace inside ChatGPT in Chrome, see the [Chrome extension guide](plugin/chrome-extension/README.md).
+
 [Architecture](docs/architecture.md) · [Retrieval detail](#retrieval-architecture) · [API reference](docs/api.md) · [Codex plugin](docs/codex-plugin.md) · [Performance](docs/performance.md)
 
 ## Architecture
