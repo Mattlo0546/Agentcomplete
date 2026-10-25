@@ -80,7 +80,8 @@ export function exportSTL(THREE, roots, components) {
       for (let j = 0; j < 3; j++)
         vertices[j]
           .fromBufferAttribute(position, index ? index.getX(i + j) : i + j)
-          .applyMatrix4(matrix);
+          .applyMatrix4(matrix)
+          .multiplyScalar(5); // Match GitHub’s default STL camera scale.
       normal
         .subVectors(vertices[1], vertices[0])
         .cross(edge.subVectors(vertices[2], vertices[0]))
