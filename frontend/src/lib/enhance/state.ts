@@ -36,7 +36,7 @@ export type EnhanceState = {
   pending: Snapshot | null;
   suggestion: Suggestion | null;
   error: EnhanceError | null;
-  /** Request id of the latest non-`none` response; drives the inspector trace. */
+  /** Latest validated response for the current input, including `none`; drives context displays. */
   traceId: string | null;
 };
 
@@ -63,7 +63,7 @@ export const initialEnhanceState: EnhanceState = {
   traceId: null,
 };
 
-const invalidated = { pending: null, suggestion: null, error: null } as const;
+const invalidated = { pending: null, suggestion: null, error: null, traceId: null } as const;
 
 export function enhanceReducer(state: EnhanceState, action: EnhanceAction): EnhanceState {
   switch (action.type) {
@@ -97,7 +97,7 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
 
     case "request":
       if (action.snapshot.revision !== state.revision || action.snapshot.prompt !== state.prompt) return state;
-      return { ...state, pending: action.snapshot, error: null };
+      return { ...state, pending: action.snapshot, error: null, traceId: null };
 
     case "response": {
       const { response, now } = action;
@@ -106,7 +106,7 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
       if (!pending || !responseIsValid(response, pending.prompt, pending.cursor)) {
         return { ...state, pending: null, error: { status: 0, message: "Invalid suggestion" } };
       }
-      const base = { ...state, pending: null, error: null };
+      const base = { ...state, pending: null, error: null, traceId: response.request_id };
       if (response.type === "none") return { ...base, suggestion: null };
       const common = {
         requestId: response.request_id,
@@ -118,7 +118,7 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
         response.type === "autocomplete"
           ? { ...common, type: "autocomplete", text: response.text }
           : { ...common, type: "multiple_choice", question: response.question, options: response.options };
-      return { ...base, suggestion, traceId: response.request_id };
+      return { ...base, suggestion };
     }
 
     case "failure":
@@ -126,7 +126,7 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
       return { ...state, pending: null, error: action.error };
 
     case "cancel":
-      return state.pending || state.suggestion || state.error ? { ...state, ...invalidated } : state;
+      return state.pending || state.suggestion || state.error || state.traceId ? { ...state, ...invalidated } : state;
 
     case "acceptGhost": {
       if (!ghostText(state)) return state;

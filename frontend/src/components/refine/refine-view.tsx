@@ -12,6 +12,7 @@ import { DEFAULT_TRIGGER_DELAY_MS, useEnhance } from "@/lib/enhance/use-enhance"
 
 import { ContextInspector } from "./context-inspector";
 import { EditorFooter } from "./editor-footer";
+import { InputContext } from "./input-context";
 import { PromptEditor } from "./prompt-editor";
 import { QuestionCard } from "./question-card";
 import { useSendToCodex } from "./use-send-to-codex";
@@ -96,6 +97,7 @@ export function RefineView() {
             />
           )}
         </AnimatePresence>
+        {state.prompt.trim() !== "" && <InputContext requestId={state.traceId} />}
       </PageLayout>
     </MotionConfig>
   );

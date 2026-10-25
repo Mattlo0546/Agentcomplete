@@ -277,8 +277,8 @@ describe("previous request context", () => {
     await advance(200);
     const second = vi.mocked(postEnhance).mock.calls[1][0];
     expect(second.previous_request_id).toBe(first.request_id);
-    // A none response does not change the visible trace, but must become the next context reference.
-    expect(result.current.state.traceId).toBe(first.request_id);
+    // Even without a suggestion, context displays must describe the latest input.
+    expect(result.current.state.traceId).toBe(second.request_id);
     type(result, "Ship it safely with tests and docs");
     await advance(200);
     expect(vi.mocked(postEnhance).mock.calls[2][0].previous_request_id).toBe(second.request_id);
