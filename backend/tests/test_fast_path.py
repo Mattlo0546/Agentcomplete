@@ -31,6 +31,9 @@ def memory(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(catalog, "_snapshot", None)
     monkeypatch.setattr(catalog, "_lock", asyncio.Lock())
     monkeypatch.setattr(run.get_settings(), "fast_autocomplete_enabled", True)
+    monkeypatch.setattr(run.get_settings(), "direct_semantic_enabled", False)
+    monkeypatch.setattr(run.get_settings(), "catalog_review_enabled", False)
+    monkeypatch.setattr(run.get_settings(), "semantic_first_enabled", False)
     retrieve.invalidate_cache()
 
 
@@ -212,6 +215,20 @@ async def test_oversize_corpus_is_never_partially_searched(monkeypatch, corpus):
     assert await catalog.select("retry") is None
 
 
+async def test_database_oversize_marker_rejects_omitted_bodies(corpus):
+    marked = [{**source, "body": "", "source_oversized": True} for source in corpus]
+    snapshot = install(marked)
+    assert snapshot.oversized
+    assert await catalog.select("retry") is None
+
+
+async def test_snapshot_keeps_long_document_tail_for_semantic_index():
+    source = row("Long guide", ["guide"], "Opening context. " * 600 + " Essential tail evidence.")
+    snapshot = install([source])
+    assert len(source["body"]) > 8000
+    assert snapshot.documents[0].candidate.body == source["body"]
+
+
 def prepare_pipeline(monkeypatch, corpus):
     install(corpus)
     monkeypatch.setattr(run, "load_settings", AsyncMock(return_value=AppSettings()))
@@ -229,7 +246,10 @@ async def test_warm_path_generates_once_without_tags_embedding_or_database(monke
         assert kwargs["schema"] is ReviewedCompletion
         count = kwargs["contents"].count('<knowledge candidate="')
         return ReviewedCompletion(
-            keep=[True] * count, scores=[0.9] * count, text=" jitter.", completes_partial_word=False
+            keep=[True] * count,
+            scores=[0.9] * count,
+            text=" jitter.",
+            completes_partial_word=False,
         )
 
     model = AsyncMock(side_effect=generate)
@@ -240,6 +260,32 @@ async def test_warm_path_generates_once_without_tags_embedding_or_database(monke
     assert saved.call_args.kwargs["steps"][0].status == "skipped"
     assert saved.call_args.kwargs["steps"][1].model == "tiger-lexical"
     assert saved.call_args.kwargs["features"]["task_type"] == "other"
+
+
+async def test_default_semantic_fallback_preserves_existing_lexical_fast_path(monkeypatch, corpus):
+    saved = prepare_pipeline(monkeypatch, corpus)
+    monkeypatch.setattr(run.get_settings(), "direct_semantic_enabled", True)
+    semantic = AsyncMock(side_effect=AssertionError("lexical hit must not wait for a query embedding"))
+    monkeypatch.setattr(run.semantic, "select", semantic)
+    monkeypatch.setattr(
+        run,
+        "complete",
+        AsyncMock(
+            return_value=(
+                Generation(
+                    type="autocomplete",
+                    autocomplete_text=" jitter.",
+                    completes_partial_word=False,
+                    question="",
+                    options=[],
+                ),
+                [],
+            )
+        ),
+    )
+    assert (await run.run_enhance(request())).type == "autocomplete"
+    assert semantic.await_count == 0
+    assert saved.call_args.kwargs["steps"][1].model == "tiger-lexical"
 
 
 async def test_invalidation_during_generation_discards_stale_advice(monkeypatch, corpus):
@@ -256,6 +302,35 @@ async def test_invalidation_during_generation_discards_stale_advice(monkeypatch,
     assert response.type == "none"
     assert saved.call_args.kwargs["used_knowledge"] == []
     assert "discarded" in saved.call_args.kwargs["steps"][-1].detail
+
+
+async def test_trace_backpressure_cannot_return_or_count_stale_advice(monkeypatch, corpus):
+    saved = prepare_pipeline(monkeypatch, corpus)
+
+    async def blocked_capacity():
+        retrieve.invalidate_cache()
+
+    monkeypatch.setattr(run, "wait_for_capacity", blocked_capacity)
+    monkeypatch.setattr(
+        run,
+        "complete",
+        AsyncMock(
+            return_value=(
+                Generation(
+                    type="autocomplete",
+                    autocomplete_text=" bound attempts.",
+                    completes_partial_word=False,
+                    question="",
+                    options=[],
+                ),
+                [],
+            )
+        ),
+    )
+    response = await run.run_enhance(request())
+    assert response.type == "none"
+    assert saved.call_args.kwargs["result_type"] == "none"
+    assert saved.call_args.kwargs["used_knowledge"] == []
 
 
 async def test_general_fast_schema_can_classify_partial_words_in_same_call(monkeypatch, corpus):
@@ -292,6 +367,77 @@ async def test_no_match_preserves_semantic_fallback(monkeypatch, corpus):
     )
     await run.run_enhance(request("Recover gracefully after transient upstream failures"))
     assert tagging.await_count == 1
+
+
+@pytest.mark.parametrize("invalidate", [False, True])
+@pytest.mark.parametrize(
+    ("prompt", "semantic_first"),
+    [
+        ("Add retry backoff and", True),
+        ("Recover gracefully after transient upstream failures and", True),
+        ("Recover gracefully after transient upstream failures and", False),
+    ],
+)
+async def test_direct_semantic_skips_tags_but_reviews_and_checks_freshness(
+    monkeypatch, corpus, invalidate, prompt, semantic_first
+):
+    saved = prepare_pipeline(monkeypatch, corpus)
+    monkeypatch.setattr(run.get_settings(), "direct_semantic_enabled", True)
+    monkeypatch.setattr(run.get_settings(), "semantic_first_enabled", semantic_first)
+    snapshot = catalog._snapshot
+    assert snapshot is not None
+    candidate = snapshot.documents[0].candidate
+    selected = retrieve.Retrieval({}, [candidate], fetched_at=snapshot.fetched_at, generation=snapshot.generation)
+    semantic = AsyncMock(return_value=selected)
+    monkeypatch.setattr(run.semantic, "select", semantic)
+
+    async def generate(contents, candidates, **kwargs):
+        assert candidates == [candidate]
+        assert prompt in contents
+        if invalidate:
+            retrieve.invalidate_cache()
+        return Generation(
+            type="autocomplete",
+            autocomplete_text=" bound retry attempts.",
+            completes_partial_word=False,
+            question="",
+            options=[],
+        ), [Judged(candidate, 0.9, True)]
+
+    monkeypatch.setattr(run, "complete", generate)
+    response = await run.run_enhance(request(prompt))
+    assert response.type == ("none" if invalidate else "autocomplete")
+    assert semantic.await_count == 1
+    steps = saved.call_args.kwargs["steps"]
+    assert steps[0].status == "skipped"
+    assert "local semantic" in steps[1].model
+    assert saved.call_args.kwargs["tags"] == []
+    assert saved.call_args.kwargs["used_knowledge"] == ([] if invalidate else [candidate.id])
+
+
+async def test_unprepared_direct_index_uses_original_semantic_route(monkeypatch, corpus):
+    install(corpus)
+    monkeypatch.setattr(run.get_settings(), "direct_semantic_enabled", True)
+    monkeypatch.setattr(run, "load_settings", AsyncMock(return_value=AppSettings()))
+    direct = AsyncMock(return_value=None)
+    monkeypatch.setattr(run.semantic, "select", direct)
+    tagging = AsyncMock(return_value=TagExtraction(tags=[], task_type="other", missing_constraints=[]))
+    monkeypatch.setattr(run, "extract_tags", tagging)
+    monkeypatch.setattr(run, "has_tags", AsyncMock(return_value=True))
+    monkeypatch.setattr(run, "save_trace", AsyncMock())
+    monkeypatch.setattr(
+        run,
+        "complete",
+        AsyncMock(
+            return_value=(
+                Generation(type="none", autocomplete_text="", completes_partial_word=False, question="", options=[]),
+                [],
+            )
+        ),
+    )
+    response = await run.run_enhance(request("Recover gracefully after transient upstream failures"))
+    assert response.type == "none"
+    assert direct.await_count == tagging.await_count == 1
 
 
 def test_compact_decisions_preserve_independent_keep_and_exact_accounting(corpus):

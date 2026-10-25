@@ -23,6 +23,8 @@ export function RefineView() {
   const enhance = useEnhance(settings.data?.trigger_delay_ms ?? DEFAULT_TRIGGER_DELAY_MS, {
     autocompleteEnabled: settings.data?.autocomplete_enabled,
     questionsEnabled: settings.data?.questions_enabled,
+    configurationKey: JSON.stringify(settings.data ?? null),
+    settingsReady: !settings.isPending,
   });
   const send = useSendToCodex();
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -52,6 +54,7 @@ export function RefineView() {
           selectionStart={state.selectionStart}
           selectionEnd={state.selectionEnd}
           ghost={ghost}
+          ghostSource={state.suggestion?.type === "autocomplete" ? state.suggestion : undefined}
           quiet={question !== null}
           narrow={narrow}
           textareaRef={textareaRef}
@@ -62,7 +65,7 @@ export function RefineView() {
             enhance.acceptGhost();
             focusEditor();
           }}
-          onEscape={() => (ghost ? enhance.dismissGhost() : question && enhance.declineQuestion())}
+          onEscape={() => (question ? enhance.declineQuestion() : enhance.dismissGhost())}
           footer={
             <EditorFooter
               revision={state.revision}

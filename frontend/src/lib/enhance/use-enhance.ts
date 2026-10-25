@@ -1,9 +1,9 @@
 "use client";
 
 import { readLocalStorageValue, useDebouncedCallback, useLocalStorage } from "@mantine/hooks";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { ApiError, newRequestId } from "@/lib/api/client";
+import { ApiError, getApiBase, newRequestId } from "@/lib/api/client";
 import type { OutcomeEvent } from "@/lib/api/types";
 import { DEFAULT_TRIGGER_DELAY_MS } from "@/lib/settings/defaults";
 
@@ -21,8 +21,15 @@ import {
 export const DRAFT_STORAGE_KEY = "pe.refine.draft";
 export { DEFAULT_TRIGGER_DELAY_MS } from "@/lib/settings/defaults";
 export const DRAFT_SAVE_DELAY_MS = 250;
+export const MAX_SALVAGE_AGE_MS = 3000;
 
-type EnhanceOptions = { autocompleteEnabled?: boolean; questionsEnabled?: boolean };
+type EnhanceOptions = {
+  autocompleteEnabled?: boolean;
+  questionsEnabled?: boolean;
+  configurationKey?: string;
+  /** Wait for fetched settings (or their fallback) before automatically requesting a restored draft. */
+  settingsReady?: boolean;
+};
 
 function isAbort(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
@@ -31,18 +38,19 @@ function isAbort(error: unknown) {
 /** Drives the Refine editor: debounced, abortable /v1/enhance requests plus outcome events. */
 export function useEnhance(
   delayMs: number = DEFAULT_TRIGGER_DELAY_MS,
-  { autocompleteEnabled = true, questionsEnabled = true }: EnhanceOptions = {},
+  { autocompleteEnabled = true, questionsEnabled = true, configurationKey, settingsReady = true }: EnhanceOptions = {},
 ) {
   const [state, setState] = useState<EnhanceState>(initialEnhanceState);
   // The ref is the synchronous source of truth; handlers read it so they never see a stale render.
   const stateRef = useRef(state);
-  const abortRef = useRef<AbortController | null>(null);
+  const controllersRef = useRef(new Map<string, AbortController>());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queuedAtRef = useRef<number | null>(null);
   const composingRef = useRef(false);
-  const previousModesRef = useRef({ autocompleteEnabled, questionsEnabled });
+  const previousModesRef = useRef({ autocompleteEnabled, questionsEnabled, configurationKey });
   const previousRequestIdRef = useRef<string | null>(null);
   const hydratedRef = useRef(false);
+  const restoredRequestRef = useRef(false);
   const [, setDraft] = useLocalStorage({ key: DRAFT_STORAGE_KEY, defaultValue: "" });
 
   const dispatch = useCallback((action: EnhanceAction) => {
@@ -80,12 +88,29 @@ export function useEnhance(
     [autocompleteEnabled, questionsEnabled],
   );
 
+  const pruneRequests = useCallback(() => {
+    const { pending, retained } = stateRef.current;
+    for (const [id, controller] of controllersRef.current) {
+      if (id !== pending?.requestId && id !== retained?.requestId) {
+        controller.abort();
+        controllersRef.current.delete(id);
+      }
+    }
+  }, []);
+
+  const clearSchedule = useCallback(() => {
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    queuedAtRef.current = null;
+  }, []);
+
   const send = useCallback(() => {
     const current = stateRef.current;
     if (!canSend(current)) return;
-    abortRef.current?.abort();
+    restoredRequestRef.current = false;
     const controller = new AbortController();
-    abortRef.current = controller;
+    const startedAt = Date.now();
+    const apiBase = getApiBase();
     const snapshot = {
       requestId: newRequestId(),
       revision: current.revision,
@@ -93,6 +118,8 @@ export function useEnhance(
       cursor: current.selectionEnd,
     };
     dispatch({ type: "request", snapshot });
+    controllersRef.current.set(snapshot.requestId, controller);
+    pruneRequests();
     postEnhance(
       {
         request_id: snapshot.requestId,
@@ -105,20 +132,41 @@ export function useEnhance(
     )
       .then((response) => {
         if (controller.signal.aborted) return;
+        if (getApiBase() !== apiBase) {
+          dispatch({ type: "cancel" });
+          pruneRequests();
+          return;
+        }
         if (
           (response.type === "autocomplete" && !autocompleteEnabled) ||
           (response.type === "multiple_choice" && !questionsEnabled)
         ) {
           dispatch({ type: "cancel" });
+          pruneRequests();
           return;
         }
         const before = stateRef.current;
+        if (before.retained?.requestId === snapshot.requestId) {
+          dispatch(
+            Date.now() - startedAt <= MAX_SALVAGE_AGE_MS
+              ? { type: "retainedResponse", requestId: snapshot.requestId, response, now: Date.now() }
+              : { type: "discardRetained" },
+          );
+          // An adopted suffix can avoid a not-yet-started request; an exact request already in flight still wins.
+          if (stateRef.current.suggestion?.requestId === snapshot.requestId) clearSchedule();
+          pruneRequests();
+          return;
+        }
         dispatch({ type: "response", response, now: Date.now() });
         const after = stateRef.current;
+        if (before.suggestion && after.suggestion?.requestId !== before.suggestion.requestId) {
+          emit("superseded", undefined, before.suggestion);
+        }
         // A valid `none` response also carries reusable server context. Rejected responses never advance it.
         if (after !== before && after.pending === null && after.error === null) {
           previousRequestIdRef.current = response.request_id;
         }
+        pruneRequests();
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted || isAbort(error)) return;
@@ -128,11 +176,12 @@ export function useEnhance(
           requestId: snapshot.requestId,
           error: { status: apiError?.status ?? 0, message: apiError?.message ?? "Request failed" },
         });
+        pruneRequests();
       })
       .finally(() => {
-        if (abortRef.current === controller) abortRef.current = null;
+        controllersRef.current.delete(snapshot.requestId);
       });
-  }, [autocompleteEnabled, questionsEnabled, canSend, dispatch]);
+  }, [autocompleteEnabled, questionsEnabled, canSend, clearSchedule, dispatch, emit, pruneRequests]);
 
   const runScheduled = useCallback(() => {
     timerRef.current = null;
@@ -148,25 +197,25 @@ export function useEnhance(
 
   /** Cancels whatever is in flight or queued before the state moves on. */
   const interrupt = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    if (timerRef.current !== null) clearTimeout(timerRef.current);
-    timerRef.current = null;
-    queuedAtRef.current = null;
-  }, []);
+    for (const controller of controllersRef.current.values()) controller.abort();
+    controllersRef.current.clear();
+    clearSchedule();
+  }, [clearSchedule]);
 
   // Settings can arrive after typing begins. Preserve the pending request and elapsed quiet time.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const previous = previousModesRef.current;
     const modesChanged =
-      previous.autocompleteEnabled !== autocompleteEnabled || previous.questionsEnabled !== questionsEnabled;
-    previousModesRef.current = { autocompleteEnabled, questionsEnabled };
+      previous.autocompleteEnabled !== autocompleteEnabled ||
+      previous.questionsEnabled !== questionsEnabled ||
+      previous.configurationKey !== configurationKey;
+    previousModesRef.current = { autocompleteEnabled, questionsEnabled, configurationKey };
     const current = stateRef.current;
     const disabledSuggestion =
       current.suggestion?.type === "autocomplete"
         ? !autocompleteEnabled
         : current.suggestion?.type === "multiple_choice" && !questionsEnabled;
-    if (modesChanged && (current.pending || disabledSuggestion)) {
+    if (modesChanged && (current.pending || current.retained || current.suggestion || disabledSuggestion)) {
       emit("superseded");
       interrupt();
       dispatch({ type: "cancel" });
@@ -183,10 +232,21 @@ export function useEnhance(
       if (timerRef.current !== null) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(runScheduled, Math.max(0, delayMs - (Date.now() - queuedAtRef.current)));
     }
-  }, [autocompleteEnabled, questionsEnabled, canSend, delayMs, dispatch, emit, interrupt, runScheduled, schedule]);
+  }, [
+    autocompleteEnabled,
+    questionsEnabled,
+    configurationKey,
+    canSend,
+    delayMs,
+    dispatch,
+    emit,
+    interrupt,
+    runScheduled,
+    schedule,
+  ]);
 
   const change = useCallback(
-    (prompt: string, selectionStart: number, selectionEnd: number) => {
+    (prompt: string, selectionStart: number, selectionEnd: number, inputType?: string) => {
       const before = stateRef.current;
       if (
         prompt === before.prompt &&
@@ -195,8 +255,16 @@ export function useEnhance(
       ) {
         return;
       }
-      interrupt();
-      dispatch({ type: "change", prompt, selectionStart, selectionEnd });
+      restoredRequestRef.current = false;
+      clearSchedule();
+      dispatch({
+        type: "change",
+        prompt,
+        selectionStart,
+        selectionEnd,
+        retainInFlight: autocompleteEnabled && !composingRef.current && inputType === "insertText",
+      });
+      pruneRequests();
       const after = stateRef.current;
       if (before.suggestion && after.suggestion?.requestId !== before.suggestion.requestId) {
         const typedWholeGhost =
@@ -209,7 +277,7 @@ export function useEnhance(
       // An exact prefix of the visible ghost is already computed: show its remainder immediately.
       if (!after.suggestion && canSend(after)) schedule();
     },
-    [canSend, dispatch, emit, interrupt, schedule],
+    [autocompleteEnabled, canSend, clearSchedule, dispatch, emit, pruneRequests, schedule],
   );
 
   const select = useCallback(
@@ -218,23 +286,29 @@ export function useEnhance(
   );
 
   const acceptGhost = useCallback(() => {
+    restoredRequestRef.current = false;
     emit("accepted");
     interrupt();
     dispatch({ type: "acceptGhost" });
   }, [dispatch, emit, interrupt]);
 
   const dismissGhost = useCallback(() => {
+    restoredRequestRef.current = false;
     emit("dismissed");
+    interrupt();
     dispatch({ type: "dismiss" });
-  }, [dispatch, emit]);
+  }, [dispatch, emit, interrupt]);
 
   const declineQuestion = useCallback(() => {
+    restoredRequestRef.current = false;
     emit("declined");
+    interrupt();
     dispatch({ type: "dismiss" });
-  }, [dispatch, emit]);
+  }, [dispatch, emit, interrupt]);
 
   const applyOption = useCallback(
     (optionId: string) => {
+      restoredRequestRef.current = false;
       emit("accepted", optionId);
       interrupt();
       dispatch({ type: "apply", optionId });
@@ -244,8 +318,9 @@ export function useEnhance(
 
   const retry = useCallback(() => {
     interrupt();
+    dispatch({ type: "cancel" });
     send();
-  }, [interrupt, send]);
+  }, [dispatch, interrupt, send]);
 
   const setComposing = useCallback(
     (composing: boolean) => {
@@ -293,12 +368,20 @@ export function useEnhance(
 
   // The writer is declared before the loader so the first commit cannot overwrite the stored draft.
   useEffect(() => {
-    if (hydratedRef.current) saveDraft(state.prompt);
+    // Strict Mode may replay this effect with the initial render after hydration updated the ref.
+    if (hydratedRef.current && state.prompt === stateRef.current.prompt) saveDraft(state.prompt);
   }, [state.prompt, saveDraft]);
   useEffect(() => {
+    if (hydratedRef.current) return;
     hydratedRef.current = true;
     dispatch({ type: "hydrate", prompt: readLocalStorageValue({ key: DRAFT_STORAGE_KEY, defaultValue: "" }) });
+    restoredRequestRef.current = canRequest(stateRef.current);
   }, [dispatch]);
+
+  useEffect(() => {
+    if (restoredRequestRef.current && settingsReady && canSend(stateRef.current)) schedule();
+    // Keep eligibility until send(): Strict Mode cleanup cancels the timer, then setup schedules it again.
+  }, [canSend, schedule, settingsReady]);
 
   useEffect(() => interrupt, [interrupt]);
 

@@ -1,0 +1,15 @@
+{
+  "live_documents": 34,
+  "repository_sample_documents": 29,
+  "counts": {
+    "known_title": 29,
+    "exact_kind": 29,
+    "exact_body_hash": 27,
+    "body_hash_after_outer_whitespace_strip": 27,
+    "exact_title_kind_body": 27,
+    "title_kind_body_after_outer_whitespace_strip": 27,
+    "unknown_title": 5
+  },
+  "body_text_exported": false,
+  "gemini_calls": 0
+}

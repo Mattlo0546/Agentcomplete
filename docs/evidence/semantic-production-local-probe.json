@@ -1,0 +1,726 @@
+{
+  "at": "2026-10-25T11:31:24.363635+00:00",
+  "scope": "Local production semantic implementation, public checked-in fixtures only; no network inference or user payloads",
+  "documents": 29,
+  "unique_chunks": 34,
+  "cold_prepare_ms": 26044.44,
+  "cold_snapshot_published": false,
+  "phases": {
+    "direct": {
+      "samples": [
+        {
+          "case": "rename-live",
+          "route": "semantic",
+          "ms": 92.72,
+          "available": true,
+          "selected": [
+            "postgres-zero-downtime-migrations",
+            "fastapi-postgres-atomic-operation",
+            "postgres-session-store"
+          ],
+          "targets": [
+            "postgres-zero-downtime-migrations"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "required-live",
+          "route": "semantic",
+          "ms": 90.01,
+          "available": true,
+          "selected": [
+            "postgres-zero-downtime-migrations",
+            "fastapi-postgres-atomic-operation",
+            "postgres-session-store"
+          ],
+          "targets": [
+            "postgres-zero-downtime-migrations"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "upstream-codes",
+          "route": "semantic",
+          "ms": 115.16,
+          "available": true,
+          "selected": [
+            "api-error-handling",
+            "python-retry-backoff",
+            "fastapi-dependency-injection"
+          ],
+          "targets": [
+            "python-retry-backoff"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "repeat-transient",
+          "route": "semantic",
+          "ms": 94.1,
+          "available": true,
+          "selected": [
+            "api-error-handling",
+            "python-retry-backoff",
+            "fastapi-postgres-atomic-operation"
+          ],
+          "targets": [
+            "python-retry-backoff"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "negated-network",
+          "route": "semantic",
+          "ms": 93.5,
+          "available": true,
+          "selected": [
+            "release-notes-from-commits",
+            "docker-multi-stage-builds",
+            "explain-a-diff-for-review"
+          ],
+          "targets": [
+            "release-notes-from-commits"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "negated-payments",
+          "route": "semantic",
+          "ms": 111.22,
+          "available": true,
+          "selected": [
+            "fastapi-postgres-atomic-operation",
+            "stripe-webhook-idempotency",
+            "fastapi-dependency-injection"
+          ],
+          "targets": [
+            "fastapi-postgres-atomic-operation"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [
+            "stripe-webhook-idempotency"
+          ],
+          "negative_control": false
+        },
+        {
+          "case": "recover-and-observe",
+          "route": "semantic",
+          "ms": 125.05,
+          "available": true,
+          "selected": [
+            "api-error-handling",
+            "python-retry-backoff",
+            "logging-and-observability"
+          ],
+          "targets": [
+            "python-retry-backoff",
+            "logging-and-observability"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "race-and-test",
+          "route": "semantic",
+          "ms": 112.53,
+          "available": true,
+          "selected": [
+            "react-async-response-races",
+            "react-testing-library-patterns",
+            "incremental-react-adoption"
+          ],
+          "targets": [
+            "react-async-response-races",
+            "react-testing-library-patterns"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "ownership",
+          "route": "semantic",
+          "ms": 97.89,
+          "available": true,
+          "selected": [
+            "security-review-checklist",
+            "authorization-access-matrix",
+            "logging-and-observability"
+          ],
+          "targets": [
+            "authorization-access-matrix"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "keyboard-overlay",
+          "route": "semantic",
+          "ms": 92.91,
+          "available": true,
+          "selected": [
+            "accessible-react-dialog",
+            "react-async-response-races",
+            "incremental-react-adoption"
+          ],
+          "targets": [
+            "accessible-react-dialog"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "repro-ui",
+          "route": "semantic",
+          "ms": 121.3,
+          "available": true,
+          "selected": [
+            "browser-bug-regression",
+            "api-error-handling",
+            "react-testing-library-patterns"
+          ],
+          "targets": [
+            "browser-bug-regression"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "session-persistence",
+          "route": "semantic",
+          "ms": 96.07,
+          "available": true,
+          "selected": [
+            "postgres-session-store",
+            "fastapi-postgres-atomic-operation",
+            "postgres-zero-downtime-migrations"
+          ],
+          "targets": [
+            "postgres-session-store"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "excessive-scans",
+          "route": "semantic",
+          "ms": 90.18,
+          "available": true,
+          "selected": [
+            "sql-query-optimisation",
+            "postgres-session-store",
+            "fastapi-postgres-atomic-operation"
+          ],
+          "targets": [
+            "sql-query-optimisation"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "server-secrets",
+          "route": "semantic",
+          "ms": 97.34,
+          "available": true,
+          "selected": [
+            "nextjs-server-client-boundary",
+            "react-async-response-races",
+            "nextjs-app-router-data-fetching"
+          ],
+          "targets": [
+            "nextjs-server-client-boundary"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "server-read-sharing",
+          "route": "semantic",
+          "ms": 99.33,
+          "available": true,
+          "selected": [
+            "nextjs-app-router-data-fetching",
+            "nextjs-server-client-boundary",
+            "fastapi-dependency-injection"
+          ],
+          "targets": [
+            "nextjs-app-router-data-fetching"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "unknown-poem",
+          "route": "semantic",
+          "ms": 92.9,
+          "available": true,
+          "selected": [
+            "bug-triage-loop",
+            "explain-a-diff-for-review",
+            "writing-clear-codex-tasks"
+          ],
+          "targets": [],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": true
+        },
+        {
+          "case": "complete-generic",
+          "route": "semantic",
+          "ms": 126.59,
+          "available": true,
+          "selected": [
+            "explain-a-diff-for-review",
+            "release-notes-from-commits",
+            "fastapi-dependency-injection"
+          ],
+          "targets": [],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": true
+        },
+        {
+          "case": "spanish-race",
+          "route": "semantic",
+          "ms": 108.13,
+          "available": true,
+          "selected": [
+            "react-async-response-races",
+            "react-testing-library-patterns",
+            "nextjs-app-router-data-fetching"
+          ],
+          "targets": [
+            "react-async-response-races"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "new-stack",
+          "route": "semantic",
+          "ms": 103.81,
+          "available": true,
+          "selected": [
+            "fastapi-postgres-atomic-operation",
+            "postgres-zero-downtime-migrations",
+            "fastapi-dependency-injection"
+          ],
+          "targets": [
+            "fastapi-postgres-atomic-operation"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "typed-fragment",
+          "route": "semantic",
+          "ms": 93.73,
+          "available": true,
+          "selected": [
+            "python-retry-backoff",
+            "api-error-handling",
+            "fastapi-dependency-injection"
+          ],
+          "targets": [
+            "python-retry-backoff"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        }
+      ],
+      "target_count": 20,
+      "targets_selected": 20,
+      "missing_cases": [],
+      "semantic_calls": 20,
+      "median_ms": 97.61500000000001,
+      "semantic_median_ms": 97.61500000000001,
+      "excluded_cases": [
+        "negated-payments"
+      ]
+    },
+    "hybrid": {
+      "samples": [
+        {
+          "case": "rename-live",
+          "route": "lexical",
+          "ms": 0.55,
+          "available": true,
+          "selected": [
+            "postgres-zero-downtime-migrations",
+            "fastapi-postgres-atomic-operation",
+            "nextjs-server-client-boundary"
+          ],
+          "targets": [
+            "postgres-zero-downtime-migrations"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "required-live",
+          "route": "lexical",
+          "ms": 0.22,
+          "available": true,
+          "selected": [
+            "sql-query-optimisation",
+            "postgres-session-store",
+            "fastapi-postgres-atomic-operation"
+          ],
+          "targets": [
+            "postgres-zero-downtime-migrations"
+          ],
+          "missing_targets": [
+            "postgres-zero-downtime-migrations"
+          ],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "upstream-codes",
+          "route": "lexical",
+          "ms": 0.17,
+          "available": true,
+          "selected": [
+            "python-retry-backoff",
+            "stripe-webhook-idempotency",
+            "docker-multi-stage-builds"
+          ],
+          "targets": [
+            "python-retry-backoff"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "repeat-transient",
+          "route": "lexical",
+          "ms": 0.13,
+          "available": true,
+          "selected": [
+            "python-retry-backoff",
+            "security-review-checklist",
+            "logging-and-observability"
+          ],
+          "targets": [
+            "python-retry-backoff"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "negated-network",
+          "route": "lexical",
+          "ms": 0.15,
+          "available": true,
+          "selected": [
+            "release-notes-from-commits",
+            "python-retry-backoff",
+            "explain-a-diff-for-review"
+          ],
+          "targets": [
+            "release-notes-from-commits"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [
+            "python-retry-backoff"
+          ],
+          "negative_control": false
+        },
+        {
+          "case": "negated-payments",
+          "route": "lexical",
+          "ms": 0.17,
+          "available": true,
+          "selected": [
+            "fastapi-postgres-atomic-operation",
+            "stripe-webhook-idempotency",
+            "fastapi-dependency-injection"
+          ],
+          "targets": [
+            "fastapi-postgres-atomic-operation"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [
+            "stripe-webhook-idempotency"
+          ],
+          "negative_control": false
+        },
+        {
+          "case": "recover-and-observe",
+          "route": "lexical",
+          "ms": 0.15,
+          "available": true,
+          "selected": [
+            "logging-and-observability",
+            "python-retry-backoff",
+            "docker-multi-stage-builds"
+          ],
+          "targets": [
+            "python-retry-backoff",
+            "logging-and-observability"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "race-and-test",
+          "route": "lexical",
+          "ms": 0.13,
+          "available": true,
+          "selected": [
+            "react-async-response-races",
+            "react-testing-library-patterns",
+            "accessible-react-dialog"
+          ],
+          "targets": [
+            "react-async-response-races",
+            "react-testing-library-patterns"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "ownership",
+          "route": "lexical",
+          "ms": 0.11,
+          "available": true,
+          "selected": [
+            "nextjs-server-client-boundary",
+            "logging-and-observability",
+            "python-retry-backoff"
+          ],
+          "targets": [
+            "authorization-access-matrix"
+          ],
+          "missing_targets": [
+            "authorization-access-matrix"
+          ],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "keyboard-overlay",
+          "route": "semantic",
+          "ms": 102.52,
+          "available": true,
+          "selected": [
+            "accessible-react-dialog",
+            "react-async-response-races",
+            "incremental-react-adoption"
+          ],
+          "targets": [
+            "accessible-react-dialog"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "repro-ui",
+          "route": "lexical",
+          "ms": 0.2,
+          "available": true,
+          "selected": [
+            "browser-bug-regression",
+            "react-async-response-races",
+            "api-error-handling"
+          ],
+          "targets": [
+            "browser-bug-regression"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "session-persistence",
+          "route": "lexical",
+          "ms": 0.13,
+          "available": true,
+          "selected": [
+            "postgres-session-store",
+            "browser-bug-regression",
+            "fastapi-postgres-atomic-operation"
+          ],
+          "targets": [
+            "postgres-session-store"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "excessive-scans",
+          "route": "lexical",
+          "ms": 0.12,
+          "available": true,
+          "selected": [
+            "sql-query-optimisation",
+            "postgres-zero-downtime-migrations",
+            "fastapi-postgres-atomic-operation"
+          ],
+          "targets": [
+            "sql-query-optimisation"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "server-secrets",
+          "route": "lexical",
+          "ms": 0.12,
+          "available": true,
+          "selected": [
+            "nextjs-server-client-boundary",
+            "nextjs-app-router-data-fetching",
+            "browser-bug-regression"
+          ],
+          "targets": [
+            "nextjs-server-client-boundary"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "server-read-sharing",
+          "route": "lexical",
+          "ms": 0.12,
+          "available": true,
+          "selected": [
+            "nextjs-server-client-boundary",
+            "nextjs-app-router-data-fetching",
+            "fastapi-dependency-injection"
+          ],
+          "targets": [
+            "nextjs-app-router-data-fetching"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "unknown-poem",
+          "route": "semantic",
+          "ms": 90.95,
+          "available": true,
+          "selected": [
+            "bug-triage-loop",
+            "explain-a-diff-for-review",
+            "writing-clear-codex-tasks"
+          ],
+          "targets": [],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": true
+        },
+        {
+          "case": "complete-generic",
+          "route": "semantic",
+          "ms": 77.72,
+          "available": true,
+          "selected": [
+            "explain-a-diff-for-review",
+            "release-notes-from-commits",
+            "fastapi-dependency-injection"
+          ],
+          "targets": [],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": true
+        },
+        {
+          "case": "spanish-race",
+          "route": "semantic",
+          "ms": 150.67,
+          "available": true,
+          "selected": [
+            "react-async-response-races",
+            "react-testing-library-patterns",
+            "nextjs-app-router-data-fetching"
+          ],
+          "targets": [
+            "react-async-response-races"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "new-stack",
+          "route": "lexical",
+          "ms": 0.22,
+          "available": true,
+          "selected": [
+            "fastapi-postgres-atomic-operation",
+            "postgres-zero-downtime-migrations",
+            "postgres-session-store"
+          ],
+          "targets": [
+            "fastapi-postgres-atomic-operation"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        },
+        {
+          "case": "typed-fragment",
+          "route": "lexical",
+          "ms": 0.05,
+          "available": true,
+          "selected": [
+            "python-retry-backoff",
+            "docker-multi-stage-builds",
+            "api-error-handling"
+          ],
+          "targets": [
+            "python-retry-backoff"
+          ],
+          "missing_targets": [],
+          "excluded_selected": [],
+          "negative_control": false
+        }
+      ],
+      "target_count": 20,
+      "targets_selected": 18,
+      "missing_cases": [
+        "required-live",
+        "ownership"
+      ],
+      "semantic_calls": 4,
+      "median_ms": 0.16,
+      "semantic_median_ms": 96.735,
+      "excluded_cases": [
+        "negated-network",
+        "negated-payments"
+      ]
+    }
+  }
+}

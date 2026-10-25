@@ -1,0 +1,29 @@
+{
+  "measured_at": "2026-10-25T11:57:02.417Z",
+  "api_url": "http://127.0.0.1:8001",
+  "app_url": "http://localhost:3000",
+  "server_mode": "Next.js development server",
+  "isolated_context": true,
+  "handoff_requests": 0,
+  "journeys": [
+    {
+      "fixture_id": "tab_accept_suffix",
+      "passed": true,
+      "source_request_id": "req_f1c70bdab516",
+      "outcome_status": 204,
+      "exact_suffix_appended_once": true,
+      "ghost_removed": true
+    },
+    {
+      "fixture_id": "question_preview_decline",
+      "passed": true,
+      "source_request_id": "req_6983af7a383f",
+      "outcome_status": 204,
+      "preview_visible": true,
+      "prompt_unchanged": true,
+      "question_removed": true
+    }
+  ],
+  "error": null,
+  "browser": "Chromium 156.0.8078.4"
+}

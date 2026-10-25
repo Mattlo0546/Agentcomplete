@@ -1,0 +1,1536 @@
+{
+  "measured_at": "2026-10-25T11:16:03.421112+00:00",
+  "script_sha256": "4657ff1666060afb6935a9676dc73ebdd0dc43728fb581f45936fca2f0283352",
+  "scope": "Public repository sample corpus and synthetic prompts only; no Tiger reads or writes",
+  "embed_model": "gemini-embedding-001",
+  "embed_dims": 768,
+  "limitations": [
+    "Hand-authored target recall is not exhaustive relevance or proof of unchanged suggestion quality.",
+    "Direct vectors always nominate top three; negative-control and excluded-topic nominations remain visible.",
+    "Batch embedding time is preprocessing throughput, never substituted for individual request latency.",
+    "Embedding-only latency excludes the dependent generation call and UI debounce/transport.",
+    "Public seed fixtures omit live generated tags/summaries; they are not an identical live-corpus benchmark.",
+    "New document vectors use paired RETRIEVAL_DOCUMENT/QUERY; existing live tag vectors are not exported.",
+    "Sparse full-catalog verdicts are a prototype contract; output quality needs independent review."
+  ],
+  "corpus": {
+    "source": "public_repository_seed_fixtures",
+    "documents": 29,
+    "tags": 0,
+    "digest": "3bf0e69cc617029d4b523d5b27c4cef5e66dbd116c3addcd28a902659cf91d79",
+    "body_chars": 43462
+  },
+  "lexical": {
+    "summary": {
+      "fixtures": 20,
+      "expected_targets": 20,
+      "targets_in_top_three": 16,
+      "targets_in_top_five": 16,
+      "positive_fixtures_missing_target": [
+        "required-live",
+        "ownership",
+        "keyboard-overlay",
+        "spanish-race"
+      ],
+      "negative_controls_nominating_candidates": [],
+      "fixtures_nominating_excluded_topics": [
+        "negated-network",
+        "negated-payments"
+      ]
+    },
+    "samples": [
+      {
+        "fixture": "rename-live",
+        "category": "paraphrase",
+        "selected": [
+          "postgres-zero-downtime-migrations",
+          "fastapi-postgres-atomic-operation",
+          "nextjs-server-client-boundary"
+        ],
+        "top_five": [
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          },
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "postgres-zero-downtime-migrations": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "required-live",
+        "category": "paraphrase",
+        "selected": [
+          "sql-query-optimisation",
+          "postgres-session-store",
+          "fastapi-postgres-atomic-operation"
+        ],
+        "top_five": [
+          {
+            "document": "sql-query-optimisation",
+            "score": 0.0
+          },
+          {
+            "document": "postgres-session-store",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "postgres-zero-downtime-migrations": {
+            "rank": null,
+            "selected": false
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "upstream-codes",
+        "category": "paraphrase",
+        "selected": [
+          "python-retry-backoff",
+          "stripe-webhook-idempotency",
+          "docker-multi-stage-builds"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          },
+          {
+            "document": "stripe-webhook-idempotency",
+            "score": 0.0
+          },
+          {
+            "document": "docker-multi-stage-builds",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "repeat-transient",
+        "category": "paraphrase",
+        "selected": [
+          "python-retry-backoff",
+          "security-review-checklist",
+          "logging-and-observability"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          },
+          {
+            "document": "security-review-checklist",
+            "score": 0.0
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "negated-network",
+        "category": "negation",
+        "selected": [
+          "release-notes-from-commits",
+          "python-retry-backoff",
+          "explain-a-diff-for-review"
+        ],
+        "top_five": [
+          {
+            "document": "release-notes-from-commits",
+            "score": 0.0
+          },
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          },
+          {
+            "document": "explain-a-diff-for-review",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "release-notes-from-commits": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [
+          "python-retry-backoff"
+        ],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "negated-payments",
+        "category": "negation",
+        "selected": [
+          "fastapi-postgres-atomic-operation",
+          "stripe-webhook-idempotency",
+          "fastapi-dependency-injection"
+        ],
+        "top_five": [
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          },
+          {
+            "document": "stripe-webhook-idempotency",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-dependency-injection",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "fastapi-postgres-atomic-operation": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [
+          "stripe-webhook-idempotency"
+        ],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "recover-and-observe",
+        "category": "multiple_targets",
+        "selected": [
+          "logging-and-observability",
+          "python-retry-backoff",
+          "docker-multi-stage-builds"
+        ],
+        "top_five": [
+          {
+            "document": "logging-and-observability",
+            "score": 0.0
+          },
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          },
+          {
+            "document": "docker-multi-stage-builds",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 2,
+            "selected": true
+          },
+          "logging-and-observability": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "race-and-test",
+        "category": "multiple_targets",
+        "selected": [
+          "react-async-response-races",
+          "react-testing-library-patterns",
+          "accessible-react-dialog"
+        ],
+        "top_five": [
+          {
+            "document": "react-async-response-races",
+            "score": 0.0
+          },
+          {
+            "document": "react-testing-library-patterns",
+            "score": 0.0
+          },
+          {
+            "document": "accessible-react-dialog",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "react-async-response-races": {
+            "rank": 1,
+            "selected": true
+          },
+          "react-testing-library-patterns": {
+            "rank": 2,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "ownership",
+        "category": "paraphrase",
+        "selected": [
+          "nextjs-server-client-boundary",
+          "logging-and-observability",
+          "python-retry-backoff"
+        ],
+        "top_five": [
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.0
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.0
+          },
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "authorization-access-matrix": {
+            "rank": null,
+            "selected": false
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "keyboard-overlay",
+        "category": "paraphrase",
+        "selected": [],
+        "top_five": [],
+        "targets": {
+          "accessible-react-dialog": {
+            "rank": null,
+            "selected": false
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "semantic_fallback"
+      },
+      {
+        "fixture": "repro-ui",
+        "category": "paraphrase",
+        "selected": [
+          "browser-bug-regression",
+          "react-async-response-races",
+          "api-error-handling"
+        ],
+        "top_five": [
+          {
+            "document": "browser-bug-regression",
+            "score": 0.0
+          },
+          {
+            "document": "react-async-response-races",
+            "score": 0.0
+          },
+          {
+            "document": "api-error-handling",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "browser-bug-regression": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "session-persistence",
+        "category": "paraphrase",
+        "selected": [
+          "postgres-session-store",
+          "browser-bug-regression",
+          "fastapi-postgres-atomic-operation"
+        ],
+        "top_five": [
+          {
+            "document": "postgres-session-store",
+            "score": 0.0
+          },
+          {
+            "document": "browser-bug-regression",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "postgres-session-store": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "excessive-scans",
+        "category": "paraphrase",
+        "selected": [
+          "sql-query-optimisation",
+          "postgres-zero-downtime-migrations",
+          "fastapi-postgres-atomic-operation"
+        ],
+        "top_five": [
+          {
+            "document": "sql-query-optimisation",
+            "score": 0.0
+          },
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "sql-query-optimisation": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "server-secrets",
+        "category": "paraphrase",
+        "selected": [
+          "nextjs-server-client-boundary",
+          "nextjs-app-router-data-fetching",
+          "browser-bug-regression"
+        ],
+        "top_five": [
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.0
+          },
+          {
+            "document": "nextjs-app-router-data-fetching",
+            "score": 0.0
+          },
+          {
+            "document": "browser-bug-regression",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "nextjs-server-client-boundary": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "server-read-sharing",
+        "category": "paraphrase",
+        "selected": [
+          "nextjs-server-client-boundary",
+          "nextjs-app-router-data-fetching",
+          "fastapi-dependency-injection"
+        ],
+        "top_five": [
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.0
+          },
+          {
+            "document": "nextjs-app-router-data-fetching",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-dependency-injection",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "nextjs-app-router-data-fetching": {
+            "rank": 2,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "unknown-poem",
+        "category": "negative_control",
+        "selected": [],
+        "top_five": [],
+        "targets": {},
+        "excluded_selected": [],
+        "negative_control": true,
+        "route": "semantic_fallback"
+      },
+      {
+        "fixture": "complete-generic",
+        "category": "negative_control",
+        "selected": [],
+        "top_five": [],
+        "targets": {},
+        "excluded_selected": [],
+        "negative_control": true,
+        "route": "semantic_fallback"
+      },
+      {
+        "fixture": "spanish-race",
+        "category": "multilingual",
+        "selected": [],
+        "top_five": [],
+        "targets": {
+          "react-async-response-races": {
+            "rank": null,
+            "selected": false
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "semantic_fallback"
+      },
+      {
+        "fixture": "new-stack",
+        "category": "changed_technology",
+        "selected": [
+          "fastapi-postgres-atomic-operation",
+          "postgres-zero-downtime-migrations",
+          "postgres-session-store"
+        ],
+        "top_five": [
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          },
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.0
+          },
+          {
+            "document": "postgres-session-store",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "fastapi-postgres-atomic-operation": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "typed-fragment",
+        "category": "partial_word",
+        "selected": [
+          "python-retry-backoff",
+          "docker-multi-stage-builds",
+          "api-error-handling"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          },
+          {
+            "document": "docker-multi-stage-builds",
+            "score": 0.0
+          },
+          {
+            "document": "api-error-handling",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      }
+    ]
+  },
+  "paired_document_embedding": {
+    "document_precompute_ms": 1199.204,
+    "query_batch_ms": 556.965,
+    "summary": {
+      "fixtures": 20,
+      "expected_targets": 20,
+      "targets_in_top_three": 20,
+      "targets_in_top_five": 20,
+      "positive_fixtures_missing_target": [],
+      "negative_controls_nominating_candidates": [
+        "unknown-poem",
+        "complete-generic"
+      ],
+      "fixtures_nominating_excluded_topics": [
+        "negated-payments"
+      ]
+    },
+    "samples": [
+      {
+        "fixture": "rename-live",
+        "category": "paraphrase",
+        "selected": [
+          "postgres-zero-downtime-migrations",
+          "fastapi-postgres-atomic-operation",
+          "sql-query-optimisation"
+        ],
+        "top_five": [
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.73576
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.642298
+          },
+          {
+            "document": "sql-query-optimisation",
+            "score": 0.635711
+          },
+          {
+            "document": "postgres-session-store",
+            "score": 0.620052
+          },
+          {
+            "document": "refactor-with-tests-first",
+            "score": 0.614627
+          }
+        ],
+        "targets": {
+          "postgres-zero-downtime-migrations": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "required-live",
+        "category": "paraphrase",
+        "selected": [
+          "postgres-zero-downtime-migrations",
+          "fastapi-postgres-atomic-operation",
+          "sql-query-optimisation"
+        ],
+        "top_five": [
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.707281
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.649312
+          },
+          {
+            "document": "sql-query-optimisation",
+            "score": 0.647365
+          },
+          {
+            "document": "postgres-session-store",
+            "score": 0.645834
+          },
+          {
+            "document": "react-async-response-races",
+            "score": 0.598269
+          }
+        ],
+        "targets": {
+          "postgres-zero-downtime-migrations": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "upstream-codes",
+        "category": "paraphrase",
+        "selected": [
+          "python-retry-backoff",
+          "api-error-handling",
+          "stripe-webhook-idempotency"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.741151
+          },
+          {
+            "document": "api-error-handling",
+            "score": 0.665061
+          },
+          {
+            "document": "stripe-webhook-idempotency",
+            "score": 0.620914
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.619697
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.611472
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "repeat-transient",
+        "category": "paraphrase",
+        "selected": [
+          "python-retry-backoff",
+          "api-error-handling",
+          "logging-and-observability"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.72342
+          },
+          {
+            "document": "api-error-handling",
+            "score": 0.654306
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.627466
+          },
+          {
+            "document": "llm-latency-experiment",
+            "score": 0.622104
+          },
+          {
+            "document": "react-async-response-races",
+            "score": 0.620756
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "negated-network",
+        "category": "negation",
+        "selected": [
+          "release-notes-from-commits",
+          "explain-a-diff-for-review",
+          "refactor-with-tests-first"
+        ],
+        "top_five": [
+          {
+            "document": "release-notes-from-commits",
+            "score": 0.730978
+          },
+          {
+            "document": "explain-a-diff-for-review",
+            "score": 0.682246
+          },
+          {
+            "document": "refactor-with-tests-first",
+            "score": 0.66259
+          },
+          {
+            "document": "python-retry-backoff",
+            "score": 0.657122
+          },
+          {
+            "document": "bug-triage-loop",
+            "score": 0.651601
+          }
+        ],
+        "targets": {
+          "release-notes-from-commits": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "negated-payments",
+        "category": "negation",
+        "selected": [
+          "fastapi-postgres-atomic-operation",
+          "stripe-webhook-idempotency",
+          "postgres-zero-downtime-migrations"
+        ],
+        "top_five": [
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.754866
+          },
+          {
+            "document": "stripe-webhook-idempotency",
+            "score": 0.72494
+          },
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.665697
+          },
+          {
+            "document": "postgres-session-store",
+            "score": 0.637243
+          },
+          {
+            "document": "fastapi-dependency-injection",
+            "score": 0.631448
+          }
+        ],
+        "targets": {
+          "fastapi-postgres-atomic-operation": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [
+          "stripe-webhook-idempotency"
+        ],
+        "negative_control": false
+      },
+      {
+        "fixture": "recover-and-observe",
+        "category": "multiple_targets",
+        "selected": [
+          "python-retry-backoff",
+          "api-error-handling",
+          "logging-and-observability"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.748177
+          },
+          {
+            "document": "api-error-handling",
+            "score": 0.67454
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.66893
+          },
+          {
+            "document": "stripe-webhook-idempotency",
+            "score": 0.643151
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.641611
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          },
+          "logging-and-observability": {
+            "rank": 3,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "race-and-test",
+        "category": "multiple_targets",
+        "selected": [
+          "react-async-response-races",
+          "react-testing-library-patterns",
+          "refactor-with-tests-first"
+        ],
+        "top_five": [
+          {
+            "document": "react-async-response-races",
+            "score": 0.746769
+          },
+          {
+            "document": "react-testing-library-patterns",
+            "score": 0.690781
+          },
+          {
+            "document": "refactor-with-tests-first",
+            "score": 0.636206
+          },
+          {
+            "document": "browser-bug-regression",
+            "score": 0.629941
+          },
+          {
+            "document": "nextjs-app-router-data-fetching",
+            "score": 0.621124
+          }
+        ],
+        "targets": {
+          "react-async-response-races": {
+            "rank": 1,
+            "selected": true
+          },
+          "react-testing-library-patterns": {
+            "rank": 2,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "ownership",
+        "category": "paraphrase",
+        "selected": [
+          "authorization-access-matrix",
+          "security-review-checklist",
+          "api-contract-change"
+        ],
+        "top_five": [
+          {
+            "document": "authorization-access-matrix",
+            "score": 0.661157
+          },
+          {
+            "document": "security-review-checklist",
+            "score": 0.641582
+          },
+          {
+            "document": "api-contract-change",
+            "score": 0.627138
+          },
+          {
+            "document": "postgres-session-store",
+            "score": 0.622289
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.617689
+          }
+        ],
+        "targets": {
+          "authorization-access-matrix": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "keyboard-overlay",
+        "category": "paraphrase",
+        "selected": [
+          "accessible-react-dialog",
+          "react-async-response-races",
+          "react-testing-library-patterns"
+        ],
+        "top_five": [
+          {
+            "document": "accessible-react-dialog",
+            "score": 0.714233
+          },
+          {
+            "document": "react-async-response-races",
+            "score": 0.637492
+          },
+          {
+            "document": "react-testing-library-patterns",
+            "score": 0.623999
+          },
+          {
+            "document": "incremental-react-adoption",
+            "score": 0.598528
+          },
+          {
+            "document": "browser-bug-regression",
+            "score": 0.597526
+          }
+        ],
+        "targets": {
+          "accessible-react-dialog": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "repro-ui",
+        "category": "paraphrase",
+        "selected": [
+          "browser-bug-regression",
+          "react-async-response-races",
+          "bug-triage-loop"
+        ],
+        "top_five": [
+          {
+            "document": "browser-bug-regression",
+            "score": 0.731409
+          },
+          {
+            "document": "react-async-response-races",
+            "score": 0.635529
+          },
+          {
+            "document": "bug-triage-loop",
+            "score": 0.633663
+          },
+          {
+            "document": "accessible-react-dialog",
+            "score": 0.617281
+          },
+          {
+            "document": "react-testing-library-patterns",
+            "score": 0.615747
+          }
+        ],
+        "targets": {
+          "browser-bug-regression": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "session-persistence",
+        "category": "paraphrase",
+        "selected": [
+          "postgres-session-store",
+          "fastapi-postgres-atomic-operation",
+          "postgres-zero-downtime-migrations"
+        ],
+        "top_five": [
+          {
+            "document": "postgres-session-store",
+            "score": 0.760462
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.646
+          },
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.637429
+          },
+          {
+            "document": "sql-query-optimisation",
+            "score": 0.630996
+          },
+          {
+            "document": "stripe-webhook-idempotency",
+            "score": 0.601065
+          }
+        ],
+        "targets": {
+          "postgres-session-store": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "excessive-scans",
+        "category": "paraphrase",
+        "selected": [
+          "sql-query-optimisation",
+          "postgres-zero-downtime-migrations",
+          "fastapi-postgres-atomic-operation"
+        ],
+        "top_five": [
+          {
+            "document": "sql-query-optimisation",
+            "score": 0.732711
+          },
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.660555
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.651317
+          },
+          {
+            "document": "postgres-session-store",
+            "score": 0.626538
+          },
+          {
+            "document": "llm-latency-experiment",
+            "score": 0.614861
+          }
+        ],
+        "targets": {
+          "sql-query-optimisation": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "server-secrets",
+        "category": "paraphrase",
+        "selected": [
+          "nextjs-server-client-boundary",
+          "nextjs-app-router-data-fetching",
+          "postgres-session-store"
+        ],
+        "top_five": [
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.681304
+          },
+          {
+            "document": "nextjs-app-router-data-fetching",
+            "score": 0.644824
+          },
+          {
+            "document": "postgres-session-store",
+            "score": 0.62516
+          },
+          {
+            "document": "authorization-access-matrix",
+            "score": 0.622263
+          },
+          {
+            "document": "react-async-response-races",
+            "score": 0.62224
+          }
+        ],
+        "targets": {
+          "nextjs-server-client-boundary": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "server-read-sharing",
+        "category": "paraphrase",
+        "selected": [
+          "nextjs-app-router-data-fetching",
+          "nextjs-server-client-boundary",
+          "react-async-response-races"
+        ],
+        "top_five": [
+          {
+            "document": "nextjs-app-router-data-fetching",
+            "score": 0.718716
+          },
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.673813
+          },
+          {
+            "document": "react-async-response-races",
+            "score": 0.65363
+          },
+          {
+            "document": "api-error-handling",
+            "score": 0.602731
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.600073
+          }
+        ],
+        "targets": {
+          "nextjs-app-router-data-fetching": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "unknown-poem",
+        "category": "negative_control",
+        "selected": [
+          "writing-clear-codex-tasks",
+          "explain-a-diff-for-review",
+          "repo-first-vertical-slice"
+        ],
+        "top_five": [
+          {
+            "document": "writing-clear-codex-tasks",
+            "score": 0.519131
+          },
+          {
+            "document": "explain-a-diff-for-review",
+            "score": 0.518525
+          },
+          {
+            "document": "repo-first-vertical-slice",
+            "score": 0.516756
+          },
+          {
+            "document": "release-notes-from-commits",
+            "score": 0.511662
+          },
+          {
+            "document": "llm-latency-experiment",
+            "score": 0.510687
+          }
+        ],
+        "targets": {},
+        "excluded_selected": [],
+        "negative_control": true
+      },
+      {
+        "fixture": "complete-generic",
+        "category": "negative_control",
+        "selected": [
+          "explain-a-diff-for-review",
+          "release-notes-from-commits",
+          "repo-first-vertical-slice"
+        ],
+        "top_five": [
+          {
+            "document": "explain-a-diff-for-review",
+            "score": 0.641811
+          },
+          {
+            "document": "release-notes-from-commits",
+            "score": 0.612805
+          },
+          {
+            "document": "repo-first-vertical-slice",
+            "score": 0.607219
+          },
+          {
+            "document": "bug-triage-loop",
+            "score": 0.607032
+          },
+          {
+            "document": "browser-bug-regression",
+            "score": 0.603805
+          }
+        ],
+        "targets": {},
+        "excluded_selected": [],
+        "negative_control": true
+      },
+      {
+        "fixture": "spanish-race",
+        "category": "multilingual",
+        "selected": [
+          "react-async-response-races",
+          "nextjs-app-router-data-fetching",
+          "react-testing-library-patterns"
+        ],
+        "top_five": [
+          {
+            "document": "react-async-response-races",
+            "score": 0.737408
+          },
+          {
+            "document": "nextjs-app-router-data-fetching",
+            "score": 0.645038
+          },
+          {
+            "document": "react-testing-library-patterns",
+            "score": 0.597689
+          },
+          {
+            "document": "incremental-react-adoption",
+            "score": 0.59134
+          },
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.578324
+          }
+        ],
+        "targets": {
+          "react-async-response-races": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "new-stack",
+        "category": "changed_technology",
+        "selected": [
+          "fastapi-postgres-atomic-operation",
+          "postgres-zero-downtime-migrations",
+          "postgres-session-store"
+        ],
+        "top_five": [
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.77582
+          },
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.691075
+          },
+          {
+            "document": "postgres-session-store",
+            "score": 0.655274
+          },
+          {
+            "document": "react-async-response-races",
+            "score": 0.641987
+          },
+          {
+            "document": "api-contract-change",
+            "score": 0.639916
+          }
+        ],
+        "targets": {
+          "fastapi-postgres-atomic-operation": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      },
+      {
+        "fixture": "typed-fragment",
+        "category": "partial_word",
+        "selected": [
+          "python-retry-backoff",
+          "api-error-handling",
+          "fastapi-postgres-atomic-operation"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.771311
+          },
+          {
+            "document": "api-error-handling",
+            "score": 0.651903
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.601392
+          },
+          {
+            "document": "stripe-webhook-idempotency",
+            "score": 0.598361
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.582267
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false
+      }
+    ]
+  },
+  "direct_sentence_to_existing_tags": {
+    "status": "not_run",
+    "reason": "Live tag vectors are excluded from the public fixture-only external API experiment"
+  },
+  "single_query_latency": {
+    "samples": [
+      {
+        "fixture": "rename-live",
+        "embedding_ms": 285.384,
+        "local_rank_ms": 0.802,
+        "selected": [
+          "postgres-zero-downtime-migrations",
+          "fastapi-postgres-atomic-operation",
+          "sql-query-optimisation"
+        ]
+      },
+      {
+        "fixture": "required-live",
+        "embedding_ms": 247.225,
+        "local_rank_ms": 0.536,
+        "selected": [
+          "postgres-zero-downtime-migrations",
+          "fastapi-postgres-atomic-operation",
+          "sql-query-optimisation"
+        ]
+      },
+      {
+        "fixture": "upstream-codes",
+        "embedding_ms": 437.531,
+        "local_rank_ms": 2.43,
+        "selected": [
+          "python-retry-backoff",
+          "api-error-handling",
+          "stripe-webhook-idempotency"
+        ]
+      },
+      {
+        "fixture": "repeat-transient",
+        "embedding_ms": 357.143,
+        "local_rank_ms": 0.319,
+        "selected": [
+          "python-retry-backoff",
+          "api-error-handling",
+          "logging-and-observability"
+        ]
+      },
+      {
+        "fixture": "negated-network",
+        "embedding_ms": 277.263,
+        "local_rank_ms": 0.187,
+        "selected": [
+          "release-notes-from-commits",
+          "explain-a-diff-for-review",
+          "refactor-with-tests-first"
+        ]
+      },
+      {
+        "fixture": "negated-payments",
+        "embedding_ms": 280.04,
+        "local_rank_ms": 1.68,
+        "selected": [
+          "fastapi-postgres-atomic-operation",
+          "stripe-webhook-idempotency",
+          "postgres-zero-downtime-migrations"
+        ]
+      }
+    ],
+    "embedding_p50_ms": 282.712,
+    "embedding_max_ms": 437.531
+  },
+  "corpus_changes": {
+    "in_memory_only": true,
+    "added": {
+      "fixture": "added-document",
+      "category": "corpus_change",
+      "selected": [
+        "synthetic-new-document",
+        "python-retry-backoff",
+        "postgres-zero-downtime-migrations"
+      ],
+      "top_five": [
+        {
+          "document": "synthetic-new-document",
+          "score": 0.824204
+        },
+        {
+          "document": "python-retry-backoff",
+          "score": 0.589633
+        },
+        {
+          "document": "postgres-zero-downtime-migrations",
+          "score": 0.584859
+        },
+        {
+          "document": "browser-bug-regression",
+          "score": 0.580861
+        },
+        {
+          "document": "fastapi-postgres-atomic-operation",
+          "score": 0.57865
+        }
+      ],
+      "targets": {
+        "synthetic-new-document": {
+          "rank": 1,
+          "selected": true
+        }
+      },
+      "excluded_selected": [],
+      "negative_control": false
+    },
+    "new_document_precompute_ms": 266.381,
+    "new_document_query_ms": 290.523,
+    "removed_target_returned": false,
+    "removed_target_explicitly_absent": [
+      "postgres-zero-downtime-migrations"
+    ]
+  }
+}

@@ -39,7 +39,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         logging.getLogger(__name__).info("applied migrations: %s", ", ".join(applied))
     try:
         await start_settings_refresh()
-        if get_settings().fast_autocomplete_enabled:
+        cfg = get_settings()
+        if cfg.catalog_review_enabled or cfg.fast_autocomplete_enabled or cfg.direct_semantic_enabled:
             await catalog.start()
         yield
     finally:

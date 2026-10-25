@@ -1,0 +1,63 @@
+{
+  "measured_at": "2026-10-25T11:12:43.833696+00:00",
+  "sdk_version": "2.33.0",
+  "scope": "Sequential randomized synthetic provider-only probes; no application database writes",
+  "seed": 7255,
+  "inventory": [
+    {
+      "name": "gemini-3.5-flash-lite",
+      "actions": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    }
+  ],
+  "summaries": {
+    "gemini-3.5-flash-lite/standard/stream": {
+      "n": 2,
+      "valid": 0,
+      "expected_type_pass": 0,
+      "relevance_pass": 0,
+      "median_validated_ms": null,
+      "median_first_token_ms": null
+    }
+  },
+  "samples": [
+    {
+      "case": "retry_suffix",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "standard",
+      "mode": "stream",
+      "schema": "ReviewedCompletion",
+      "candidate_count": 3,
+      "thinking": "off",
+      "status": "error",
+      "error_type": "ClientError",
+      "http_code": 400,
+      "response_complete_ms": 160.84,
+      "applied_tier": null,
+      "response_header_names": [],
+      "finish_reason": null
+    },
+    {
+      "case": "question",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "standard",
+      "mode": "stream",
+      "schema": "ReviewedGeneration",
+      "candidate_count": 2,
+      "thinking": "off",
+      "status": "error",
+      "error_type": "ClientError",
+      "http_code": 400,
+      "response_complete_ms": 164.21,
+      "applied_tier": null,
+      "response_header_names": [],
+      "finish_reason": null
+    }
+  ]
+}

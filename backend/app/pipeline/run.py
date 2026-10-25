@@ -7,14 +7,14 @@ from uuid import UUID
 from pydantic import ValidationError
 
 from app.config import get_settings
-from app.pipeline import catalog, context
+from app.pipeline import catalog, context, semantic
 from app.pipeline.complete import complete, generation_model, use_completion
 from app.pipeline.features import derive_features
 from app.pipeline.generate import WireResponse, allowed_types, build_contents, to_response
 from app.pipeline.judge import Judged
 from app.pipeline.retrieve import Candidate, Retrieval, has_tags, is_fresh, retrieve
 from app.pipeline.tags import TagExtraction, extract_tags
-from app.pipeline.trace import TraceKnowledge, TraceStep, TraceTag, save_trace
+from app.pipeline.trace import TraceKnowledge, TraceStep, TraceTag, save_trace, wait_for_capacity
 from app.pipeline.validate import InvalidOutput, validate_response
 from app.schemas.enhance import EnhanceRequest, NoneResponse, utf16_len
 from app.settings_store import AppSettings, load_settings
@@ -66,18 +66,20 @@ async def _generate_step(
     extraction: TagExtraction | None,
     candidates: list[Candidate],
     allowed: list[str],
+    *,
+    full_bodies: bool = False,
 ) -> tuple[WireResponse, TraceStep, list[Judged]]:
     """Review every candidate before generating; retry invalid output once, then return `none`."""
     compact = use_completion(
         req.prompt, req.cursor, settings, unfinished=bool(extraction and extraction.continuation_needed)
     )
-    # A complete or ambiguous draft needs an explicit choice before adding inferred requirements.
-    # Compact mode is reserved for unfinished clauses (or autocomplete-only user settings).
-    if not compact and extraction is not None:
-        allowed = [kind for kind in allowed if kind != "autocomplete"]
+    # Grammatical completeness does not imply a sufficiently specified task. The
+    # proposal model can add source-grounded steps or ask about a material choice.
     model = generation_model(compact)
     started = time.perf_counter()
-    contents = build_contents(req.prompt, req.cursor, settings, extraction, candidates, response_types=allowed)
+    contents = build_contents(
+        req.prompt, req.cursor, settings, extraction, candidates, response_types=allowed, full_bodies=full_bodies
+    )
     feedback = ""
     for attempt in range(2):
         try:
@@ -133,22 +135,53 @@ async def run_enhance(req: EnhanceRequest) -> WireResponse:
             steps = _skipped_steps("disabled")
         else:
             local_started = time.perf_counter()
-            local = (
-                await catalog.select(req.prompt)
-                if get_settings().fast_autocomplete_enabled
-                and settings.autocomplete_enabled
-                and req.cursor == utf16_len(req.prompt)
-                else None
+            local = None
+            retrieval_model = "tiger-lexical"
+            local_timings: list[str] = []
+            cfg = get_settings()
+            if cfg.catalog_review_enabled:
+                stage_started = time.perf_counter()
+                local = await catalog.select_complete()
+                local_timings.append(f"catalog {_ms(stage_started)} ms")
+                if local is not None:
+                    retrieval_model = "tiger-complete-catalog"
+            lexical_eligible = (
+                cfg.fast_autocomplete_enabled and settings.autocomplete_enabled and req.cursor == utf16_len(req.prompt)
             )
+            # Keep the existing fast path; direct semantics replaces the serial tag
+            # fallback. Semantic-first is an explicit recall/latency tradeoff.
+            if local is None and lexical_eligible and not (cfg.direct_semantic_enabled and cfg.semantic_first_enabled):
+                stage_started = time.perf_counter()
+                local = await catalog.select(req.prompt)
+                local_timings.append(f"lexical {_ms(stage_started)} ms")
+            if local is None and cfg.direct_semantic_enabled:
+                stage_started = time.perf_counter()
+                snapshot = await catalog.get_snapshot()
+                local_timings.append(f"snapshot {_ms(stage_started)} ms")
+                if snapshot is not None:
+                    stage_started = time.perf_counter()
+                    local = await semantic.select(req.prompt, snapshot)
+                    local_timings.append(f"semantic {_ms(stage_started)} ms")
+                    retrieval_model = (
+                        "google/embeddinggemma-2 · local semantic"
+                        if cfg.semantic_embed_backend == "local"
+                        else f"{cfg.embed_model} · direct semantic"
+                    )
+            if local is None and lexical_eligible and cfg.direct_semantic_enabled and cfg.semantic_first_enabled:
+                stage_started = time.perf_counter()
+                local = await catalog.select(req.prompt)
+                local_timings.append(f"lexical {_ms(stage_started)} ms")
+                retrieval_model = "tiger-lexical"
             if local is not None:
                 retrieval = local
                 tags_step = _step("tags", "local", None, "skipped", "mode selection in generation; no tag inference")
                 retrieve_step = _step(
                     "retrieve",
-                    "tiger-lexical",
+                    retrieval_model,
                     local_started,
                     "ok",
-                    f"local knowledge snapshot · {len(local.candidates)} candidates; fresh review",
+                    f"local knowledge snapshot · {len(local.candidates)} candidates; fresh review; "
+                    + "; ".join(local_timings),
                 )
             elif previous is not None:
                 extraction, tags_step = await _tags_step(req.prompt, previous)
@@ -172,11 +205,14 @@ async def run_enhance(req: EnhanceRequest) -> WireResponse:
                     extraction, tags_present, refresh=bool(req.previous_request_id)
                 )
             response, generate_step, judged = await _generate_step(
-                req, settings, extraction, retrieval.candidates, allowed
+                req, settings, extraction, retrieval.candidates, allowed, full_bodies=retrieval.complete_catalog
             )
-            if local is not None and not is_fresh(local):
+            # Drain any trace backpressure before the last source check. The remaining
+            # path through save_trace has no yielding await while a slot is available.
+            await wait_for_capacity()
+            if not is_fresh(retrieval):
                 response = NoneResponse(request_id=req.request_id, prompt_revision=req.prompt_revision)
-                judged = [Judged(candidate, 0.0, False) for candidate in local.candidates]
+                judged = [Judged(candidate, 0.0, False) for candidate in retrieval.candidates]
                 generate_step.detail = "knowledge changed or expired during generation; suggestion discarded"
                 generate_step.status = "skipped"
             kept = [j.candidate for j in judged if j.kept]

@@ -43,7 +43,9 @@ export function KnowledgeUsed({ trace }: { trace: Trace }) {
         {general ? (
           <li className="flex h-11 items-center gap-2.5">
             <Sparkles className="size-4 shrink-0 text-muted-foreground" />
-            <span className="flex-1">General enhancement</span>
+            <span className="flex-1">
+              {trace.result_type === "none" ? "No relevant knowledge kept" : "General enhancement"}
+            </span>
           </li>
         ) : (
           kept.map((item) => <Row key={item.id} item={item} />)

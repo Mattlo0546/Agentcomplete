@@ -105,6 +105,46 @@ function setup() {
 }
 
 describe("Refine journeys", () => {
+  it("shows the current retrieval trace when generation returns no suggestion", async () => {
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    await screen.findByTestId("ghost-text");
+    expect(
+      within(await screen.findByRole("region", { name: "Input context" })).getByText("python-retry-backoff"),
+    ).toBeInTheDocument();
+
+    traceHandler = (requestId) =>
+      json({
+        ...trace(requestId),
+        result_type: "none",
+        knowledge: [{ id: "current", kind: "skill", title: "current-draft-candidate", score: 0.2, kept: false }],
+      });
+    enhanceHandler = (body) =>
+      json({ schema_version: 1, request_id: body.request_id, prompt_revision: body.prompt_revision, type: "none" });
+    await typeInto(user, editor, " elsewhere");
+    expect(await screen.findByText("No suggestion for this draft")).toBeInTheDocument();
+    expect(screen.queryByText("No suggestion yet")).not.toBeInTheDocument();
+    expect(screen.queryByText("python-retry-backoff")).not.toBeInTheDocument();
+    expect(screen.getByText("No relevant knowledge kept")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show dropped (1)" }));
+    expect(screen.getByText("current-draft-candidate")).toBeInTheDocument();
+    const current = enhanceCalls().at(-1)!;
+    expect(calls.some((call) => call.path === `/v1/traces/${current.request_id}`)).toBe(true);
+    expect(screen.queryByTestId("ghost-text")).not.toBeInTheDocument();
+  });
+
+  it("requests a restored draft once on returning without applying or handing it off", async () => {
+    window.localStorage.setItem("pe.refine.draft", JSON.stringify("Saved migration draft"));
+    const { editor } = setup();
+    expect(editor.value).toBe("Saved migration draft");
+    await screen.findByTestId("ghost-text");
+    expect(enhanceCalls()).toHaveLength(1);
+    expect(enhanceCalls()[0].prompt).toBe("Saved migration draft");
+    expect(editor.value).toBe("Saved migration draft");
+    expect(outcomes().map((outcome) => outcome.event)).toEqual(["shown"]);
+    expect(calls.some((call) => call.path === "/v1/handoff")).toBe(false);
+  });
+
   it("debounces typing into one request, shows ghost text and accepts it with Tab", async () => {
     const { user, editor } = setup();
     expect(screen.getByText("No suggestion yet")).toBeInTheDocument();
@@ -263,6 +303,49 @@ describe("Refine journeys", () => {
       expect.objectContaining({ event: "shown", prompt_revision: 5 }),
       expect.objectContaining({ event: "accepted", prompt_revision: 5 }),
     ]);
+  });
+
+  it("salvages an in-flight completion after matching typing and accepts only its remainder", async () => {
+    let releaseFirst!: () => void;
+    enhanceHandler = (body) =>
+      new Promise<Response>((resolve) => {
+        if (enhanceCalls().length === 1) releaseFirst = () => resolve(json(autocomplete(body, " and jitter.")));
+      });
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    await waitFor(() => expect(enhanceCalls()).toHaveLength(1));
+    const source = enhanceCalls()[0];
+    await typeInto(user, editor, " and");
+    releaseFirst();
+    const ghost = await screen.findByTestId("ghost-text");
+    expect(ghost).toHaveTextContent("jitter.");
+    expect(ghost).toHaveAttribute("data-request-id", source.request_id);
+    expect(ghost).toHaveAttribute("data-source-revision", "5");
+    expect(ghost).toHaveAttribute("data-render-revision", "9");
+    await user.keyboard("{Tab}");
+    expect(editor.value).toBe("Retry and jitter.");
+    expect(outcomes()).toEqual([
+      expect.objectContaining({ event: "shown", prompt_revision: 5 }),
+      expect.objectContaining({ event: "accepted", prompt_revision: 5 }),
+    ]);
+  });
+
+  it("Escape invalidates an unseen in-flight suffix before a compatible late answer arrives", async () => {
+    let releaseFirst!: () => void;
+    enhanceHandler = (body) =>
+      new Promise<Response>((resolve) => {
+        if (enhanceCalls().length === 1) releaseFirst = () => resolve(json(autocomplete(body, " and jitter.")));
+      });
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    await waitFor(() => expect(enhanceCalls()).toHaveLength(1));
+    await typeInto(user, editor, " and");
+    await user.keyboard("{Escape}");
+    releaseFirst();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(screen.queryByTestId("ghost-text")).not.toBeInTheDocument();
+    expect(enhanceCalls()).toHaveLength(1);
+    expect(outcomes()).toHaveLength(0);
   });
 
   it("waits for composition to finish before requesting an enhancement", async () => {

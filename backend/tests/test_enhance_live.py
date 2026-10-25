@@ -132,15 +132,31 @@ async def test_vague_prompt_asks_question(client: AsyncClient) -> None:
 
 
 @pytest.mark.parametrize(
-    "prompt",
-    ["Add retr", "Añade reintentos con retroceso exponencial y"],
+    ("prompt", "partial_word"),
+    [
+        ("When our Python HTTP client receives a temporary 503 response, add retr", True),
+        ("Before returning another account's private records, enforce authoriz", True),
+        ("Añade reintentos con retroceso exponencial y", False),
+    ],
 )
-async def test_unfinished_words_and_other_languages_can_autocomplete(client: AsyncClient, prompt: str) -> None:
+async def test_unfinished_words_and_other_languages_can_autocomplete(
+    client: AsyncClient, prompt: str, partial_word: bool
+) -> None:
     data = await _enhance(client, prompt)
     assert data.type == "autocomplete", data
     assert data.insert_at == utf16_len(prompt)
-    if prompt == "Add retr":
+    if partial_word:
         assert data.text[0].isalpha(), data  # Finish the partial word without inserting a word gap.
+
+
+@pytest.mark.parametrize("prompt", ["Add retr", "Set up trans"])
+@pytest.mark.xfail(
+    strict=True,
+    reason="Known Gemini quality limitation: retrieved candidates can supply task intent missing from a typed fragment",
+)
+async def test_ambiguous_fragments_wait_for_task_context(client: AsyncClient, prompt: str) -> None:
+    data = await _enhance(client, prompt)
+    assert data.type == "none", data  # Prefix-compatible spelling alone does not establish the user's task.
 
 
 @pytest.mark.parametrize("prompt", ["Make the API faster", "Perform a security check"])

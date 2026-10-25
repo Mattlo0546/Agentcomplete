@@ -24,6 +24,8 @@ from app.settings_store import AppSettings
 
 EXCERPT_CHARS = 1200
 KNOWLEDGE_BUDGET_CHARS = 6000
+COMPLETE_CATALOG_MAX_DOCUMENTS = 64
+COMPLETE_CATALOG_MAX_CHARS = 80_000
 
 WireResponse = AutocompleteResponse | MultipleChoiceResponse | NoneResponse
 
@@ -74,6 +76,37 @@ def excerpt(body: str, tags: list[str], limit: int = EXCERPT_CHARS) -> str:
     return "\n\n".join(paragraphs[i] for i in sorted(chosen))[:limit]
 
 
+class CatalogReviewTooLarge(ValueError):
+    """The complete source cannot fit the explicitly bounded catalog review."""
+
+
+def complete_knowledge_context(knowledge: list[Candidate]) -> str:
+    """Render all source bodies exactly, or reject the whole catalog; never shorten individual items.
+
+    Selection uses this same renderer, so the bound includes metadata, wrappers,
+    candidate indices and separators exactly as sent to the model.
+    """
+    if len(knowledge) > COMPLETE_CATALOG_MAX_DOCUMENTS:
+        raise CatalogReviewTooLarge("complete catalog exceeds document bound")
+    blocks: list[str] = []
+    characters = 0
+    for index, item in enumerate(knowledge):
+        block = "\n".join(
+            [
+                f'<knowledge candidate="{index}" kind="{item.kind}">',
+                f"Title: {item.title}",
+                f"Summary: {item.summary}",
+                f"Body:\n{item.body}",
+                "</knowledge>",
+            ]
+        )
+        characters += len(block) + bool(blocks)
+        if characters > COMPLETE_CATALOG_MAX_CHARS:
+            raise CatalogReviewTooLarge("complete catalog exceeds serialized character bound")
+        blocks.append(block)
+    return "\n".join(blocks)
+
+
 def build_contents(
     prompt: str,
     cursor: int,
@@ -82,6 +115,7 @@ def build_contents(
     knowledge: list[Candidate],
     *,
     response_types: list[str] | None = None,
+    full_bodies: bool = False,
 ) -> str:
     parts = [
         "<settings>",
@@ -97,11 +131,21 @@ def build_contents(
             f"missing_constraints: {', '.join(extraction.missing_constraints) or 'none'}",
             "</task_features>",
         ]
-    if knowledge:
+    if knowledge and full_bodies:
+        parts.append(complete_knowledge_context(knowledge))
+    elif knowledge:
         budget = KNOWLEDGE_BUDGET_CHARS
         for index, item in enumerate(knowledge):
-            text = excerpt(
-                item.body, extraction.tags if extraction else item.matched_tags, min(EXCERPT_CHARS, max(budget, 0))
+            # Direct retrieval may match a later source chunk. Show that complete bounded
+            # chunk instead of silently replacing its evidence with the document's opening.
+            text = (
+                item.evidence_excerpt[: min(1800, max(budget, 0))]
+                if item.evidence_excerpt is not None
+                else excerpt(
+                    item.body,
+                    extraction.tags if extraction else item.matched_tags,
+                    min(EXCERPT_CHARS, max(budget, 0)),
+                )
             )
             budget -= len(text)
             parts += [

@@ -61,9 +61,7 @@ async def save_trace(
     used_knowledge: list[UUID] | None = None,
 ) -> None:
     """Make the trace available immediately, then persist metadata outside the response's critical path."""
-    # Backpressure is preferable to accumulating an unbounded queue during a database outage.
-    while len(_pending) >= 256:
-        await asyncio.wait(_pending, return_when=asyncio.FIRST_COMPLETED)
+    await wait_for_capacity()
     row = {
         "request_id": request_id,
         "created_at": datetime.now(UTC),
@@ -79,6 +77,12 @@ async def save_trace(
     task = asyncio.create_task(_persist(row, used_knowledge or []))
     _pending.add(task)
     task.add_done_callback(_pending.discard)
+
+
+async def wait_for_capacity() -> None:
+    """Allow callers to wait for backpressure before their final source-freshness check."""
+    while len(_pending) >= 256:
+        await asyncio.wait(_pending, return_when=asyncio.FIRST_COMPLETED)
 
 
 async def flush() -> None:

@@ -33,6 +33,7 @@ export function ContextInspector({ requestId }: { requestId: string | null }) {
   if (trace.isError) return <p className="text-muted-foreground">Context unavailable</p>;
   return (
     <>
+      {trace.data.result_type === "none" && <p className="text-muted-foreground">No suggestion for this draft</p>}
       <KnowledgeUsed trace={trace.data} />
       <PipelineSteps trace={trace.data} />
     </>

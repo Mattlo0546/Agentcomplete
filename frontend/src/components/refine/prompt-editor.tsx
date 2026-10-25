@@ -11,11 +11,13 @@ type PromptEditorProps = {
   selectionEnd: number;
   /** Ghost suffix (already checked to be current and at the end), or "". */
   ghost: string;
+  /** Source identity for attributing a displayed suffix to its validated response. */
+  ghostSource?: { requestId: string; sourceRevision: number; revision: number };
   /** Amber focus treatment is dropped while a question card holds the pending decision. */
   quiet: boolean;
   narrow: boolean;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
-  onChange: (prompt: string, selectionStart: number, selectionEnd: number) => void;
+  onChange: (prompt: string, selectionStart: number, selectionEnd: number, inputType?: string) => void;
   onSelect: (selectionStart: number, selectionEnd: number) => void;
   onComposingChange: (composing: boolean) => void;
   onAcceptGhost: () => void;
@@ -79,7 +81,12 @@ export function PromptEditor(props: PromptEditorProps) {
             rows={1}
             spellCheck={false}
             onChange={(event) =>
-              props.onChange(event.target.value, event.target.selectionStart, event.target.selectionEnd)
+              props.onChange(
+                event.target.value,
+                event.target.selectionStart,
+                event.target.selectionEnd,
+                (event.nativeEvent as InputEvent).inputType,
+              )
             }
             onSelect={(event) => syncSelection(event.currentTarget)}
             onCompositionStart={() => props.onComposingChange(true)}
@@ -96,7 +103,12 @@ export function PromptEditor(props: PromptEditorProps) {
             <span ref={caretRef} />
             {prompt.slice(selectionEnd)}
             {ghost && (
-              <span data-testid="ghost-text">
+              <span
+                data-testid="ghost-text"
+                data-request-id={props.ghostSource?.requestId}
+                data-source-revision={props.ghostSource?.sourceRevision}
+                data-render-revision={props.ghostSource?.revision}
+              >
                 <span className="text-ghost">{ghost}</span>
                 <button
                   type="button"

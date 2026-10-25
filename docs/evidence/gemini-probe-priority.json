@@ -1,0 +1,183 @@
+{
+  "measured_at": "2026-10-25T11:12:08.278796+00:00",
+  "sdk_version": "2.33.0",
+  "scope": "Sequential randomized synthetic provider-only probes; no application database writes",
+  "seed": 7254,
+  "inventory": [
+    {
+      "name": "gemini-3.5-flash-lite",
+      "actions": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    }
+  ],
+  "summaries": {
+    "gemini-3.5-flash-lite/priority/stream": {
+      "n": 2,
+      "valid": 2,
+      "expected_type_pass": 2,
+      "relevance_pass": 2,
+      "median_validated_ms": 802.575,
+      "median_first_token_ms": 587.1800000000001
+    },
+    "gemini-3.5-flash-lite/priority/full": {
+      "n": 2,
+      "valid": 2,
+      "expected_type_pass": 2,
+      "relevance_pass": 2,
+      "median_validated_ms": 801.915,
+      "median_first_token_ms": null
+    }
+  },
+  "samples": [
+    {
+      "case": "retry_suffix",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "priority",
+      "mode": "full",
+      "schema": "ReviewedCompletion",
+      "candidate_count": 3,
+      "thinking": "minimal",
+      "response_complete_ms": 678.96,
+      "result_type": "autocomplete",
+      "wire_valid": true,
+      "expected_type": true,
+      "expected_relevance": true,
+      "keep": [
+        true,
+        false,
+        false
+      ],
+      "scores": [
+        0.95,
+        0.1,
+        0.2
+      ],
+      "text_chars": 83,
+      "text_sha256": "0c3f91a02b37b0c50a81f1717ae8a36127040eb95aa5ce58bb7209117627f4ae",
+      "option_count": 0,
+      "validated_ms": 679.19,
+      "status": "ok",
+      "applied_tier": "standard",
+      "finish_reason": "FinishReason.STOP",
+      "prompt_token_count": 764,
+      "candidates_token_count": 56,
+      "thoughts_token_count": null,
+      "cached_content_token_count": null
+    },
+    {
+      "case": "question",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "priority",
+      "mode": "full",
+      "schema": "ReviewedGeneration",
+      "candidate_count": 2,
+      "thinking": "minimal",
+      "response_complete_ms": 924.21,
+      "result_type": "multiple_choice",
+      "wire_valid": true,
+      "expected_type": true,
+      "expected_relevance": true,
+      "keep": [
+        true,
+        false
+      ],
+      "scores": [
+        0.9,
+        0.1
+      ],
+      "text_chars": 72,
+      "text_sha256": "2429a3f720e98cdb96f8f4b6abf96872ae6300227fddd6b1d07c00e3bdae9379",
+      "option_count": 2,
+      "validated_ms": 924.64,
+      "status": "ok",
+      "applied_tier": "standard",
+      "finish_reason": "FinishReason.STOP",
+      "prompt_token_count": 889,
+      "candidates_token_count": 193,
+      "thoughts_token_count": null,
+      "cached_content_token_count": null
+    },
+    {
+      "case": "retry_suffix",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "priority",
+      "mode": "stream",
+      "schema": "ReviewedCompletion",
+      "candidate_count": 3,
+      "thinking": "minimal",
+      "first_non_thinking_token_ms": 565.38,
+      "first_text_field_ms": 671.32,
+      "complete_schema_ms": 705.76,
+      "response_complete_ms": 714.05,
+      "result_type": "autocomplete",
+      "wire_valid": true,
+      "expected_type": true,
+      "expected_relevance": true,
+      "keep": [
+        true,
+        false,
+        false
+      ],
+      "scores": [
+        0.9,
+        0.1,
+        0.2
+      ],
+      "text_chars": 83,
+      "text_sha256": "d29aca0996bddb96fc02300c1cc77457189cf538b95ffb423fcd9416138c4d64",
+      "option_count": 0,
+      "validated_ms": 714.34,
+      "status": "ok",
+      "applied_tier": null,
+      "finish_reason": "FinishReason.STOP",
+      "prompt_token_count": 764,
+      "candidates_token_count": 78,
+      "thoughts_token_count": null,
+      "cached_content_token_count": null
+    },
+    {
+      "case": "question",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "priority",
+      "mode": "stream",
+      "schema": "ReviewedGeneration",
+      "candidate_count": 2,
+      "thinking": "minimal",
+      "first_non_thinking_token_ms": 608.98,
+      "first_text_field_ms": 657.44,
+      "complete_schema_ms": 883.41,
+      "response_complete_ms": 889.55,
+      "result_type": "multiple_choice",
+      "wire_valid": true,
+      "expected_type": true,
+      "expected_relevance": true,
+      "keep": [
+        true,
+        false
+      ],
+      "scores": [
+        0.9,
+        0.1
+      ],
+      "text_chars": 66,
+      "text_sha256": "293f225b0cd814201dd2b9f393858662a93819d3ec3be402d313ffeb75a12283",
+      "option_count": 2,
+      "validated_ms": 890.81,
+      "status": "ok",
+      "applied_tier": null,
+      "finish_reason": "FinishReason.STOP",
+      "prompt_token_count": 889,
+      "candidates_token_count": 186,
+      "thoughts_token_count": null,
+      "cached_content_token_count": null
+    }
+  ]
+}

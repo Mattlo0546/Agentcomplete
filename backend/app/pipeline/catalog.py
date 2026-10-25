@@ -1,4 +1,4 @@
-"""A bounded, versioned Tiger snapshot for current-draft lexical candidate selection.
+"""A bounded, versioned Tiger snapshot for complete review or candidate selection.
 
 This only nominates candidates: Gemini still reviews every candidate against the current draft.
 No-match and oversized corpora use the semantic pipeline. Lexical scores are never cosine scores.
@@ -12,13 +12,15 @@ import re
 import time
 import unicodedata
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 from uuid import UUID
 
+from app.config import get_settings
 from app.db.pool import connection
+from app.pipeline import semantic
+from app.pipeline.generate import CatalogReviewTooLarge, complete_knowledge_context
 from app.pipeline.retrieve import (
-    BODY_PREFETCH_CHARS,
     MAX_CANDIDATES,
     RETRIEVAL_TTL_S,
     Candidate,
@@ -105,13 +107,19 @@ _STOP = frozenset(
     ]
 )
 _SQL = """
-SELECT k.id, k.kind, k.title, k.summary, left(k.body, %(body)s) AS body,
+WITH bounded AS (
+    SELECT k.*, sum(length(title) + length(summary) + length(body)) OVER () AS source_chars
+    FROM (SELECT id, kind, title, left(summary, 2000) AS summary, body
+          FROM knowledge ORDER BY id LIMIT %(limit)s) k
+)
+SELECT k.id, k.kind, k.title, k.summary,
+       CASE WHEN k.source_chars <= %(chars)s THEN k.body ELSE '' END AS body,
+       k.source_chars > %(chars)s AS source_oversized,
        coalesce(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL), '{}') AS tags
-FROM (SELECT id, kind, title, left(summary, 2000) AS summary, body
-      FROM knowledge ORDER BY id LIMIT %(limit)s) k
+FROM bounded k
 LEFT JOIN knowledge_tag kt ON kt.knowledge_id = k.id
 LEFT JOIN tag t ON t.id = kt.tag_id
-GROUP BY k.id, k.kind, k.title, k.summary, k.body ORDER BY k.id
+GROUP BY k.id, k.kind, k.title, k.summary, k.body, k.source_chars ORDER BY k.id
 """
 
 
@@ -166,7 +174,7 @@ def current(snapshot: Snapshot) -> bool:
 
 def build_snapshot(rows: list[dict[str, Any]], fetched_at: float, generation: int) -> Snapshot:
     chars = sum(len(str(row.get(key, ""))) for row in rows for key in ("title", "summary", "body", "tags"))
-    if len(rows) > MAX_DOCUMENTS or chars > MAX_SOURCE_CHARS:
+    if len(rows) > MAX_DOCUMENTS or chars > MAX_SOURCE_CHARS or any(row.get("source_oversized") for row in rows):
         return Snapshot((), {}, fetched_at, generation, oversized=True)
     documents: list[Document] = []
     frequencies: Counter[str] = Counter()
@@ -185,6 +193,16 @@ def build_snapshot(rows: list[dict[str, Any]], fetched_at: float, generation: in
     return Snapshot(tuple(documents), idf, fetched_at, generation)
 
 
+def _complete_review_fits(snapshot: Snapshot) -> bool:
+    if not get_settings().catalog_review_enabled or snapshot.oversized or not current(snapshot):
+        return False
+    try:
+        complete_knowledge_context([document.candidate for document in snapshot.documents])
+    except CatalogReviewTooLarge:
+        return False
+    return current(snapshot)
+
+
 async def refresh(*, force: bool = False) -> Snapshot | None:
     global _snapshot
     async with _lock:
@@ -193,23 +211,56 @@ async def refresh(*, force: bool = False) -> Snapshot | None:
         generation = cache_generation()
         fetched_at = time.monotonic()
         async with connection() as conn:
-            rows = await (
-                await conn.execute(_SQL, {"body": BODY_PREFETCH_CHARS, "limit": MAX_DOCUMENTS + 1})
-            ).fetchall()
+            rows = await (await conn.execute(_SQL, {"chars": MAX_SOURCE_CHARS, "limit": MAX_DOCUMENTS + 1})).fetchall()
         snapshot = build_snapshot(rows, fetched_at, generation)
         # A committed mutation during the read must never republish the old knowledge.
         if current(snapshot):
             _snapshot = snapshot
+            if _complete_review_fits(snapshot):
+                # Full review needs no document embeddings. Invalidate any older
+                # preparation too, including a previous oversized-corpus build.
+                semantic.clear()
+            elif get_settings().direct_semantic_enabled:
+                semantic.schedule(snapshot)
             return snapshot
         return None
 
 
-async def select(prompt: str) -> Retrieval | None:
-    """None means semantic fallback; an empty Retrieval means the corpus itself is empty."""
+async def get_snapshot() -> Snapshot | None:
+    """Return a complete, current source snapshot; never expose an oversized partial corpus."""
     snapshot = _snapshot
     if snapshot is None or not current(snapshot):
         snapshot = await refresh()
     if snapshot is None or snapshot.oversized or not current(snapshot):
+        return None
+    return snapshot
+
+
+async def select_complete() -> Retrieval | None:
+    """Offer every source to the reviewer, independent of query-word or embedding overlap."""
+    if not get_settings().catalog_review_enabled:
+        return None
+    snapshot = await get_snapshot()
+    if snapshot is None or not _complete_review_fits(snapshot):
+        return None
+    candidates = [
+        replace(
+            document.candidate,
+            similarity=0.0,
+            matched_tags=list(document.candidate.matched_tags),
+            evidence_excerpt=None,
+        )
+        for document in snapshot.documents
+    ]
+    return Retrieval(
+        {}, candidates, fetched_at=snapshot.fetched_at, generation=snapshot.generation, complete_catalog=True
+    )
+
+
+async def select(prompt: str) -> Retrieval | None:
+    """None means semantic fallback; an empty Retrieval means the corpus itself is empty."""
+    snapshot = await get_snapshot()
+    if snapshot is None:
         return None
     query = tokens(prompt)
     # Nominate candidates for a partially typed final token without arbitrary substring matches.
@@ -258,7 +309,16 @@ async def select(prompt: str) -> Retrieval | None:
 
 async def start() -> None:
     global _worker
-    await refresh()
+    snapshot = await refresh()
+    if snapshot is not None and get_settings().direct_semantic_enabled and not _complete_review_fits(snapshot):
+        # Prepare once before accepting traffic; refresh work is asynchronous thereafter.
+        await semantic.prepare(snapshot)
+        if not current(snapshot):
+            # A cold local model/index can take longer than the source TTL. Re-read Tiger
+            # after building; content-keyed vectors are reusable, source freshness is not.
+            snapshot = await refresh(force=True)
+            if snapshot is not None and not _complete_review_fits(snapshot):
+                await semantic.prepare(snapshot)
     if _worker is None or _worker.done():
         _worker = asyncio.create_task(_maintain())
 
@@ -281,3 +341,4 @@ async def stop() -> None:
             await _worker
         _worker = None
     _snapshot = None
+    await semantic.stop()

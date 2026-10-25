@@ -14,6 +14,11 @@ EMOJI = "Fix 😀 bug in 日本語 parser"  # 😀 is 2 UTF-16 units, each CJK c
 SETTINGS = AppSettings()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def database() -> None:
+    """These pure conversion tests do not need the shared live database fixture."""
+
+
 def test_offsets_with_astral_and_cjk() -> None:
     assert utf16_len(EMOJI) == len(EMOJI) + 1
     cp = EMOJI.index("bug")

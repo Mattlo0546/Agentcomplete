@@ -1,8 +1,10 @@
 """Gemini access with structured outputs and per-call metadata logging."""
 
 import asyncio
+import math
 import time
 from functools import lru_cache
+from typing import Literal
 
 from google import genai
 from google.genai import types
@@ -98,6 +100,48 @@ async def embed(texts: list[str], *, operation: str = "embed") -> list[list[floa
         code = "upstream_timeout" if isinstance(exc, TimeoutError) else "upstream_error"
         raise UpstreamError(code, f"{operation} failed") from exc
     await record_ai_call(get_request_id(), operation, settings.embed_model, "ok", _ms(started), None, None, None)
+    return vectors
+
+
+async def embed_retrieval(
+    texts: list[str],
+    *,
+    task_type: Literal["RETRIEVAL_QUERY", "RETRIEVAL_DOCUMENT"],
+    model: str,
+    dimensions: int,
+    operation: str,
+) -> list[list[float]]:
+    """Embed a retrieval pair with caller-frozen configuration, separate from stored tag vectors.
+
+    The Developer API does not support auto_truncate=False. Callers must bound whole inputs
+    before reaching this helper; never silently truncate a query or document here.
+    """
+    if not texts:
+        return []
+    started = time.perf_counter()
+    try:
+        response = await asyncio.wait_for(
+            _client().aio.models.embed_content(
+                model=model,
+                contents=texts,
+                config=types.EmbedContentConfig(output_dimensionality=dimensions, task_type=task_type),
+            ),
+            timeout=get_settings().llm_timeout_s,
+        )
+        vectors = [list(embedding.values or []) for embedding in response.embeddings or []]
+        if len(vectors) != len(texts) or any(
+            len(vector) != dimensions or not all(math.isfinite(value) for value in vector) for vector in vectors
+        ):
+            raise ValueError("invalid retrieval embedding shape or values")
+    except asyncio.CancelledError:
+        await record_ai_call(get_request_id(), operation, model, "error", _ms(started), None, None, "cancelled")
+        raise
+    except Exception as exc:
+        # Provider exception strings can contain request data; this path records only the class.
+        await record_ai_call(get_request_id(), operation, model, "error", _ms(started), None, None, type(exc).__name__)
+        code = "upstream_timeout" if isinstance(exc, TimeoutError) else "upstream_error"
+        raise UpstreamError(code, f"{operation} failed") from exc
+    await record_ai_call(get_request_id(), operation, model, "ok", _ms(started), None, None, None)
     return vectors
 
 

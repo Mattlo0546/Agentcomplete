@@ -1,4 +1,5 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EnhanceRequest, EnhanceResponse } from "@/lib/api/types";
@@ -21,7 +22,7 @@ const response = (body: EnhanceRequest, text = " it safely"): EnhanceResponse =>
 const advance = (ms: number) => act(async () => vi.advanceTimersByTimeAsync(ms));
 type Controller = ReturnType<typeof useEnhance>;
 const type = (result: { current: Controller }, prompt: string) =>
-  act(() => result.current.change(prompt, prompt.length, prompt.length));
+  act(() => result.current.change(prompt, prompt.length, prompt.length, "insertText"));
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -61,7 +62,7 @@ describe("autocomplete scheduling", () => {
     expect(postEnhance).toHaveBeenCalledTimes(1);
   });
 
-  it("aborts superseded work immediately and rejects its late result", async () => {
+  it("rejects a divergent retained result and sends for the current prompt", async () => {
     let resolveFirst!: (value: EnhanceResponse) => void;
     vi.mocked(postEnhance).mockImplementationOnce(
       () =>
@@ -74,8 +75,9 @@ describe("autocomplete scheduling", () => {
     await advance(200);
     const [first, signal] = vi.mocked(postEnhance).mock.calls[0];
     type(result, "Ship tests");
-    expect(signal.aborted).toBe(true);
+    expect(signal.aborted).toBe(false);
     await act(async () => resolveFirst(response(first, " STALE")));
+    expect(signal.aborted).toBe(true);
     expect(ghostText(result.current.state)).toBe("");
     await advance(200);
     expect(ghostText(result.current.state)).toBe(" it safely");
@@ -374,6 +376,71 @@ describe("previous request context", () => {
 });
 
 describe("draft persistence", () => {
+  it("requests the restored draft once in Strict Mode without changing the stored text", async () => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify("Saved draft"));
+    const { result } = renderHook(() => useEnhance(), { wrapper: StrictMode });
+    expect(result.current.state.prompt).toBe("Saved draft");
+    await advance(150);
+    expect(postEnhance).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(postEnhance).mock.calls[0][0]).toMatchObject({ prompt: "Saved draft", prompt_revision: 0 });
+    expect(result.current.state.prompt).toBe("Saved draft");
+    expect(ghostText(result.current.state)).toBe(" it safely");
+    await advance(1000);
+    expect(postEnhance).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(window.localStorage.getItem(DRAFT_STORAGE_KEY)!)).toBe("Saved draft");
+  });
+
+  it("waits for settings and respects disabled suggestion modes on restoration", async () => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify("Saved draft"));
+    const { result, rerender } = renderHook(
+      ({ ready, enabled }) =>
+        useEnhance(150, { settingsReady: ready, autocompleteEnabled: enabled, questionsEnabled: enabled }),
+      { initialProps: { ready: false, enabled: true }, wrapper: StrictMode },
+    );
+    await advance(1000);
+    expect(postEnhance).not.toHaveBeenCalled();
+    rerender({ ready: true, enabled: false });
+    await advance(1000);
+    expect(postEnhance).not.toHaveBeenCalled();
+    expect(result.current.state.prompt).toBe("Saved draft");
+    rerender({ ready: true, enabled: true });
+    await advance(150);
+    expect(postEnhance).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the fetched delay and requests the latest edit instead of an old restored snapshot", async () => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify("Saved draft"));
+    const { result, rerender } = renderHook(({ ready, delay }) => useEnhance(delay, { settingsReady: ready }), {
+      initialProps: { ready: false, delay: 400 },
+    });
+    await advance(500);
+    expect(postEnhance).not.toHaveBeenCalled();
+    rerender({ ready: true, delay: 200 });
+    await advance(100);
+    type(result, "Edited draft");
+    await advance(199);
+    expect(postEnhance).not.toHaveBeenCalled();
+    await advance(1);
+    expect(postEnhance).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(postEnhance).mock.calls[0][0].prompt).toBe("Edited draft");
+  });
+
+  it("does not resurrect an automatically queued restoration after Escape", async () => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify("Saved draft"));
+    const { result, rerender } = renderHook(({ delay }) => useEnhance(delay), { initialProps: { delay: 150 } });
+    act(() => result.current.dismissGhost());
+    rerender({ delay: 200 });
+    await advance(1000);
+    expect(postEnhance).not.toHaveBeenCalled();
+  });
+
+  it.each(["", "   \n"])("does not automatically request an empty restored draft %j", async (draft) => {
+    window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    renderHook(() => useEnhance(), { wrapper: StrictMode });
+    await advance(1000);
+    expect(postEnhance).not.toHaveBeenCalled();
+  });
+
   it("batches a typing burst and flushes the last edit on page hide", async () => {
     const { result } = renderHook(() => useEnhance());
     const writes = vi.spyOn(Storage.prototype, "setItem");

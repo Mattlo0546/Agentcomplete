@@ -4,7 +4,7 @@ import { applyEdits, responseIsValid } from "./edits";
 
 // Revision / staleness state machine for the Refine editor (docs/brief.md §4).
 // Every text change bumps `revision`; edits invalidate suggestions except typing an exact ghost prefix.
-// A network response is accepted only when it answers the latest request for the current revision.
+// Exact responses retain strict revision checks. A separate action can salvage a validated in-flight suffix.
 
 export type Snapshot = { requestId: string; revision: number; prompt: string; cursor: number };
 
@@ -34,6 +34,8 @@ export type EnhanceState = {
   selectionEnd: number;
   revision: number;
   pending: Snapshot | null;
+  /** At most one in-flight request retained through uninterrupted end-of-prompt typing. */
+  retained: Snapshot | null;
   suggestion: Suggestion | null;
   error: EnhanceError | null;
   /** Latest validated response for the current input, including `none`; drives context displays. */
@@ -42,10 +44,12 @@ export type EnhanceState = {
 
 export type EnhanceAction =
   | { type: "hydrate"; prompt: string }
-  | { type: "change"; prompt: string; selectionStart: number; selectionEnd: number }
+  | { type: "change"; prompt: string; selectionStart: number; selectionEnd: number; retainInFlight?: boolean }
   | { type: "select"; selectionStart: number; selectionEnd: number }
   | { type: "request"; snapshot: Snapshot }
   | { type: "response"; response: EnhanceResponse; now: number }
+  | { type: "retainedResponse"; requestId: string; response: EnhanceResponse; now: number }
+  | { type: "discardRetained" }
   | { type: "failure"; requestId: string; error: EnhanceError }
   | { type: "cancel" }
   | { type: "acceptGhost" }
@@ -58,12 +62,13 @@ export const initialEnhanceState: EnhanceState = {
   selectionEnd: 0,
   revision: 0,
   pending: null,
+  retained: null,
   suggestion: null,
   error: null,
   traceId: null,
 };
 
-const invalidated = { pending: null, suggestion: null, error: null, traceId: null } as const;
+const invalidated = { pending: null, retained: null, suggestion: null, error: null, traceId: null } as const;
 
 export function enhanceReducer(state: EnhanceState, action: EnhanceAction): EnhanceState {
   switch (action.type) {
@@ -88,7 +93,17 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
         consumesGhost && state.suggestion?.type === "autocomplete" && added.length < suffix.length
           ? { ...state.suggestion, revision, text: suffix.slice(added.length) }
           : null;
-      return { ...state, ...invalidated, prompt, selectionStart, selectionEnd, revision, suggestion };
+      const endAppend =
+        action.retainInFlight &&
+        added !== "" &&
+        state.selectionStart === state.prompt.length &&
+        state.selectionEnd === state.prompt.length &&
+        selectionStart === prompt.length &&
+        selectionEnd === prompt.length;
+      const candidate = state.pending ?? state.retained;
+      const retained =
+        endAppend && !suggestion && candidate && candidate.cursor === candidate.prompt.length ? candidate : null;
+      return { ...state, ...invalidated, prompt, selectionStart, selectionEnd, revision, suggestion, retained };
     }
 
     case "select":
@@ -104,9 +119,9 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
       const pending = state.pending;
       if (!isCurrent(state, response.request_id, response.prompt_revision)) return state;
       if (!pending || !responseIsValid(response, pending.prompt, pending.cursor)) {
-        return { ...state, pending: null, error: { status: 0, message: "Invalid suggestion" } };
+        return { ...state, pending: null, retained: null, error: { status: 0, message: "Invalid suggestion" } };
       }
-      const base = { ...state, pending: null, error: null, traceId: response.request_id };
+      const base = { ...state, pending: null, retained: null, error: null, traceId: response.request_id };
       if (response.type === "none") return { ...base, suggestion: null };
       const common = {
         requestId: response.request_id,
@@ -121,12 +136,62 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
       return { ...base, suggestion };
     }
 
+    case "retainedResponse": {
+      const source = state.retained;
+      if (!source || source.requestId !== action.requestId) return state;
+      const { response, now } = action;
+      const base = { ...state, retained: null };
+      if (
+        response.type !== "autocomplete" ||
+        response.request_id !== source.requestId ||
+        response.prompt_revision !== source.revision ||
+        !responseIsValid(response, source.prompt, source.cursor) ||
+        state.suggestion ||
+        !state.prompt.startsWith(source.prompt) ||
+        state.selectionStart !== state.prompt.length ||
+        state.selectionEnd !== state.prompt.length
+      ) {
+        return base;
+      }
+      const consumed = state.prompt.slice(source.prompt.length);
+      const remainder = response.text.slice(consumed.length);
+      // Exact document equality, including UTF-16 units. Never split a surrogate pair or normalize text.
+      if (
+        !consumed ||
+        !response.text.startsWith(consumed) ||
+        !remainder ||
+        !wholeCodePoints(consumed) ||
+        !wholeCodePoints(remainder)
+      ) {
+        return base;
+      }
+      return {
+        ...base,
+        error: null,
+        traceId: source.requestId,
+        suggestion: {
+          type: "autocomplete",
+          requestId: source.requestId,
+          revision: state.revision,
+          sourceRevision: source.revision,
+          text: remainder,
+          shownAt: now,
+        },
+      };
+    }
+
+    case "discardRetained":
+      return state.retained ? { ...state, retained: null } : state;
+
     case "failure":
+      if (state.retained?.requestId === action.requestId) return { ...state, retained: null };
       if (state.pending?.requestId !== action.requestId) return state;
-      return { ...state, pending: null, error: action.error };
+      return { ...state, pending: null, retained: null, error: action.error };
 
     case "cancel":
-      return state.pending || state.suggestion || state.error || state.traceId ? { ...state, ...invalidated } : state;
+      return state.pending || state.retained || state.suggestion || state.error || state.traceId
+        ? { ...state, ...invalidated }
+        : state;
 
     case "acceptGhost": {
       if (!ghostText(state)) return state;
@@ -142,7 +207,9 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
     }
 
     case "dismiss":
-      return state.suggestion ? { ...state, suggestion: null } : state;
+      return state.suggestion || state.pending || state.retained
+        ? { ...state, suggestion: null, pending: null, retained: null }
+        : state;
 
     case "apply": {
       const option = activeQuestion(state)?.options.find((candidate) => candidate.id === action.optionId);
@@ -158,6 +225,10 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
       };
     }
   }
+}
+
+function wholeCodePoints(text: string): boolean {
+  return [...text].every((point) => point.length === 2 || point.charCodeAt(0) < 0xd800 || point.charCodeAt(0) > 0xdfff);
 }
 
 function isCurrent(state: EnhanceState, requestId: string, revision: number): boolean {
