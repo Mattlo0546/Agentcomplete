@@ -9,6 +9,16 @@ if [[ -e "$destination_dir" ]]; then
     printf 'Refusing to replace an unrelated app: %s\n' "$destination_dir" >&2
     exit 1
   fi
+  if diff -qr -- "$source_dir/.build/Prompt Enhance.app" "$destination_dir" >/dev/null 2>&1; then
+    if ! "$source_dir/.build/register-input-source" "$destination_dir"; then
+      exit 1
+    fi
+    printf 'Installed helper already matches the signed build; left it in place so its Accessibility grant is preserved.\n'
+    exit 0
+  fi
+  if [[ "${PROMPT_ENHANCE_SIGN_IDENTITY:--}" == "-" ]]; then
+    printf 'This ad-hoc signed replacement can change the helper identity macOS uses for Accessibility. Refresh the Prompt Enhance grant after installing.\n' >&2
+  fi
   backup_dir="$source_dir/.build/backups/$(date -u +%Y%m%dT%H%M%SZ)"
   mkdir -p "$backup_dir"
   ditto "$destination_dir" "$backup_dir/Prompt Enhance.app"

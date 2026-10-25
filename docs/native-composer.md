@@ -17,7 +17,15 @@ native/macos/test.sh
 native/macos/install.sh
 ```
 
-The installer builds and ad-hoc signs `~/Library/Input Methods/Prompt Enhance.app`, registers and enables its input source, and backs up a prior installation under `native/macos/.build/backups/`. It does **not** change the current keyboard/input source. It uses the existing local backend, including its configured Gemini integration; no API key is stored in the input method or setup app.
+The installer uses an ad-hoc development signature by default, registers and enables `~/Library/Input Methods/Prompt Enhance.app`, and backs up a changed prior installation under `native/macos/.build/backups/`. If the signed payload is already identical to the installed helper, it leaves the app in place so macOS can retain its Accessibility grant. It does **not** change the current keyboard/input source. It uses the existing local backend, including its configured Gemini integration; no API key is stored in the input method or setup app.
+
+For a stable build, pass an identity already available in the local keychain:
+
+```bash
+PROMPT_ENHANCE_SIGN_IDENTITY='Apple Development: Your Name (TEAMID)' native/macos/install.sh
+```
+
+The build fails before it can replace the installed helper when that identity is unavailable. With the default ad-hoc signature, a changed replacement can have a new macOS Accessibility identity, so complete all changes first and refresh the **Prompt Enhance** permission after the final installation. Do not grant the similarly named Setup app.
 
 Then run `native/macos/launcher.sh` and click **Allow Accessibility…**. That user action asks the installed input helper to show macOS's permission prompt; it does not request permission for Setup. In the macOS list, manually enable **Prompt Enhance** at `~/Library/Input Methods/Prompt Enhance.app`. If it is absent, **Show helper in Finder** reveals the exact app to add using the settings pane's **+** button. Setup checks the running input helper's own permission and displays **Allowed** only for a fresh report matching the installed build. Return to Setup and click **Activate Prompt Enhance**. If the source is already active, click **Reconnect Prompt Enhance** (it temporarily selects a regular keyboard layout, then restores Prompt Enhance after 200 ms). **Use previous keyboard** immediately disables the workaround.
 
