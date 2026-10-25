@@ -1,0 +1,61 @@
+name: ChatGPT extension
+
+on:
+  pull_request:
+    paths:
+      - 'extension/chatgpt/**'
+      - 'backend/**'
+      - '.github/workflows/chatgpt-extension.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'extension/chatgpt/**'
+      - 'backend/**'
+      - '.github/workflows/chatgpt-extension.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extension:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: extension/chatgpt
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: extension/chatgpt/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
+      - run: pnpm test
+      - run: pnpm test:browser
+      - uses: actions/upload-artifact@v7
+        with:
+          name: prompt-enhance-chatgpt
+          path: extension/chatgpt/dist/
+          if-no-files-found: error
+
+  history-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install uv
+      - run: uv sync --locked
+      - run: uv run python -m pytest --confcutdir=tests/offline tests/offline -q

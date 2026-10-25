@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Prompt Enhance for ChatGPT",
+  "version": "0.2.1",
+  "description": "Preview prompt suggestions and save versions beside ChatGPT's composer. Uses your local Prompt Enhance backend.",
+  "minimum_chrome_version": "124",
+  "permissions": ["storage"],
+  "host_permissions": ["http://127.0.0.1/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_popup": "popup.html", "default_title": "Prompt Enhance" },
+  "content_scripts": [{ "matches": ["https://chatgpt.com/*", "https://chat.openai.com/*"], "js": ["core.js", "editor.js", "content.js"], "run_at": "document_idle", "all_frames": false }],
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'none'" }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "prompt-enhance-chatgpt",
+  "version": "0.2.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/core.test.mjs tests/background.test.mjs",
+    "test:browser": "playwright test",
+    "test:live": "node scripts/smoke-local.mjs",
+    "package": "node scripts/build.mjs --zip"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "esbuild": "^0.28.2",
+    "prosemirror-history": "^1.5.1",
+    "prosemirror-model": "^1.25.12",
+    "prosemirror-schema-basic": "^1.2.5",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.42.8"
+  },
+  "packageManager": "pnpm@10.33.2"
+}
