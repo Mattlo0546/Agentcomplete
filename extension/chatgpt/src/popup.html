@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Prompt Enhance</title><link rel="stylesheet" href="popup.css"></head>
+<body><header><span class="mark">P↗</span><strong>Prompt Enhance</strong><span class="badge">ChatGPT</span></header>
+<main><h1>A clearer next sentence.</h1><p>Inline autocomplete and saved versions for your ChatGPT drafts.</p>
+<button id="toggle" disabled>Loading…</button><p class="privacy">When enabled, your current draft goes to your local Prompt Enhance backend and Gemini. Conversation history is not read. Nothing is sent to ChatGPT automatically.</p>
+<section><h2>Local backend</h2><code>127.0.0.1:8000</code><p id="status" role="status" aria-live="polite">Check the connection before you start.</p><button id="check" class="secondary">Check connection</button></section>
+<p class="tip">Open <strong>chatgpt.com</strong> and type at least 12 characters. Gray text continues your draft inline. Press <kbd>Tab</kbd> to accept or <kbd>Esc</kbd> to dismiss. Only clarifying questions open a card.</p>
+<p class="tip">After installing or reloading the extension, refresh your ChatGPT tab. No macOS helper is required.</p></main><script src="popup.js"></script></body></html>

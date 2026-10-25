@@ -2,7 +2,7 @@
 
 A prompt companion for Codex. Retrieves relevant skills and examples, reviews them with Gemini, and suggests ghost text or clarifying edits while you type.
 
-[Architecture](docs/architecture.md) · [Retrieval detail](#retrieval-architecture) · [API reference](docs/api.md) · [Codex plugin](docs/codex-plugin.md) · [Performance](docs/performance.md)
+[Architecture](docs/architecture.md) · [Retrieval detail](#retrieval-architecture) · [API reference](docs/api.md) · [ChatGPT extension](extension/chatgpt/README.md) · [Codex plugin](docs/codex-plugin.md) · [Performance](docs/performance.md)
 
 ## Architecture
 
@@ -73,6 +73,8 @@ pnpm dev
 
 Open [localhost:3000](http://localhost:3000). To load sample knowledge, run `uv run python -m app.knowledge.seed` from `backend/`. Follow the [Codex plugin guide](docs/codex-plugin.md) to enable **Send to Codex**. Snowflake is optional for suggestions and required only for export/training.
 
+For inline autocomplete directly in ChatGPT, install the [Chrome extension](extension/chatgpt/README.md). It uses the same local backend, shows gray text at the caret, supports clarifying choices and saves prompt versions. The frontend and native helper are not required.
+
 ## Repository
 
 | Path                             | Contents                                                   |
@@ -81,6 +83,7 @@ Open [localhost:3000](http://localhost:3000). To load sample knowledge, run `uv 
 | [`backend/app/`](backend/app/)   | API, retrieval/generation pipeline, persistence, analytics |
 | [`backend/seed/`](backend/seed/) | Sample skills and coding guidance                          |
 | [`plugin/`](plugin/)             | Codex marketplace, MCP server, and skill                   |
+| [`extension/chatgpt/`](extension/chatgpt/) | Chrome extension for inline ChatGPT autocomplete and saved prompts |
 | [`docs/`](docs/)                 | API contract, architecture, measured performance, research |
 
 The [performance report](docs/performance.md) records measured runs with their settings and corpus. Historical embedding experiments are not part of the current runtime. Logs contain metadata; knowledge records and explicit handoff prompts store content in Tiger, and Gemini receives the context needed for generation.

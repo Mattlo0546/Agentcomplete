@@ -64,6 +64,18 @@ Typing through an already displayed autocomplete retains its original `request_i
 - `POST /v1/handoff` body `{ prompt }` → `{ id, created_at }` (stores the latest refined prompt; only the newest row is kept).
 - `GET /v1/handoff/latest` → `{ id, prompt, created_at }` | `404`.
 
+## Saved prompt versions
+
+Explicit saves retain the original draft and optional unaccepted continuation separately; `saved_text` is their concatenation. Migration 004 creates the history table. These records persist until explicitly deleted, separately from telemetry and analytics exports.
+
+- `POST /v1/prompt-history` with `{ prompt, suggestion_text?, title?, description? }` → `201` and a saved version.
+- `GET /v1/prompt-history?offset=0&limit=50` → `{ items, total }`, newest first with UUID tie-breaking; `limit` is 1–200.
+- `GET /v1/prompt-history/{uuid}` → saved version or `404`.
+- `PATCH /v1/prompt-history/{uuid}` with `{ title?, description? }` → updated metadata; the saved text is immutable.
+- `DELETE /v1/prompt-history/{uuid}` → `204`, or `404` if missing.
+
+A version contains `{ id, prompt, suggestion_text, saved_text, title, description, created_at, updated_at }`. Draft and combined text are limited to 20,000 UTF-16 units; a suggestion is limited to 4,000. Titles allow 1–120 characters and descriptions up to 1,000. Null metadata clears the field. As with the existing API, this is single-user local storage; keep the worker on loopback.
+
 ## Activity
 
 - `GET /v1/logs?kind=all|ai|api&status=any|2xx|4xx|5xx&request_id=&before=<iso>&limit=100`

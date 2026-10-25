@@ -1,0 +1,7 @@
+:root { color-scheme: light; font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #243248; background: #f7f9fc; }
+* { box-sizing: border-box; } body { width: 330px; margin: 0; } header { display: flex; align-items: center; gap: 9px; padding: 15px 20px; border-bottom: 1px solid #d8e0ed; background: #fff; }
+.mark { font-weight: 750; color: #375fae; } .badge { margin-left: auto; color: #62728b; font: 10px ui-monospace, monospace; }
+main { padding: 19px 20px; } h1 { font-size: 21px; letter-spacing: -.6px; margin: 0 0 5px; } p { margin: 0 0 15px; color: #62728b; }
+button { width: 100%; padding: 10px; font: inherit; font-weight: 600; background: #375fae; color: #fff; border: 1px solid #375fae; border-radius: 8px; cursor: pointer; }
+button:focus-visible { outline: 2px solid #375fae; outline-offset: 3px; } button:disabled { opacity: .6; } .secondary { background: #fff; color: #243248; border-color: #d8e0ed; padding: 7px; }
+.privacy { font-size: 11px; margin-top: 10px; } section { background: #fff; border: 1px solid #d8e0ed; border-radius: 10px; padding: 13px; margin: 18px 0; } h2 { font-size: 12px; margin: 0 0 3px; } code, kbd { font: 11px ui-monospace, monospace; } #status { font-size: 11px; margin: 8px 0; } .tip { font-size: 11px; margin-bottom: 9px; }
