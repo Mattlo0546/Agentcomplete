@@ -13,11 +13,13 @@ Request:
 { "request_id": "req_ab12cd34ef56", "prompt": "…", "prompt_revision": 7, "cursor": 42 }
 ```
 - `prompt` ≤ 20 000 UTF-16 code units; `0 ≤ cursor ≤ len(prompt)`; else `422`.
+- Optional `previous_request_id` (1–64 characters) references the last validated response for this editor session. The existing tag call compares drafts; immaterial edits may reuse retrieved candidates for up to 15 seconds from the original database read. Identical drafts can also skip tag inference. Candidates are still reviewed against the current prompt and generation uses the current cursor. Unknown/expired references safely refresh, and knowledge writes invalidate reuse. Clients without the field work unchanged.
 - Response: `EnhanceResponse` exactly as in `docs/brief.md` §4 / PRD (`schema_version: 1`, echoes `request_id` and `prompt_revision`).
 - Autocomplete only when `cursor === len(prompt)`; `insert_at === len(prompt)`.
 - Backend validates every invariant (bounds, non-overlap, ≥2 options, unique ids, ≥1 edit each, edits change the prompt). Invalid model output → retry once → else `type: "none"`.
-- Upstream failure/timeout → `502 {"error":{"code":"upstream_error"|"upstream_timeout",…}}`; DB failure → `503`.
+- Upstream failure/timeout → `502 {"error":{"code":"upstream_error"|"upstream_timeout",…}}`; a database failure on the request path → `503`. Trace/use-count writes run in the background; their failures are logged and do not retract a validated suggestion already returned.
 - Respects settings: autocomplete/questions toggles, `max_options`.
+- A client disconnect cancels pending pipeline work. The wire response schema is unchanged by compact internal generation schemas.
 
 ### `GET /v1/traces/{request_id}`
 Context for the Refine inspector (no prompt text stored).
@@ -32,11 +34,15 @@ Context for the Refine inspector (no prompt text stored).
 ```
 `404` if unknown / expired.
 
+Trace metadata is immediately readable while its background write is pending in the single API worker. The logical `judge` step has zero latency when review shares the generation call; `detail` states this and `model` identifies the actual generator. Cached tag/retrieval steps can also have zero latency. A `retrieve` detail containing `reused previous context` identifies approved reuse across prompt edits.
+
 ### `POST /v1/outcomes`
 ```json
 { "request_id": "req_…", "prompt_revision": 7, "event": "shown|accepted|declined|dismissed|superseded", "option_id": "dual", "time_to_action_ms": 2100 }
 ```
 → `204`. Stores derived features from the trace (task type, missing-constraint flags, retrieval scores, counts, suggestion type, latency) + outcome. Never prompt text.
+
+Typing through an already displayed autocomplete retains its original `request_id` and `prompt_revision` for outcomes, even as the editor revision advances.
 
 ## Knowledge
 
@@ -70,6 +76,7 @@ Context for the Refine inspector (no prompt text stored).
 ## Settings & health
 
 - `GET /v1/settings` / `PUT /v1/settings` → `{ trigger_delay_ms: 150–1500, autocomplete_enabled, questions_enabled, max_options: 2–6, retention_days: 30 (read-only), store_payloads: false (read-only) }`.
+- Default trigger delay is 200 ms. Settings reads are cached for up to five seconds; API writes update the current worker's cache immediately.
 - `GET /v1/health` → `{ status: "ok"|"degraded", latency_ms, db: "ok"|"error", gemini: "ok"|"error"|"unchecked" }` (`?deep=1` pings Gemini).
 
 ## Analytics (Snowflake)

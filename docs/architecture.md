@@ -1,261 +1,99 @@
-# Agentcomplete — Architecture and Performance Notes
+# Agentcomplete — architecture and autocomplete performance
 
-This document describes how the system is built today (October 2026), how one autocomplete request flows through it, where the time goes, and which parts can and cannot change. It was written to brief a reviewer whose job is to **make autocomplete much faster**.
+Updated 25 October 2026. The companion panel, Codex MCP plugin, Gemini, Tiger Data and Snowflake remain the stack. See [performance results](performance.md) for measured before/after results and [provider options](provider-latency-options.md) for research-only alternatives.
 
-**The problem in one line:** a suggestion currently takes **~4.5–6 s** end to end (p50 ≈ 4.3 s on the live backend). Ghost-text autocomplete feels broken above ~1 s. Target: **< 1 s** for autocomplete, ideally < 500 ms perceived.
-
----
-
-## 1. What the product does
-
-A single-user companion app for OpenAI Codex. While the user writes a prompt, it either:
-
-- shows **ghost-text autocomplete** after the cursor (Copilot-style; `Tab` accepts, `Esc` dismisses), or
-- asks a **multiple-choice question** whose options each carry text edits; the user previews the diff and applies one, or declines all.
-
-Suggestions are grounded in a **knowledge base** (SKILL files, example prompts, agent graphs) retrieved via **tags**. A Codex plugin (MCP server) lets Codex fetch the refined prompt. Outcomes (accepted / declined …) are exported to Snowflake to train an acceptance classifier.
-
-Source-of-truth docs: [`docs/brief.md`](brief.md) (product), [`docs/api.md`](api.md) (HTTP contract), [`design.md`](../design.md) (UI).
-
----
-
-## 2. Repository map
-
-```
-backend/                     FastAPI service (Python 3.12+, Pydantic, psycopg 3 async, google-genai)
-  app/main.py                app factory, middleware, routers, migrations on start-up
-  app/config.py              settings (.env) — model names, timeouts, embed dims
-  app/pipeline/              ⚡ THE HOT PATH for /v1/enhance
-    run.py                   orchestration: tags → retrieve → judge → generate → validate → trace
-    tags.py                  step 1: tag + task-feature extraction (LLM)
-    retrieve.py              step 2: embed tags → pgvector NN over tag vectors → knowledge candidates (1 SQL)
-    judge.py                 step 3: per-candidate relevance judgement (LLM ×N, concurrent)
-    generate.py              step 4: suggestion generation (LLM) + anchored-edit → UTF-16 conversion
-    edits.py / validate.py   UTF-16 offset maths and contract invariants
-    prompts.py               system prompts for tags / judge / generate
-    features.py / trace.py   derived features + per-request trace row (no prompt text stored)
-  app/llm/gemini.py          structured-output + embedding wrapper, logs AI-call metadata
-  app/knowledge/             ingest (summarise, tag, embed, save), repository, seed loader
-  app/activity/, analytics/  logs/stats queries; Snowflake export + ML training
-  app/observability/         request-id middleware, background log writers, error sanitising
-  app/db/migrations/         SQL schema (Tiger Data / PostgreSQL + pgvector + TimescaleDB)
-  scripts/bench_enhance.py   latency/quality bench for the pipeline (see §9)
-  seed/*.md                  18 seed knowledge items
-frontend/                    Next.js 16 / React 19 companion panel (shadcn/ui, Tailwind v4, TanStack Query)
-  src/lib/enhance/           ⚡ client request state machine (debounce, abort, staleness), edit maths
-  src/components/refine/     editor with ghost-text mirror layer, question card, diff, context inspector
-  src/components/{knowledge,activity,settings}/   other tabs
-  e2e/                       Playwright journeys against the live backend
-plugin/prompt-enhance/       Codex plugin: MCP server (Python) + skill + local marketplace
-docs/                        brief, API contract, design mockups, this file
-```
-
----
-
-## 3. Runtime topology
+## Request path
 
 ```mermaid
 flowchart LR
-  subgraph Laptop["User's machine"]
-    UI["Next.js panel<br/>localhost:3000"]
-    API["FastAPI<br/>127.0.0.1:8000"]
-    MCP["Codex plugin<br/>MCP stdio server"]
-    Codex["Codex app / CLI"]
-  end
-  Gemini["Google Gemini API<br/>(flash-lite, 3.6-flash, embedding-001)"]
-  Tiger[("Tiger Data — PostgreSQL 18<br/>pgvector · TimescaleDB<br/>region: us-east-1")]
-  SF[("Snowflake<br/>PROMPT_ENHANCE.ANALYTICS")]
-
-  UI -- "POST /v1/enhance (JSON)" --> API
-  Codex --> MCP -- HTTP --> API
-  API -- "4–8 sequential/concurrent calls per request" --> Gemini
-  API -- "~100 ms RTT per query" --> Tiger
-  API -. "export / train (off hot path)" .-> SF
+  Editor["Editor · 200 ms quiet time"] --> API["FastAPI /v1/enhance"]
+  API --> Settings["Cached settings"]
+  Settings --> Tags["Gemini tag extraction · exact-input cache"]
+  Tags --> Retrieve["Cached embeddings + Tiger pgvector retrieval"]
+  Retrieve --> Generate["Gemini: review every candidate, then generate"]
+  Generate --> Validate["Validate suffix / anchored edits / UTF-16"]
+  Validate --> Editor
+  Validate -. "background metadata" .-> Trace["Trace + knowledge use counts"]
+  Trace --> Tiger[("Tiger Data")]
+  Tiger -. "outcomes / offline classifier" .-> Snowflake[("Snowflake")]
 ```
 
-Notable physical facts:
+1. The editor waits **200 ms** after input stops. This is configurable from 150–1500 ms. Migration `002_autocomplete_delay.sql` moves the old 400 ms preset to 200 ms and retains other delay values.
+2. `/v1/enhance` reads settings from a short process cache. Empty prompts and disabled modes skip model calls. Without a valid previous request, tag extraction and checking whether knowledge has tags run concurrently.
+3. Tags still come from a small Gemini model. The browser sends the last validated `previous_request_id`, including valid `none` responses. That same tag call compares the previous and current drafts; explicit approval of an immaterial edit, unchanged normalized tags/task type, and fresh source data allow reuse of the previous candidates. Otherwise retrieval embeds those tags with `gemini-embedding-001` and uses Tiger Data's pgvector nearest-neighbour query. At most five candidates pass the 0.88 similarity cutoff.
+4. One structured call **reviews every candidate summary and then generates**. The schema puts reviews before the suggestion; Python requires exactly one review for every candidate and enforces the keep-score threshold. This replaces a separate request per judge plus a later generation request. Each new prompt receives a fresh relevance review, even when retrieval is cached.
+5. The existing tag call also classifies whether a continuation is needed, including partial words and other languages. Those drafts, obvious unfinished English clauses, or autocomplete-only mode use a small suffix schema at the end cursor. Complete or ambiguous drafts request a question or `none` so missing facts become explicit choices. Questions prefer two short options with one anchored edit each; Python creates option IDs and UTF-16 offsets. The public API still permits multiple edits and up to the configured maximum options.
+6. Both paths use Gemini Flash-Lite by default, at minimal thinking. `GENERATE_MODEL=gemini-3.6-flash` restores the stronger question/general model; `AUTOCOMPLETE_MODEL` separately controls the suffix path. Tags, judging and generation stay with the same sponsor.
+7. Output validation and one retry for invalid edits/reviews remain. Provider failures remain HTTP errors. No partially validated output is shown.
+8. Validated trace metadata becomes readable immediately in process, then persists to Tiger with usage counts in the background. Immediate `/traces` and `/outcomes` reads can resolve pending traces. Shutdown and log clearing drain pending writes. A bounded trace queue applies backpressure if the database stalls; process failure before a background write commits can lose that metadata.
 
-- The **database is in us-east-1** (free Tiger tier only allows that region); the user is in the UK. **Measured round trip ≈ 100 ms per query.**
-- Gemini is called over the public API from the laptop. Measured floors for a *trivial* structured call: **flash-lite ≈ 640 ms**, **3.6-flash ≈ 1.0 s**; embedding 5 short tags ≈ **270 ms**.
-- One uvicorn worker, async throughout. No caching layer.
+The unused speculative full generation has been removed. A fresh grounded request normally makes three provider calls (tags, embeddings, reviewed generation), compared with as many as nine previously. Cache hits can reduce this to a single generation call.
 
----
+## Typing, cancellation and correctness
 
-## 4. Life of one autocomplete request
+The browser aborts obsolete requests. The server listens for an ASGI disconnect and cancels the pipeline and child tasks, releasing local work/connections and avoiding later pipeline stages. Cancellation cannot guarantee that a provider stops billing inference already started remotely.
 
-### 4.1 Client (frontend/src/lib/enhance/use-enhance.ts)
+Network responses still require the latest request ID and prompt revision. Every text change increments the revision. A narrow local exception preserves an already validated ghost: if the user appends exactly the beginning of that visible suffix, at the collapsed end cursor, the remainder stays visible immediately without a request. Any divergent edit, deletion, selection or cursor move invalidates it. Outcomes retain the original suggestion's request ID and source revision; typing the entire suggestion counts as acceptance.
 
-1. Every keystroke **or cursor/selection move** updates local state, increments `prompt_revision` (text changes only), hides any visible suggestion (emitting a `superseded` outcome), and aborts the in-flight fetch.
-2. After **`trigger_delay_ms` (default 400 ms, user-configurable 150–1500)** of inactivity, it sends:
-   ```json
-   POST /v1/enhance
-   { "request_id": "req_ab12cd34ef56", "prompt": "<full prompt>", "prompt_revision": 14, "cursor": 121 }
-   ```
-3. A response is accepted only if its `request_id` and `prompt_revision` still match the latest input; otherwise discarded.
-4. Ghost text renders only if cursor is at the end and `insert_at === prompt.length`. After display it fetches `GET /v1/traces/{request_id}` for the inspector and posts `POST /v1/outcomes` (`shown`, later `accepted`/`dismissed`/…) — both off the critical path.
+Ghost text paints without the old 120 ms fade. IME composition suppresses requests and Tab/Escape suggestion actions. Settings changes cancel old-mode work and remove disabled suggestion types. Settings arriving after typing starts preserve the queued request's original quiet-time timestamp. Draft storage is batched at 250 ms (one-second maximum wait), with navigation/unmount flushing.
 
-**Perceived latency = debounce (400 ms) + server time (~4.5 s) + render.**
+The previous-response pointer stays in component memory and resets when the draft is cleared or the editor remounts. Failed, canceled, stale or invalid responses cannot replace it. Unknown/expired references trigger ordinary retrieval. Comparison occurs in the existing tag call, without adding a new inference round trip. Candidate relevance is always reassessed against the current text; an approval never reuses a previous verdict or suggestion.
 
-### 4.2 Server pipeline (backend/app/pipeline/run.py)
+Byte-identical linked drafts skip tag inference as well as retrieval while their context remains fresh. This covers cursor movement without changed text; generation still uses the current cursor, response-type settings and candidate review. The trace identifies this with `unchanged draft` in the tags step.
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant C as Client
-  participant A as FastAPI /v1/enhance
-  participant DB as Tiger (us-east-1)
-  participant G as Gemini
-  C->>A: POST /v1/enhance
-  par start immediately
-    A->>G: Tags (flash-lite): tags + task_type + missing_constraints
-  and
-    A->>DB: load_settings() + has_tags()  (2 queries)
-    A->>G: Speculative general generation (3.6-flash), no knowledge
-  end
-  G-->>A: tags (~0.7–0.9 s)
-  A->>G: embed tags (embedding-001, 768d) (~0.27 s)
-  A->>DB: 1 SQL: pgvector NN per tag → linked knowledge (~0.1–0.25 s)
-  par one call per candidate (≤5), 2 s budget each
-    A->>G: Judge (flash-lite, thinking=minimal): keep? score
-  end
-  G-->>A: verdicts (~0.8–1.0 s, = slowest call)
-  alt any knowledge kept (the common case)
-    A--xG: cancel speculative generation
-    A->>G: Grounded generation (3.6-flash, thinking=low) (~2.0–3.8 s)
-  else nothing kept
-    A->>A: use speculative result
-  end
-  A->>A: anchored edits → UTF-16 offsets, validate invariants (retry generation once if invalid)
-  A->>DB: save trace + increment use_count (~0.1–0.2 s, awaited)
-  A-->>C: EnhanceResponse
-```
+## Caches and freshness
 
-Step details:
+All caches are bounded, process-local memory. No new payload logging or persistent prompt cache is introduced.
 
-| # | Step | Model / resource | Input | Output | Code |
-|---|---|---|---|---|---|
-| 1 | Tag extraction | `gemini-3.5-flash-lite`, structured JSON | full prompt | ≤ 6 kebab-case tags, `task_type`, `missing_constraints[]` | `tags.py`, `prompts.TAGS_SYSTEM` |
-| 2 | Retrieval | `gemini-embedding-001` (768-d, SEMANTIC_SIMILARITY) + Postgres | tags | ≤ 5 candidates (id, title, summary, body ≤ 8000 chars, best tag similarity) | `retrieve.py` (`_RETRIEVE_SQL`) |
-| 3 | Judging | `gemini-3.5-flash-lite`, `thinking_level=minimal`, **one call per candidate**, concurrent, 2 s timeout each | prompt + candidate summary | `keep`, `score`, `reason` | `judge.py`, `prompts.JUDGE_SYSTEM` |
-| 4 | Generation | `gemini-3.6-flash`, `thinking_level=low`, structured JSON | prompt, cursor, allowed types, max options, kept knowledge (title + summary + ≤ 1200-char tag-relevant excerpt each), extracted features | `type` + autocomplete text **or** question/options with text-anchored edits | `generate.py`, `prompts.GENERATE_SYSTEM` |
-| 5 | Validation | CPU | model output | wire `EnhanceResponse`; invalid → 1 retry → `none` | `edits.py`, `validate.py` |
-| 6 | Trace | Postgres | tags, scores, step timings, derived features | 1 row in `enhance_trace` (hypertable) | `trace.py` |
-
-The generation model decides between autocomplete and question; there is **no separate fast path for autocomplete** today — both go through the same 4-step chain and the same 3.6-flash call that has to emit a schema containing both shapes.
-
-Retrieval tuning (in `retrieve.py`): similarity threshold **0.88** (unrelated tags score 0.75–0.86 on this embedding), 8 neighbours per tag, ≤ 5 candidates.
-
-### 4.3 What happens to stale requests
-
-The client aborts the fetch on every keystroke, **but the server does not detect client disconnects** — every superseded request still runs the full pipeline (4–8 Gemini calls + DB writes). While typing continuously, several pipelines can overlap, wasting quota and competing for the event loop / pool.
-
----
-
-## 5. Measured latency (live, 2026-10-25)
-
-`scripts/bench_enhance.py`, in-process (no HTTP), 9 prompts, current models:
-
-| Prompt (cursor at end) | Total | Tags | Retrieve | Judge | Generate | Result |
-|---|---|---|---|---|---|---|
-| Refactor the Stripe webhook handler … backoff | 4.49 s | 875 | 542 | 850 | 2030 | question |
-| Write a migration plan for our database. | 4.55 s | 768 | 518 | 945 | 2219 | question |
-| Add a zero-downtime migration … NOT NULL | 5.64 s | 773 | 546 | 1024 | 3163 | question |
-| Write tests for the React login form | 5.68 s | 673 | 379 | 805 | 3722 | question |
-| Summarise this diff for review | 4.77 s | 807 | 531 | 1061 | 2274 | question |
-| Make the API faster | 4.97 s | 824 | 448 | 915 | 2687 | question |
-| Add retries to the payment client … backoff and | 4.66 s | 865 | 643 | 928 | 2123 | autocomplete |
-| Write Vitest tests for the login form that check | 6.07 s | 836 | 420 | 845 | 3815 | autocomplete |
-| Create a zero-downtime migration … by first | 4.63 s | 891 | 517 | 936 | 2160 | autocomplete |
-
-Step times in ms. Over HTTP in the app, p50 ≈ 4.3 s (Activity tab). Earlier model mix (3.6-flash judge, 3.8-flash generate) was ~5.5–6.5 s.
-
-**Floors measured on this machine:** DB round trip ≈ 100 ms · flash-lite trivial call ≈ 640 ms · 3.6-flash trivial call ≈ 1.0 s (thinking low/minimal) · embed 5 tags ≈ 270 ms.
-
-**Where the time goes (typical 4.6 s):** tags 0.85 → embed+SQL 0.5 → judge 0.9 → generate 2.1–3.8 → trace write ~0.2. The chain is **strictly sequential** (each step needs the previous one's output), so the floor with today's design is roughly `0.65 + 0.37 + 0.65 + 1.0 ≈ 2.7 s` even with trivial outputs.
-
----
-
-## 6. Why it is slow (diagnosis)
-
-1. **Four dependent network hops to an LLM provider** per suggestion (tags → embed → judge → generate), each with ~0.3–1 s fixed overhead, plus multiple trans-Atlantic DB round trips.
-2. **Generation is the largest and most variable step** (2–3.8 s): a reasoning-capable model, structured JSON with a union schema (autocomplete *and* multiple-choice fields), knowledge excerpts in the prompt (a typical request uses ~2.5 k input / ~450 output tokens across all its calls, most of it in generation).
-3. **No fast path for autocomplete.** Ghost text needs a short suffix (≤ 25 words) but pays for the full tags/judge/question machinery.
-4. **No caching or reuse across keystrokes.** Consecutive requests for `"…backoff"`, `"…backoff a"`, `"…backoff and"` recompute tags, retrieval and judging from scratch even though the topic hasn't changed.
-5. **No streaming.** The client waits for the full JSON; nothing is shown until generation finishes.
-6. **Server ignores client aborts** (§4.3), so wasted work piles up while typing.
-7. **DB in us-east-1** adds ~100 ms per query (settings, has_tags, retrieval SQL, trace insert, use_count update — some awaited on the critical path).
-8. **Debounce** adds 400 ms before anything starts.
-
----
-
-## 7. Constraints — what must stay true
-
-From the PRD / [`docs/brief.md`](brief.md) / [`docs/api.md`](api.md). These are requirements, not implementation details:
-
-- **Response contract** (`schema_version: 1`): discriminated `autocomplete | multiple_choice | none`; UTF-16 positions, half-open ranges; autocomplete `insert_at === prompt.length` and text is suffix-only; questions have ≥ 2 options, unique ids, ≥ 1 non-overlapping edit each, all relative to one snapshot. Client accepts a response only when `request_id` + `prompt_revision` match the latest input. Failures are HTTP errors, never `none`.
-- **Pipeline semantics required by the PRD:** (1) tags found by a *small, quick LLM*; (2) knowledge retrieved by tag via the vector DB (nearest neighbour); (3) a model reviews *each* retrieved knowledge summary against the input to decide if it is needed; (4) generation from filtered knowledge + input; general enhancement allowed when nothing is retrieved/kept.
-  *Interpretation latitude:* these steps must exist, but they don't all have to run **per keystroke** or **in series** — e.g. caching, running retrieval/judging for questions only, or judging asynchronously would need a product decision but are not obviously ruled out.
-- **Never invent project facts, sources or preferences**; missing information becomes a question.
-- **Logging (decision D1):** metadata only — no prompts, knowledge bodies or model responses in logs/traces. **Retention (D2):** 30 days. Any cache that stores prompt text must be in-memory/ephemeral or explicitly approved.
-- **Stack:** Python 3.12 + FastAPI + Pydantic backend; Gemini for tags/embeddings/judging/generation (hackathon sponsor requirement); Tiger Data for storage; Snowflake for the classifier on derived features only.
-- Single user, local. Secrets stay on the backend.
-
----
-
-## 8. Optimisation directions (candidates, not yet evaluated)
-
-Listed roughly by expected impact. Numbers are estimates from the measurements above.
-
-| Idea | Expected effect | Notes / trade-offs |
+| Cache | Key / bound | Freshness |
 |---|---|---|
-| **Dedicated autocomplete fast path**: when cursor is at the end, call a small model (flash-lite, no thinking, tiny autocomplete-only schema, short `max_output_tokens`) directly, in parallel with the full pipeline; show ghost text as soon as it arrives | 4.5 s → **~0.7–1.0 s** | Need to decide how knowledge grounding applies (see next row); full pipeline can still produce questions later |
-| **Topic cache across keystrokes**: cache tags → candidates → verdicts keyed on a coarse prompt signature (e.g. normalised prefix or embedding of first N words); reuse while the topic is stable | removes ~2.2 s of tags+retrieve+judge from most requests | In-memory only (D1). Invalidate when tags change or knowledge is edited |
-| **Use cached kept-knowledge in the fast path** (from the previous request on the same draft) | grounded ghost text at fast-path speed | First request of a draft is ungrounded or slower |
-| **Stream generation** (`generate_content_stream`) and stream the suffix to the client (SSE / chunked JSON) | time-to-first-token instead of full completion | Contract currently returns one JSON object; would need an additive streaming endpoint |
-| **Cancel server work on client disconnect** (check `request.is_disconnected()` / cancel the pipeline task) or a server-side "latest revision wins" per client | less contention while typing, lower cost | Small change in `api/enhance.py` / `run.py` |
-| **Merge tags + judge or judge + generate** into fewer calls; or score candidates with embeddings and only LLM-judge for questions | −0.6 to −1.0 s | Must still satisfy "review each knowledge" — could be one call that judges all candidates at once |
-| **Embed the prompt instead of / in parallel with tags** for retrieval | −0.85 s (skip waiting for tags) | Tags still needed per PRD; could run concurrently and merge |
-| **Move off the trans-Atlantic DB hops**: keep tag vectors + candidate summaries in process memory (18 items / ~50 tags today), write traces fire-and-forget | −0.2–0.4 s | Tiger stays the source of truth; memory is a read-through cache |
-| **Smaller generation prompt**: drop body excerpts for autocomplete, shorter system prompt, autocomplete-only schema, cap output tokens | −0.5–1.5 s on generate | Grounding quality vs speed |
-| **Lower debounce** (e.g. 150–250 ms) once requests are cheap and cancellable | −150–250 ms perceived | More requests |
-| **Context caching** for the long system prompts (Gemini explicit/implicit cache) | small–medium | Depends on provider caching behaviour |
-| **Region**: Tiger paid tier in eu-west, or run the backend near us-east-1 | −80–90 ms per DB query | Cost |
+| Settings | Singleton, copied for each caller | 5 seconds; API updates replace it immediately under the same lock |
+| Tags and derived task features | Model + SHA-256 of full current/prior drafts and comparison options; 256 entries | 60 seconds; ordinary long inputs retain the first 4,000 and final 2,000 characters. A changed hidden middle disables reuse and extracts from the full current draft |
+| Tag embeddings | Model + dimensions + tag; 1,024 entries | One hour; same semantic-similarity embedding task |
+| Retrieved candidates | Embedding model/dimensions, normalized tag set and threshold; 128 entries | 15 seconds; create/edit/delete invalidates immediately after commit |
+| Knowledge presence | Singleton | 15 seconds; same mutation invalidation |
+| Previous draft context | Completed request ID; 128 entries | At most 15 seconds from the original candidate SQL read, never renewed by subsequent edits; model changes and knowledge mutations invalidate reuse |
+| Pending trace metadata | Request ID, at most 256 pending writes | Available until persistence completes |
 
----
+Knowledge invalidation advances a generation counter so an older in-flight read cannot repopulate a cleared cache. Relevance verdicts and completed responses are not reused across different drafts. Writes made externally or through another process become visible within the cache TTL.
 
-## 9. How to measure and verify
+This is the existing single-user, single-worker topology. Pending-trace reads and invalidation assume that topology; multiple workers require shared cache/invalidation and trace handoff before deployment.
 
-Run everything locally (credentials are in the git-ignored `.env`; see `README.md`).
+## Models and transport
+
+| Operation | Default |
+|---|---|
+| Tags / knowledge analysis | `gemini-3.5-flash-lite` |
+| Suffix and full enhancement | `gemini-3.5-flash-lite` |
+| Embeddings | `gemini-embedding-001`, 768 dimensions |
+| Optional stronger full enhancement | `GENERATE_MODEL=gemini-3.6-flash` |
+
+Generation output budgets are 768 tokens for compact suffixes and 2,048 for full suggestions; tags use 512. Minimal thinking reduces unnecessary reasoning, but output budgets still leave room for valid structured JSON. The existing Gemini client is reused. The MCP server now also reuses an HTTPX client through its lifespan.
+
+Tiger remains the source of truth in us-east-1. Snowflake export/training stays off the suggestion path. No database region, provider endpoint, authentication or sponsor integration has been changed.
+
+## Inspect and reproduce
+
+Important files:
+
+- `backend/app/pipeline/complete.py`: small response schemas, candidate review, model routing.
+- `backend/app/pipeline/run.py`: orchestration and validation.
+- `backend/app/pipeline/{tags,retrieve,cache,context}.py`: caches, draft comparison and retrieval.
+- `backend/app/api/enhance.py`: disconnect cancellation.
+- `backend/app/pipeline/trace.py`: asynchronous metadata persistence.
+- `frontend/src/lib/enhance/{use-enhance,state}.ts`: debounce, stale-response safety and local suffix reuse.
+- `plugin/prompt-enhance/mcp/prompt_enhance_mcp/{client,server}.py`: pooled plugin transport.
+
+From `backend/`, measure the running backend with real credentials/services:
 
 ```bash
-cd backend && PYTHONPATH=. uv run python scripts/bench_enhance.py
+PYTHONPATH=. uv run python scripts/bench_enhance.py --base-url http://127.0.0.1:8000 --rounds 2 --output /tmp/latency.json
+PYTHONPATH=. uv run python scripts/bench_enhance.py --base-url http://127.0.0.1:8000 --incremental
+PYTHONPATH=. uv run python scripts/bench_enhance.py --base-url http://127.0.0.1:8000 --incremental --previous-context
 ```
-Prints total and per-step latency, kept knowledge and the suggestion for 9 prompts (override models with env vars, e.g. `GENERATE_MODEL=gemini-3.5-flash-lite`).
 
-In the app, the **Activity** tab shows p50 latency and a per-request timeline of every Gemini call; the Refine inspector shows per-step timings for the latest suggestion.
+The script records metadata only: fixture case number, timings, result type, model, review counts and errors. Round one is first visit; round two repeats exact inputs. This is distinct from typing new text, which requires new tags/review unless already computed. `--previous-context` chains successful response IDs through the incremental fixtures and records explicit candidate reuse. `--cases 7 8 9` selects the suffix fixtures. Omitting `--base-url` measures the pipeline in process.
 
-Correctness gates that any optimisation must keep green:
+The Activity timeline records actual AI calls. Logical `judge` trace time is zero when it shares generation's call; its detail and model make that explicit. Warm cached tag/retrieval stages can also report zero time. These figures must not be added as if shared stages were separate calls.
 
-```bash
-cd backend && uv run pytest -q
-```
-```bash
-cd frontend && pnpm test && pnpm test:e2e
-```
-(`test_enhance_live.py` covers contract invariants against real Gemini; Playwright covers ghost text accept, question → diff → apply, decline, Send to Codex.)
-
----
-
-## 10. Data model (Tiger Data)
-
-| Table | Purpose | Notes |
-|---|---|---|
-| `knowledge` | id, kind (skill/prompt/graph), title, body, summary, use_count | 18 seed rows |
-| `tag` | name (unique), `embedding vector(768)` | HNSW index, cosine; ~50 rows |
-| `knowledge_tag` | many-to-many | |
-| `enhance_trace` | per-request tags, candidate scores, step timings, derived features | hypertable, 30-day retention, no prompt text |
-| `outcome_event` | shown/accepted/declined/dismissed/superseded + derived features | hypertable, exported to Snowflake |
-| `api_call_log`, `ai_call_log` | request metadata, model, latency, tokens, sanitised error | hypertables, 30-day retention; written in background tasks |
-| `app_settings`, `handoff`, `analytics_state` | single-row config, latest refined prompt, classifier state | |
-
-Ingest (`POST /v1/knowledge`, SSE): summarise ∥ tag (LLM) → embed new tags → one transaction inserting knowledge, tags and links. Tags reuse existing names at similarity ≥ 0.9.
+Contract tests cover bounds, surrogate pairs, edit anchoring, per-candidate reviews, upstream failures, cache invalidation, cancellation and immediate trace reads. Browser tests cover real provider suggestions, accept/decline, diff application, settings, knowledge and Codex handoff.

@@ -19,7 +19,10 @@ import { useSendToCodex } from "./use-send-to-codex";
 export function RefineView() {
   const narrow = useLayoutMode() === "narrow";
   const settings = useQuery({ queryKey: ["settings"], queryFn: getSettings });
-  const enhance = useEnhance(settings.data?.trigger_delay_ms ?? DEFAULT_TRIGGER_DELAY_MS);
+  const enhance = useEnhance(settings.data?.trigger_delay_ms ?? DEFAULT_TRIGGER_DELAY_MS, {
+    autocompleteEnabled: settings.data?.autocomplete_enabled,
+    questionsEnabled: settings.data?.questions_enabled,
+  });
   const send = useSendToCodex();
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -53,6 +56,7 @@ export function RefineView() {
           textareaRef={textareaRef}
           onChange={enhance.change}
           onSelect={enhance.select}
+          onComposingChange={enhance.setComposing}
           onAcceptGhost={() => {
             enhance.acceptGhost();
             focusEditor();

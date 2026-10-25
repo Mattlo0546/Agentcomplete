@@ -1,0 +1,77 @@
+{
+  "transport": "http",
+  "samples": [
+    {
+      "case": "initial",
+      "request_id": "req_exactad4cbc109bf2",
+      "result_type": "autocomplete",
+      "latency_ms": 2828,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 869,
+          "status": "ok",
+          "detail": "4 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 537,
+          "status": "ok",
+          "detail": "4 tags \u2192 5 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "2/5 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1083,
+          "status": "ok",
+          "detail": "2 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    },
+    {
+      "case": "same_draft_mid_cursor",
+      "request_id": "req_exactcd5a498823fd",
+      "result_type": "multiple_choice",
+      "latency_ms": 2385,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "4 tags \u00b7 code_change \u00b7 unchanged draft"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "reused previous context \u00b7 5 candidates; re-reviewing current draft"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "2/5 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 2372,
+          "status": "ok",
+          "detail": "2 knowledge \u2192 multiple_choice \u00b7 retried"
+        }
+      ]
+    }
+  ]
+}

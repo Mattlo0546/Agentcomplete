@@ -1,0 +1,407 @@
+{
+  "measured_at": "2026-10-24T23:47:36.586924+00:00",
+  "transport": "http",
+  "scenario": "incremental",
+  "summary": {
+    "requests": 9,
+    "errors": 0,
+    "results": {
+      "autocomplete": 7,
+      "multiple_choice": 2
+    },
+    "p50_ms": 1933,
+    "p95_ms": 2460
+  },
+  "by_round": {
+    "1": {
+      "requests": 3,
+      "errors": 0,
+      "results": {
+        "autocomplete": 3
+      },
+      "p50_ms": 2055,
+      "p95_ms": 2422
+    },
+    "2": {
+      "requests": 3,
+      "errors": 0,
+      "results": {
+        "multiple_choice": 2,
+        "autocomplete": 1
+      },
+      "p50_ms": 2412,
+      "p95_ms": 2460
+    },
+    "3": {
+      "requests": 3,
+      "errors": 0,
+      "results": {
+        "autocomplete": 3
+      },
+      "p50_ms": 1753,
+      "p95_ms": 1933
+    }
+  },
+  "samples": [
+    {
+      "case": 7,
+      "round": 1,
+      "request_id": "req_benchb240cf8875c0",
+      "latency_ms": 2422,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 743,
+          "status": "ok",
+          "detail": "4 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 458,
+          "status": "ok",
+          "detail": "4 tags \u2192 3 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 997,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    },
+    {
+      "case": 7,
+      "round": 2,
+      "request_id": "req_benche897f04284bd",
+      "latency_ms": 2412,
+      "status": 200,
+      "result_type": "multiple_choice",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 797,
+          "status": "ok",
+          "detail": "5 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 383,
+          "status": "ok",
+          "detail": "5 tags \u2192 3 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1209,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 multiple_choice"
+        }
+      ]
+    },
+    {
+      "case": 7,
+      "round": 3,
+      "request_id": "req_bench20ac44be6735",
+      "latency_ms": 1668,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 794,
+          "status": "ok",
+          "detail": "4 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "4 tags \u2192 3 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 865,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    },
+    {
+      "case": 8,
+      "round": 1,
+      "request_id": "req_bench3f8e77ba3621",
+      "latency_ms": 1916,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 714,
+          "status": "ok",
+          "detail": "4 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 226,
+          "status": "ok",
+          "detail": "4 tags \u2192 2 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/2 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 884,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    },
+    {
+      "case": 8,
+      "round": 2,
+      "request_id": "req_bench7260ddaf79b3",
+      "latency_ms": 2460,
+      "status": 200,
+      "result_type": "multiple_choice",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 715,
+          "status": "ok",
+          "detail": "4 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 482,
+          "status": "ok",
+          "detail": "4 tags \u2192 3 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1257,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 multiple_choice"
+        }
+      ]
+    },
+    {
+      "case": 8,
+      "round": 3,
+      "request_id": "req_bench046b94e31663",
+      "latency_ms": 1753,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 721,
+          "status": "ok",
+          "detail": "4 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 177,
+          "status": "ok",
+          "detail": "4 tags \u2192 3 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 849,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    },
+    {
+      "case": 9,
+      "round": 1,
+      "request_id": "req_bench44ea124c5a1d",
+      "latency_ms": 2055,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 734,
+          "status": "ok",
+          "detail": "4 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 178,
+          "status": "ok",
+          "detail": "4 tags \u2192 3 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 994,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    },
+    {
+      "case": 9,
+      "round": 2,
+      "request_id": "req_bench6a88daa3a09e",
+      "latency_ms": 1805,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 689,
+          "status": "ok",
+          "detail": "5 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 199,
+          "status": "ok",
+          "detail": "5 tags \u2192 3 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 900,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    },
+    {
+      "case": 9,
+      "round": 3,
+      "request_id": "req_bench30cf2974f317",
+      "latency_ms": 1933,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 605,
+          "status": "ok",
+          "detail": "5 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 269,
+          "status": "ok",
+          "detail": "5 tags \u2192 4 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/4 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1049,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    }
+  ]
+}

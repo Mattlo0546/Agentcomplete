@@ -1,12 +1,21 @@
 """FastMCP stdio server: Prompt Enhance tools for Codex."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from . import client
 
-mcp = FastMCP("prompt-enhance")
+
+@asynccontextmanager
+async def lifespan(_: FastMCP) -> AsyncIterator[None]:
+    async with client.backend_session():
+        yield
+
+
+mcp = FastMCP("prompt-enhance", lifespan=lifespan)
 
 
 async def _guard(coro: Any) -> dict[str, Any]:
@@ -24,7 +33,7 @@ async def get_refined_prompt() -> dict[str, Any]:
 
 @mcp.tool()
 async def enhance_prompt(prompt: str) -> dict[str, Any]:
-    """Get an enhancement suggestion for a draft prompt: an autocomplete suffix, or a question with options and their resulting prompts."""
+    """Get a draft enhancement: an autocomplete suffix, or a question with options and resulting prompts."""
     return await _guard(client.enhance_prompt(prompt))
 
 

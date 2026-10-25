@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import type { EnhanceResponse } from "../src/lib/api/types";
+
 import { API, isMobile, noHydrationErrors, openInspector } from "./helpers";
 
 test.describe("Refine", () => {
@@ -12,10 +14,24 @@ test.describe("Refine", () => {
     await page.goto("/refine");
     const editor = page.getByRole("textbox", { name: "Prompt" });
     await editor.click();
-    const prompt = "Refactor the Stripe webhook handler so failed events are retried with exponential backoff";
+    // A complete instruction can correctly return none; this journey needs an unfinished thought to accept.
+    const prompt = "Refactor the Stripe webhook handler so failed events are retried with exponential backoff and";
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url() === `${API}/v1/enhance` &&
+        response.request().method() === "POST" &&
+        response.request().postDataJSON()?.prompt === prompt,
+    );
     await editor.pressSequentially(prompt, { delay: 5 });
+    const response = await responsePromise;
+    expect(response.ok()).toBe(true);
+    const suggestion = (await response.json()) as EnhanceResponse;
+    expect(
+      ["autocomplete", "multiple_choice"],
+      "The unfinished fixture should produce an actionable suggestion",
+    ).toContain(suggestion.type);
 
-    const ghost = page.locator("#prompt-ghost-status").getByText("Suggestion available");
+    const ghost = page.getByTestId("ghost-text");
     const question = page.getByLabel("Question");
     await expect(ghost.or(question).first()).toBeVisible({ timeout: 30_000 });
 
@@ -33,6 +49,17 @@ test.describe("Refine", () => {
       await expect(question).toBeHidden();
       expect(await editor.inputValue()).not.toBe(prompt);
     }
+
+    const continuedPrompt = `${await editor.inputValue()} `;
+    const nextRequestPromise = page.waitForRequest(
+      (request) =>
+        request.url() === `${API}/v1/enhance` &&
+        request.method() === "POST" &&
+        request.postDataJSON()?.prompt === continuedPrompt,
+    );
+    await editor.fill(continuedPrompt);
+    const nextRequest = await nextRequestPromise;
+    expect(nextRequest.postDataJSON().previous_request_id).toBe(suggestion.request_id);
 
     await openInspector(page, info, /show context/i);
     await expect(page.getByText("Pipeline").first()).toBeVisible();

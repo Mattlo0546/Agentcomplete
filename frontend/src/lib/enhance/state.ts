@@ -3,21 +3,28 @@ import type { EnhanceResponse, Option } from "@/lib/api/types";
 import { applyEdits, responseIsValid } from "./edits";
 
 // Revision / staleness state machine for the Refine editor (docs/brief.md §4).
-// Every text change bumps `revision`; any text or selection change invalidates the visible suggestion;
-// a response is accepted only when it answers the latest request for the current revision.
+// Every text change bumps `revision`; edits invalidate suggestions except typing an exact ghost prefix.
+// A network response is accepted only when it answers the latest request for the current revision.
 
 export type Snapshot = { requestId: string; revision: number; prompt: string; cursor: number };
 
-export type Suggestion =
-  | { type: "autocomplete"; requestId: string; revision: number; text: string; shownAt: number }
-  | {
-      type: "multiple_choice";
-      requestId: string;
-      revision: number;
-      question: string;
-      options: Option[];
-      shownAt: number;
-    };
+type SuggestionSource = {
+  requestId: string;
+  revision: number;
+  /** Original request revision, retained when the user types through a ghost suffix. */
+  sourceRevision: number;
+  shownAt: number;
+};
+
+export type Suggestion = SuggestionSource &
+  (
+    | { type: "autocomplete"; text: string }
+    | {
+        type: "multiple_choice";
+        question: string;
+        options: Option[];
+      }
+  );
 
 export type EnhanceError = { status: number; message: string };
 
@@ -40,6 +47,7 @@ export type EnhanceAction =
   | { type: "request"; snapshot: Snapshot }
   | { type: "response"; response: EnhanceResponse; now: number }
   | { type: "failure"; requestId: string; error: EnhanceError }
+  | { type: "cancel" }
   | { type: "acceptGhost" }
   | { type: "dismiss" }
   | { type: "apply"; optionId: string };
@@ -71,7 +79,16 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
     case "change": {
       const { prompt, selectionStart, selectionEnd } = action;
       if (prompt === state.prompt) return enhanceReducer(state, { type: "select", selectionStart, selectionEnd });
-      return { ...state, ...invalidated, prompt, selectionStart, selectionEnd, revision: state.revision + 1 };
+      const revision = state.revision + 1;
+      const suffix = ghostText(state);
+      const added = prompt.startsWith(state.prompt) ? prompt.slice(state.prompt.length) : "";
+      const consumesGhost =
+        added !== "" && suffix.startsWith(added) && selectionStart === prompt.length && selectionEnd === prompt.length;
+      const suggestion =
+        consumesGhost && state.suggestion?.type === "autocomplete" && added.length < suffix.length
+          ? { ...state.suggestion, revision, text: suffix.slice(added.length) }
+          : null;
+      return { ...state, ...invalidated, prompt, selectionStart, selectionEnd, revision, suggestion };
     }
 
     case "select":
@@ -91,7 +108,12 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
       }
       const base = { ...state, pending: null, error: null };
       if (response.type === "none") return { ...base, suggestion: null };
-      const common = { requestId: response.request_id, revision: response.prompt_revision, shownAt: now };
+      const common = {
+        requestId: response.request_id,
+        revision: response.prompt_revision,
+        sourceRevision: response.prompt_revision,
+        shownAt: now,
+      };
       const suggestion: Suggestion =
         response.type === "autocomplete"
           ? { ...common, type: "autocomplete", text: response.text }
@@ -102,6 +124,9 @@ export function enhanceReducer(state: EnhanceState, action: EnhanceAction): Enha
     case "failure":
       if (state.pending?.requestId !== action.requestId) return state;
       return { ...state, pending: null, error: action.error };
+
+    case "cancel":
+      return state.pending || state.suggestion || state.error ? { ...state, ...invalidated } : state;
 
     case "acceptGhost": {
       if (!ghostText(state)) return state;

@@ -1,29 +1,23 @@
-"""Orchestrates one POST /v1/enhance: tags → retrieve → judge → generate → validate → trace.
-
-Latency: a general (knowledge-free) generation starts speculatively alongside tag extraction. It is used when
-retrieval/judging keeps nothing, and cancelled as soon as knowledge is kept (then a grounded generation runs).
-"""
+"""Enhance with cached retrieval and one combined relevance-review/generation call."""
 
 import asyncio
-import contextlib
 import time
-from typing import Any
 from uuid import UUID
 
 from pydantic import ValidationError
 
 from app.config import get_settings
+from app.pipeline import catalog, context
+from app.pipeline.complete import complete, generation_model, use_completion
 from app.pipeline.features import derive_features
-from app.pipeline.generate import WireResponse, allowed_types, build_contents, generate, to_response
-from app.pipeline.judge import Judged, judge
-from app.pipeline.retrieve import Candidate, Retrieval, has_tags, increment_use_count, retrieve
+from app.pipeline.generate import WireResponse, allowed_types, build_contents, to_response
+from app.pipeline.judge import Judged
+from app.pipeline.retrieve import Candidate, Retrieval, has_tags, is_fresh, retrieve
 from app.pipeline.tags import TagExtraction, extract_tags
 from app.pipeline.trace import TraceKnowledge, TraceStep, TraceTag, save_trace
 from app.pipeline.validate import InvalidOutput, validate_response
-from app.schemas.enhance import EnhanceRequest, NoneResponse
+from app.schemas.enhance import EnhanceRequest, NoneResponse, utf16_len
 from app.settings_store import AppSettings, load_settings
-
-Generated = tuple[WireResponse, TraceStep]
 
 
 def _ms(started: float) -> int:
@@ -35,50 +29,59 @@ def _step(step: str, model: str, started: float | None, status: str, detail: str
     return TraceStep(step=step, model=model, latency_ms=latency, status=status, detail=detail)  # type: ignore[arg-type]
 
 
-async def _tags_step(prompt: str) -> tuple[TagExtraction, TraceStep]:
+async def _tags_step(
+    prompt: str, previous: context.DraftContext | None = None, *, full_prompt: bool = False
+) -> tuple[TagExtraction, TraceStep]:
+    if previous is not None and prompt == previous.prompt and context.current(previous):
+        extraction = previous.extraction.model_copy(deep=True, update={"reuse_knowledge": True})
+        detail = f"{len(extraction.tags)} tags · {extraction.task_type} · unchanged draft"
+        return extraction, _step("tags", get_settings().tag_model, None, "ok", detail)
     started = time.perf_counter()
-    extraction = await extract_tags(prompt)
+    if previous is not None:
+        extraction = await extract_tags(prompt, previous_prompt=previous.prompt, previous_tags=previous.extraction.tags)
+    elif full_prompt:
+        extraction = await extract_tags(prompt, full_prompt=True)
+    else:
+        extraction = await extract_tags(prompt)
     detail = f"{len(extraction.tags)} tags · {extraction.task_type}"
     return extraction, _step("tags", get_settings().tag_model, started, "ok", detail)
 
 
-async def _retrieve_step(extraction: TagExtraction, tags_present: bool) -> tuple[Retrieval, TraceStep]:
+async def _retrieve_step(
+    extraction: TagExtraction, tags_present: bool, *, refresh: bool = False
+) -> tuple[Retrieval, TraceStep]:
     model = get_settings().embed_model
     if not extraction.tags or not tags_present:
         detail = "no tags extracted" if not extraction.tags else "knowledge base has no tags"
         return Retrieval({t: 0.0 for t in extraction.tags}, []), _step("retrieve", model, None, "skipped", detail)
     started = time.perf_counter()
-    retrieval = await retrieve(extraction.tags)
+    retrieval = await retrieve(extraction.tags, refresh=True) if refresh else await retrieve(extraction.tags)
     detail = f"{len(extraction.tags)} tags → {len(retrieval.candidates)} candidates"
     return retrieval, _step("retrieve", model, started, "ok", detail)
-
-
-async def _judge_step(prompt: str, candidates: list[Candidate]) -> tuple[list[Judged], TraceStep]:
-    model = get_settings().judge_model
-    if not candidates:
-        return [], _step("judge", model, None, "skipped", "no candidates")
-    started = time.perf_counter()
-    judged, failed = await judge(prompt, candidates)
-    detail = f"{sum(j.kept for j in judged)}/{len(judged)} kept" + (f" · {failed} failed/slow" if failed else "")
-    return judged, _step("judge", model, started, "error" if failed else "ok", detail)
 
 
 async def _generate_step(
     req: EnhanceRequest,
     settings: AppSettings,
     extraction: TagExtraction | None,
-    kept: list[Candidate],
+    candidates: list[Candidate],
     allowed: list[str],
-) -> Generated:
-    """Generate, convert and validate; retry once on invalid output, then fall back to `none`."""
-    model = get_settings().generate_model
+) -> tuple[WireResponse, TraceStep, list[Judged]]:
+    """Review every candidate before generating; retry invalid output once, then return `none`."""
+    compact = use_completion(
+        req.prompt, req.cursor, settings, unfinished=bool(extraction and extraction.continuation_needed)
+    )
+    # A complete or ambiguous draft needs an explicit choice before adding inferred requirements.
+    # Compact mode is reserved for unfinished clauses (or autocomplete-only user settings).
+    if not compact and extraction is not None:
+        allowed = [kind for kind in allowed if kind != "autocomplete"]
+    model = generation_model(compact)
     started = time.perf_counter()
-    contents = build_contents(req.prompt, req.cursor, settings, extraction, kept)
-    mode = f"{len(kept)} knowledge" if kept else "general enhancement"
+    contents = build_contents(req.prompt, req.cursor, settings, extraction, candidates, response_types=allowed)
     feedback = ""
     for attempt in range(2):
-        generation = await generate(contents, feedback or None)
         try:
+            generation, judged = await complete(contents, candidates, compact=compact, feedback=feedback or None)
             if generation.type not in allowed:
                 raise InvalidOutput(f"type {generation.type} is not in allowed_types")
             response = to_response(generation, req.prompt, req.request_id, req.prompt_revision, settings.max_options)
@@ -86,13 +89,21 @@ async def _generate_step(
         except InvalidOutput as exc:
             feedback = str(exc)
             continue
-        except ValidationError as exc:  # wire-model constraint; messages carry no input text
+        except ValidationError as exc:  # messages carry no input text
             feedback = f"invalid field: {exc.errors()[0]['msg']}"
             continue
-        detail = f"{mode} → {response.type}" + (" · retried" if attempt else "")
-        return response, _step("generate", model, started, "ok", detail)
+        kept = sum(item.kept for item in judged)
+        mode = f"{kept} knowledge" if kept else "general enhancement"
+        detail = f"{mode} → {response.type}" + (" · compact suffix" if compact else "")
+        if attempt:
+            detail += " · retried"
+        return response, _step("generate", model, started, "ok", detail), judged
     none = NoneResponse(request_id=req.request_id, prompt_revision=req.prompt_revision)
-    return none, _step("generate", model, started, "error", f"{mode} → invalid output twice ({feedback})")
+    return (
+        none,
+        _step("generate", model, started, "error", f"invalid output twice ({feedback})"),
+        [Judged(candidate, 0.0, False) for candidate in candidates],
+    )
 
 
 def _skipped_steps(reason: str) -> list[TraceStep]:
@@ -101,15 +112,12 @@ def _skipped_steps(reason: str) -> list[TraceStep]:
     return [_step(s, m, None, "skipped", reason) for s, m in [*models, ("generate", cfg.generate_model)]]
 
 
-async def _discard(task: "asyncio.Task[Any] | None") -> None:
-    if task is not None:
-        task.cancel()
-        with contextlib.suppress(BaseException):
-            await task
-
-
 async def run_enhance(req: EnhanceRequest) -> WireResponse:
     started = time.perf_counter()
+    # Clear colliding IDs even if this request fails or disables enhancement.
+    context.forget(req.request_id)
+    previous = context.previous(req.previous_request_id)
+    models = context.model_fingerprint()
     response: WireResponse = NoneResponse(request_id=req.request_id, prompt_revision=req.prompt_revision)
     extraction: TagExtraction | None = None
     retrieval = Retrieval({}, [])
@@ -119,32 +127,73 @@ async def run_enhance(req: EnhanceRequest) -> WireResponse:
     if not req.prompt.strip():
         steps = _skipped_steps("empty prompt")
     else:
-        tags_task = asyncio.create_task(_tags_step(req.prompt))
-        speculative: asyncio.Task[Generated] | None = None
-        try:
-            settings, tags_present = await asyncio.gather(load_settings(), has_tags())
-            allowed = allowed_types(req.prompt, req.cursor, settings)
-            if allowed != ["none"]:
-                speculative = asyncio.create_task(_generate_step(req, settings, None, [], allowed))
-            extraction, tags_step = await tags_task
-            retrieval, retrieve_step = await _retrieve_step(extraction, tags_present)
-            judged, judge_step = await _judge_step(req.prompt, retrieval.candidates)
-            kept = [j.candidate for j in judged if j.kept]
-            if speculative is None:
-                generate_step = _step("generate", get_settings().generate_model, None, "skipped", "disabled")
-            elif kept:
-                await _discard(speculative)
-                response, generate_step = await _generate_step(req, settings, extraction, kept, allowed)
+        settings = await load_settings()
+        allowed = allowed_types(req.prompt, req.cursor, settings)
+        if allowed == ["none"]:
+            steps = _skipped_steps("disabled")
+        else:
+            local_started = time.perf_counter()
+            local = (
+                await catalog.select(req.prompt)
+                if get_settings().fast_autocomplete_enabled
+                and settings.autocomplete_enabled
+                and req.cursor == utf16_len(req.prompt)
+                else None
+            )
+            if local is not None:
+                retrieval = local
+                tags_step = _step("tags", "local", None, "skipped", "mode selection in generation; no tag inference")
+                retrieve_step = _step(
+                    "retrieve",
+                    "tiger-lexical",
+                    local_started,
+                    "ok",
+                    f"local knowledge snapshot · {len(local.candidates)} candidates; fresh review",
+                )
+            elif previous is not None:
+                extraction, tags_step = await _tags_step(req.prompt, previous)
+                if context.can_reuse(previous, req.prompt, extraction):
+                    retrieval = previous.retrieval
+                    retrieve_step = _step(
+                        "retrieve",
+                        get_settings().embed_model,
+                        None,
+                        "ok",
+                        f"reused previous context · {len(retrieval.candidates)} candidates; re-reviewing current draft",
+                    )
+                else:
+                    retrieval, retrieve_step = await _retrieve_step(extraction, await has_tags(), refresh=True)
             else:
-                response, generate_step = await speculative
-        finally:
-            await _discard(tags_task if not tags_task.done() else None)
-            await _discard(speculative if speculative and not speculative.done() else None)
-        steps = [tags_step, retrieve_step, judge_step, generate_step]
-        used = [c.id for c in kept] if response.type != "none" else []
+                tag_result, tags_present = await asyncio.gather(
+                    _tags_step(req.prompt, full_prompt=bool(req.previous_request_id)), has_tags()
+                )
+                extraction, tags_step = tag_result
+                retrieval, retrieve_step = await _retrieve_step(
+                    extraction, tags_present, refresh=bool(req.previous_request_id)
+                )
+            response, generate_step, judged = await _generate_step(
+                req, settings, extraction, retrieval.candidates, allowed
+            )
+            if local is not None and not is_fresh(local):
+                response = NoneResponse(request_id=req.request_id, prompt_revision=req.prompt_revision)
+                judged = [Judged(candidate, 0.0, False) for candidate in local.candidates]
+                generate_step.detail = "knowledge changed or expired during generation; suggestion discarded"
+                generate_step.status = "skipped"
+            kept = [j.candidate for j in judged if j.kept]
+            judge_step = _step(
+                "judge",
+                generate_step.model,
+                None,
+                generate_step.status if judged else "skipped",
+                f"{len(kept)}/{len(judged)} kept · reviewed in generation call" if judged else "no candidates",
+            )
+            steps = [tags_step, retrieve_step, judge_step, generate_step]
+            used = [c.id for c in kept] if response.type != "none" else []
+            if extraction is not None:
+                context.remember(req.request_id, req.prompt, extraction, retrieval, models=models)
 
     features = derive_features(req.prompt, extraction, retrieval.tag_similarity, judged, response, _ms(started))
-    trace = save_trace(
+    await save_trace(
         request_id=req.request_id,
         prompt_revision=req.prompt_revision,
         result_type=response.type,
@@ -162,6 +211,6 @@ async def run_enhance(req: EnhanceRequest) -> WireResponse:
         ],
         steps=steps,
         features=features,
+        used_knowledge=used,
     )
-    await asyncio.gather(trace, increment_use_count(used))
     return response

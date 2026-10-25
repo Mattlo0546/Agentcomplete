@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Request
+import asyncio
+import contextlib
+
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import model_validator
 
 from app.observability.context import set_request_id
@@ -24,4 +27,25 @@ async def enhance(body: _ValidatedEnhanceRequest, request: Request) -> EnhanceRe
     # The API-call log row and the AI-call logs both group under the client's request id.
     request.state.request_id = body.request_id
     set_request_id(body.request_id)
-    return await run_enhance(body)
+    pipeline = asyncio.create_task(run_enhance(body))
+    disconnected = asyncio.create_task(_wait_for_disconnect(request))
+    try:
+        done, _ = await asyncio.wait((pipeline, disconnected), return_when=asyncio.FIRST_COMPLETED)
+        if pipeline in done:
+            return pipeline.result()
+        # Superseded browser requests must release provider connections and stop spending quota.
+        raise HTTPException(status_code=499, detail="Client disconnected")
+    finally:
+        for task in (pipeline, disconnected):
+            if not task.done():
+                task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                # Retrieve failures too, including a disconnect racing an upstream failure.
+                await asyncio.gather(task, return_exceptions=True)
+
+
+async def _wait_for_disconnect(request: Request) -> None:
+    # FastAPI has already consumed the validated JSON body. Awaiting receive avoids polling and
+    # observes an actual ASGI disconnect instead of cancelling a healthy long-running generation.
+    while (await request.receive())["type"] != "http.disconnect":
+        pass
