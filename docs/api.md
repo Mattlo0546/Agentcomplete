@@ -91,7 +91,7 @@ History is deliberate, user-requested prompt-content storage. Versions remain un
 ## Settings & health
 
 - `GET /v1/settings` / `PUT /v1/settings` → `{ trigger_delay_ms: 150–1500, autocomplete_enabled, questions_enabled, max_options: 2–6, retention_days: 30 (read-only), store_payloads: false (read-only) }`.
-- Default trigger delay is 200 ms. Settings reads are cached for up to five seconds; API writes update the current worker's cache immediately.
+- Default trigger delay is 150 ms. Settings refresh in the background every 2.5 seconds and expire after five seconds; API writes update the current worker's cache immediately. Migration 003 moves the previous 200 ms preset to 150 ms and retains other delay values.
 - `GET /v1/health` → `{ status: "ok"|"degraded", latency_ms, db: "ok"|"error", gemini: "ok"|"error"|"unchecked" }` (`?deep=1` pings Gemini).
 
 ## Analytics (Snowflake)

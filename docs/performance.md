@@ -2,13 +2,43 @@
 
 ## Latest implementation: one-call autocomplete
 
-The current default adds a bounded local snapshot of Tiger knowledge for end-of-prompt autocomplete. Strong lexical matches nominate up to three candidates for a **fresh Gemini relevance review and suggestion in one call**. Requests without suitable local candidates retain semantic tag extraction and embedding retrieval. Mid-prompt editing also retains the semantic route. The snapshot refreshes in the background, expires after 15 seconds, and invalidates after local knowledge changes; suggestions are discarded if their source changes or expires during generation. Snowflake remains offline, and all sponsor providers are retained.
+The current default adds a bounded local snapshot of Tiger knowledge for end-of-prompt autocomplete. Metadata-supported lexical matches nominate up to three candidates for a **fresh Gemini relevance review and suggestion in one call**. Requests without suitable local candidates, including ambiguous shared-topic matches, retain semantic tag extraction and embedding retrieval. Mid-prompt editing also retains the semantic route. The snapshot refreshes in the background, expires after 15 seconds, and invalidates after local knowledge changes; suggestions are discarded if their source changes or expires during generation. Snowflake remains offline, and all sponsor providers are retained.
 
 The semantic SQL now parses the vector array once instead of repeatedly casting text inside each distance calculation. Review output uses compact ordered boolean and score arrays, with strict validation and the same relevance threshold.
 
-Nine warm autocomplete observations took **677–977 ms in process, median 831 ms**, with nine grounded autocomplete results and no errors. Startup was recorded separately; each repeat still made a fresh generation call. Evidence: [current samples](evidence/latency-fast-path-three-candidates.json), [fresh pre-change baseline](evidence/latency-before-fast-path.json). This is a small smoke benchmark, excludes HTTP and the editor's 200 ms quiet time, and does **not** establish subsecond visible latency or a production p95. Browser timing and broader knowledge-recall evaluation are still in progress.
+An intermediate nine-sample autocomplete run took **677–977 ms in process, median 831 ms**, with nine grounded autocomplete results and no errors. Startup was recorded separately; each repeat still made a fresh generation call. Evidence: [intermediate backend samples](evidence/latency-fast-path-three-candidates.json), [fresh pre-change baseline](evidence/latency-before-fast-path.json). These figures exclude HTTP and editor waiting.
 
-Restart the backend after pulling. `FAST_AUTOCOMPLETE_ENABLED=false` restores the semantic route for comparison. The earlier measurements below describe preceding implementations.
+The final browser measurement includes the last actual keyboard input, the configured quiet time, HTTP/JSON completion, and a double-animation-frame visibility check:
+
+| Browser metric | Final nine observations |
+|---|---:|
+| Last keystroke → visible suggestion, median | **951.6 ms** |
+| Minimum / maximum | 799.1 / 1,442.7 ms |
+| Below one second | 6 of 9 |
+| Visible autocomplete / errors / empty responses | 9 / 0 / 0 |
+| Input → request, median | 151.4 ms |
+| Request → complete JSON, median | 777.8 ms |
+| JSON → visible rendering proxy, median | 25.7 ms |
+
+This establishes subsecond **median** in this small localhost development-browser run, not universal subsecond latency. First-round median was 1,079.2 ms; repeat-round medians were 935.9 and 951.6 ms. Nearest-rank p95 equals the maximum with nine observations. Provider variability remains dominant, and the first round is not an isolated provider-cold-start experiment. Every request still performs fresh generation. Evidence: [final browser results](evidence/latency-browser.json), [prior 200 ms browser baseline](evidence/latency-browser-before-settings-refresh.json), [reproducible browser script](../frontend/scripts/bench-latency.mjs). The prior browser median was 1,014.5 ms; sequential runs with several changes cannot isolate the effect of background settings refresh.
+
+The default quiet time is now 150 ms, within the existing supported range. Migration 003 changes the previous 200 ms preset and preserves other configured values. Settings refresh every 2.5 seconds ahead of their five-second expiry; fresh requests do not wait behind maintenance, failed reads do not extend expiry, and committed local updates apply immediately.
+
+A [read-only evaluation of all 29 stored documents](evidence/catalog-recall.json) used 62 synthetic fixtures. All 29 explicit baseline tasks retained their intended document in the top three. All 59 locally routed fixtures retained their 61 expected target documents; one ambiguous positive fixture and two negative controls deferred to semantic retrieval. Canonical word forms avoid counting one concept twice, and incidental body overlap cannot nominate an item. This is a candidate-recall check with hand-authored targets, not proof of complete relevance or equal generated-answer quality. The [previous evaluation](evidence/catalog-recall-before-confidence.json) records the missed migration paraphrase that motivated the ambiguity fallback.
+
+Live quality checks cover partial-word joining, Spanish continuation, complete-request abstention, negated technologies, grounded retries, mid-prompt cursors and UTF-16 boundaries. Review instructions distinguish whole-task applicability from novelty of the next suffix; the compact heuristic no longer treats the noun in “Perform a security check” as an unfinished verb.
+
+A final [HTTP incremental workload](evidence/latency-fast-path-incremental.json) changed each of three prompts twice: nine requests, eight autocompletes and one question, no errors, **853 ms median / 1,184 ms maximum** excluding editor delay. Every request performed a fresh review/generation. A [mixed workload](evidence/latency-fast-path-mixed.json) returned six questions and three autocompletes with no errors, **1,050 ms median / 2,127 ms maximum**. The slowest ambiguous API-performance fixture deliberately took semantic fallback. Therefore broader questions and uncertain retrieval are still not universally subsecond. Model outputs differ from earlier runs, so these small sequential observations are not a controlled quality-equivalence study.
+
+Final selected verification: **77 deterministic backend tests, 12 live enhancement tests, 95 frontend tests, 7 MCP tests, and 2 live browser acceptance/decline journeys passed**. Three MCP live checks were skipped by their existing guards. Backend Ruff lint/format, targeted strict mypy on six runtime/benchmark files, frontend TypeScript and ESLint, and benchmark syntax checks passed. The initial broad backend run had a live relevance failure; the corrected rubric passed the subsequent 12-test live enhancement suite. This is not a claim that the entire repository's typecheck or every optional integration test is green.
+
+Restart the backend after pulling. `FAST_AUTOCOMPLETE_ENABLED=false` restores the semantic route for comparison. Run the browser script from `frontend/` with the running backend URL and expected configured delay:
+
+```bash
+node scripts/bench-latency.mjs --api-url http://127.0.0.1:8000 --expected-delay-ms 150
+```
+
+The earlier measurements below describe preceding implementations.
 
 ## Earlier measurements
 

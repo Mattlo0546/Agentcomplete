@@ -93,6 +93,7 @@ _STOP = frozenset(
         "never",
         "without",
         "when",
+        "while",
         "where",
         "how",
         "what",
@@ -119,14 +120,22 @@ def tokens(text: str) -> set[str]:
     for word in _WORDS.findall(unicodedata.normalize("NFKC", text).casefold()):
         if word in _STOP or len(word) < 2:
             continue
-        result.add(word)
-        # Small inflection normalization, not semantic equivalence or a relevance verdict.
-        if len(word) > 4 and word.endswith("ies"):
-            result.add(word[:-3] + "y")
-        elif len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
-            result.add(word[:-1])
-        if len(word) > 5 and word.endswith("ing"):
-            result.add(word[:-3])
+        # One canonical term per concept avoids counting both an inflection and its stem.
+        # Keep technical identifiers intact (Next.js, C++, C#).
+        if not any(char in word for char in ".+#"):
+            if len(word) > 4 and word.endswith("ies"):
+                word = word[:-3] + "y"
+            elif len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+                word = word[:-1]
+            elif len(word) > 5 and word.endswith("ing"):
+                word = word[:-3]
+                if len(word) > 2 and word[-1] == word[-2] and word[-1] in "bdgmnprt":
+                    word = word[:-1]
+                # Removing -ing can remove a silent e: making/writing/creating are still stopwords.
+                if word + "e" in _STOP:
+                    continue
+        if word not in _STOP:
+            result.add(word)
     return result
 
 
@@ -221,8 +230,17 @@ async def select(prompt: str) -> Retrieval | None:
     if snapshot.documents and not ranked:
         return None
     ranked.sort(key=lambda item: (-item[0], str(item[1].candidate.id)))
+    limit = min(MAX_LOCAL_CANDIDATES, MAX_CANDIDATES)
+    if len(ranked) > limit:
+        leading_evidence = ranked[0][1].metadata_tokens & query
+        if len(leading_evidence) == 1 and all(
+            document.metadata_tokens & query == leading_evidence for _, document in ranked[: limit + 1]
+        ):
+            # A shared platform/topic alone cannot choose which of several documents to omit.
+            # Incidental body matches may rank them, but semantic retrieval must resolve the ambiguity.
+            return None
     candidates = []
-    for _, document in ranked[: min(MAX_LOCAL_CANDIDATES, MAX_CANDIDATES)]:
+    for _, document in ranked[:limit]:
         source = document.candidate
         candidates.append(
             Candidate(

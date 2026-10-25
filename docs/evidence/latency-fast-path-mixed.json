@@ -1,0 +1,408 @@
+{
+  "measured_at": "2026-10-25T10:56:27.807070+00:00",
+  "transport": "http",
+  "scenario": "exact_prompt_repeat",
+  "previous_context": false,
+  "summary": {
+    "requests": 9,
+    "errors": 0,
+    "results": {
+      "multiple_choice": 6,
+      "autocomplete": 3
+    },
+    "p50_ms": 1050,
+    "p95_ms": 2127
+  },
+  "by_round": {
+    "1": {
+      "requests": 9,
+      "errors": 0,
+      "results": {
+        "multiple_choice": 6,
+        "autocomplete": 3
+      },
+      "p50_ms": 1050,
+      "p95_ms": 2127
+    }
+  },
+  "samples": [
+    {
+      "case": 1,
+      "round": 1,
+      "request_id": "req_benchcd71d062b5c8",
+      "previous_context_sent": false,
+      "knowledge_reused": false,
+      "latency_ms": 1198,
+      "status": 200,
+      "result_type": "multiple_choice",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped",
+          "detail": "mode selection in generation; no tag inference"
+        },
+        {
+          "step": "retrieve",
+          "model": "tiger-lexical",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "local knowledge snapshot \u00b7 3 candidates; fresh review"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1041,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 multiple_choice"
+        }
+      ]
+    },
+    {
+      "case": 2,
+      "round": 1,
+      "request_id": "req_bench651ce8e40cf9",
+      "previous_context_sent": false,
+      "knowledge_reused": false,
+      "latency_ms": 992,
+      "status": 200,
+      "result_type": "multiple_choice",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped",
+          "detail": "mode selection in generation; no tag inference"
+        },
+        {
+          "step": "retrieve",
+          "model": "tiger-lexical",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "local knowledge snapshot \u00b7 3 candidates; fresh review"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 976,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 multiple_choice"
+        }
+      ]
+    },
+    {
+      "case": 3,
+      "round": 1,
+      "request_id": "req_bench2f5cfb0ee23f",
+      "previous_context_sent": false,
+      "knowledge_reused": false,
+      "latency_ms": 1212,
+      "status": 200,
+      "result_type": "multiple_choice",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped",
+          "detail": "mode selection in generation; no tag inference"
+        },
+        {
+          "step": "retrieve",
+          "model": "tiger-lexical",
+          "latency_ms": 2,
+          "status": "ok",
+          "detail": "local knowledge snapshot \u00b7 3 candidates; fresh review"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1201,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 multiple_choice"
+        }
+      ]
+    },
+    {
+      "case": 4,
+      "round": 1,
+      "request_id": "req_bench5644a9f87882",
+      "previous_context_sent": false,
+      "knowledge_reused": false,
+      "latency_ms": 1113,
+      "status": 200,
+      "result_type": "multiple_choice",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped",
+          "detail": "mode selection in generation; no tag inference"
+        },
+        {
+          "step": "retrieve",
+          "model": "tiger-lexical",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "local knowledge snapshot \u00b7 3 candidates; fresh review"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1098,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 multiple_choice"
+        }
+      ]
+    },
+    {
+      "case": 5,
+      "round": 1,
+      "request_id": "req_bencha635e2114da2",
+      "previous_context_sent": false,
+      "knowledge_reused": false,
+      "latency_ms": 1050,
+      "status": 200,
+      "result_type": "multiple_choice",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped",
+          "detail": "mode selection in generation; no tag inference"
+        },
+        {
+          "step": "retrieve",
+          "model": "tiger-lexical",
+          "latency_ms": 1,
+          "status": "ok",
+          "detail": "local knowledge snapshot \u00b7 2 candidates; fresh review"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/2 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1037,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 multiple_choice"
+        }
+      ]
+    },
+    {
+      "case": 6,
+      "round": 1,
+      "request_id": "req_benche53ba875fc0f",
+      "previous_context_sent": false,
+      "knowledge_reused": false,
+      "latency_ms": 2127,
+      "status": 200,
+      "result_type": "multiple_choice",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 692,
+          "status": "ok",
+          "detail": "2 tags \u00b7 code_change"
+        },
+        {
+          "step": "retrieve",
+          "model": "gemini-embedding-001",
+          "latency_ms": 380,
+          "status": "ok",
+          "detail": "2 tags \u2192 5 candidates"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/5 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1029,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 multiple_choice"
+        }
+      ]
+    },
+    {
+      "case": 7,
+      "round": 1,
+      "request_id": "req_benchf376aca63a7b",
+      "previous_context_sent": false,
+      "knowledge_reused": false,
+      "latency_ms": 914,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped",
+          "detail": "mode selection in generation; no tag inference"
+        },
+        {
+          "step": "retrieve",
+          "model": "tiger-lexical",
+          "latency_ms": 1,
+          "status": "ok",
+          "detail": "local knowledge snapshot \u00b7 3 candidates; fresh review"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 902,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    },
+    {
+      "case": 8,
+      "round": 1,
+      "request_id": "req_bench08e9c704633f",
+      "previous_context_sent": false,
+      "knowledge_reused": false,
+      "latency_ms": 715,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped",
+          "detail": "mode selection in generation; no tag inference"
+        },
+        {
+          "step": "retrieve",
+          "model": "tiger-lexical",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "local knowledge snapshot \u00b7 3 candidates; fresh review"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 708,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    },
+    {
+      "case": 9,
+      "round": 1,
+      "request_id": "req_bench8ec75267b3bd",
+      "previous_context_sent": false,
+      "knowledge_reused": false,
+      "latency_ms": 805,
+      "status": 200,
+      "result_type": "autocomplete",
+      "error_code": null,
+      "kept_count": 1,
+      "steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped",
+          "detail": "mode selection in generation; no tag inference"
+        },
+        {
+          "step": "retrieve",
+          "model": "tiger-lexical",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "local knowledge snapshot \u00b7 3 candidates; fresh review"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok",
+          "detail": "1/3 kept \u00b7 reviewed in generation call"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 799,
+          "status": "ok",
+          "detail": "1 knowledge \u2192 autocomplete \u00b7 compact suffix"
+        }
+      ]
+    }
+  ]
+}

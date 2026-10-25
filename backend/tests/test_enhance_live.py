@@ -132,6 +132,31 @@ async def test_vague_prompt_asks_question(client: AsyncClient) -> None:
 
 
 @pytest.mark.parametrize(
+    "prompt",
+    ["Add retr", "Añade reintentos con retroceso exponencial y"],
+)
+async def test_unfinished_words_and_other_languages_can_autocomplete(client: AsyncClient, prompt: str) -> None:
+    data = await _enhance(client, prompt)
+    assert data.type == "autocomplete", data
+    assert data.insert_at == utf16_len(prompt)
+    if prompt == "Add retr":
+        assert data.text[0].isalpha(), data  # Finish the partial word without inserting a word gap.
+
+
+@pytest.mark.parametrize("prompt", ["Make the API faster", "Perform a security check"])
+async def test_complete_requests_do_not_invent_autocomplete_requirements(client: AsyncClient, prompt: str) -> None:
+    data = await _enhance(client, prompt)
+    assert data.type in ("multiple_choice", "none"), data
+
+
+async def test_explicitly_excluded_platform_is_not_kept(client: AsyncClient) -> None:
+    prompt = "Implement the endpoint with FastAPI and PostgreSQL, not React, using"
+    data = await _enhance(client, prompt)
+    trace = (await client.get(f"/v1/traces/{data.request_id}")).json()
+    assert not any(k["kept"] and "react" in k["title"].lower() for k in trace["knowledge"]), trace["knowledge"]
+
+
+@pytest.mark.parametrize(
     ("prompt", "anchor"),
     [
         ("Refactor the 😀 emoji parser and then write tests for it", "and then"),

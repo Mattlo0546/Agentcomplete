@@ -27,7 +27,7 @@ from app.observability.middleware import RequestLogMiddleware
 from app.observability.writers import flush as flush_logs
 from app.pipeline import catalog
 from app.pipeline.trace import flush as flush_traces
-from app.settings_store import load_settings
+from app.settings_store import start_settings_refresh, stop_settings_refresh
 
 logging.basicConfig(level=logging.INFO)
 
@@ -39,12 +39,13 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     if applied:
         logging.getLogger(__name__).info("applied migrations: %s", ", ".join(applied))
     try:
-        await load_settings()
+        await start_settings_refresh()
         if get_settings().fast_autocomplete_enabled:
             await catalog.start()
         yield
     finally:
         await catalog.stop()
+        await stop_settings_refresh()
         await flush_traces()
         await flush_logs()
         await close_pool()

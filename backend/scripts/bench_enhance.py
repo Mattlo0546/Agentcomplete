@@ -148,12 +148,12 @@ async def main(args: argparse.Namespace) -> None:
         from app.observability.writers import flush as flush_logs
         from app.pipeline import catalog
         from app.pipeline.trace import flush as flush_traces
-        from app.settings_store import load_settings
+        from app.settings_store import start_settings_refresh, stop_settings_refresh
 
         startup_started = time.perf_counter()
         await open_pool()
         try:
-            await load_settings()
+            await start_settings_refresh()
             if get_settings().fast_autocomplete_enabled:
                 await catalog.start()
             startup_ms = round((time.perf_counter() - startup_started) * 1000)
@@ -161,6 +161,7 @@ async def main(args: argparse.Namespace) -> None:
             result["startup_ms"] = startup_ms
         finally:
             await catalog.stop()
+            await stop_settings_refresh()
             await flush_traces()
             await flush_logs()
             await close_pool()

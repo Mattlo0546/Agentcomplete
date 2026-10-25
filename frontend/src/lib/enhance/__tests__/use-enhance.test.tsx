@@ -37,12 +37,12 @@ afterEach(() => {
 });
 
 describe("autocomplete scheduling", () => {
-  it("sends once after 200 ms of quiet time and uses the latest input", async () => {
+  it("sends once after 150 ms of quiet time and uses the latest input", async () => {
     const { result } = renderHook(() => useEnhance());
     type(result, "S");
     await advance(100);
     type(result, "Ship");
-    await advance(199);
+    await advance(149);
     expect(postEnhance).not.toHaveBeenCalled();
     await advance(1);
     expect(postEnhance).toHaveBeenCalledTimes(1);

@@ -1,0 +1,444 @@
+{
+  "measured_at": "2026-10-25T10:54:08.345Z",
+  "source_commit": "33680b1968ed309262146970139aa6193ed7110f",
+  "source_tree_dirty": true,
+  "source_files_sha256": {
+    "backend/app/main.py": "6a57edd32178b9732c3602412bb8bd30ced738aa4367cb7a2b42b6759df660c4",
+    "backend/app/pipeline/catalog.py": "a3a5d9e9752487bcdf5fb8623a96a781e3d9debb81f6f2917ed03e8d9696012f",
+    "backend/app/pipeline/complete.py": "364407bd7a35818eddfd09ef03a832dc3a73f95966cd0187ec0b89af5185be60",
+    "backend/app/pipeline/run.py": "ef3c47188d272b61784a808a8bb28ff911747ceda4f345f4fc11823bad386ae3",
+    "backend/app/settings_store.py": "9b5168b10ef1ccbd905b687321c2f204a21d76522dada6caec4a0948aae7ca76",
+    "frontend/src/lib/settings/defaults.ts": "c8b1bd1416c9b6981a1ecbf08379c1ebb65aee9d1cf08163e12b7ae74e464a2f",
+    "frontend/src/lib/enhance/use-enhance.ts": "025049e901becd67e3c6396b0b6ccd8b5dd1c0a1135f244b3637c711bee39710",
+    "frontend/scripts/bench-latency.mjs": "18856e3446b168ea4300f4da6bd3202a99552ba1d457deff04cd02a720f7811d"
+  },
+  "scenario": "browser_exact_prompt_repeat",
+  "app_url": "http://localhost:3000",
+  "api_url": "http://127.0.0.1:8001",
+  "server_mode": "existing Next.js development server; not a production-build measurement",
+  "browser": "Chromium 156.0.8078.4",
+  "headless": true,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "fixture_source": "backend/scripts/bench_enhance.py PROMPTS[6:9]",
+  "fixture_sha256": "b5a990ff61712f32696750bfb6a7dd9d7948600bb30bd9f0e7627b558b59b6df",
+  "rounds": 3,
+  "typing_delay_ms": 5,
+  "expected_trigger_delay_ms": 150,
+  "configured_trigger_delay_ms": 150,
+  "measurement": {
+    "clock": "performance.now() in one page",
+    "last_input": "capture-phase trusted input event from the final typed character",
+    "request_start": "application fetch invocation, not network packet transmission",
+    "response": "fetch resolves at headers, then the application response.json() resolves",
+    "visible": "visible populated ghost/question followed by two requestAnimationFrame callbacks",
+    "limitations": [
+      "Double animation frame is a rendering-opportunity proxy, not hardware presentation telemetry.",
+      "Development server, localhost networking, rapid deterministic typing, and nine samples are not a production SLA.",
+      "Nearest-rank p95 equals the maximum for the default nine-sample run.",
+      "Backend/provider caches are not reset; rounds are exact repeats, not isolated cold starts.",
+      "Source hashes describe files before browser launch, not attestation of code loaded by existing server processes.",
+      "none responses have no visible-suggestion latency and are reported separately."
+    ]
+  },
+  "browser_page_errors": 0,
+  "setup_phase": "complete",
+  "setup_error": null,
+  "samples": [
+    {
+      "case": 7,
+      "round": 1,
+      "request_id": "req_fd0fe55f9570",
+      "prompt_revision": 63,
+      "status": 200,
+      "result_type": "autocomplete",
+      "outcome": "visible",
+      "error_code": null,
+      "input_events": 63,
+      "all_inputs_trusted": true,
+      "final_input_units": 63,
+      "request_count": 1,
+      "aborted_request_count": 0,
+      "typing_duration_ms": 726.9,
+      "last_input_to_request_ms": 152.1,
+      "last_input_to_response_headers_ms": 1403.8,
+      "last_input_to_response_json_ms": 1405.1,
+      "last_input_to_dom_ms": 1414.4,
+      "last_input_to_visible_ms": 1442.7,
+      "request_to_response_json_ms": 1253,
+      "response_json_to_visible_ms": 37.6
+    },
+    {
+      "case": 8,
+      "round": 1,
+      "request_id": "req_cfd9949c3884",
+      "prompt_revision": 112,
+      "status": 200,
+      "result_type": "autocomplete",
+      "outcome": "visible",
+      "error_code": null,
+      "input_events": 48,
+      "all_inputs_trusted": true,
+      "final_input_units": 48,
+      "request_count": 1,
+      "aborted_request_count": 0,
+      "typing_duration_ms": 531,
+      "last_input_to_request_ms": 151,
+      "last_input_to_response_headers_ms": 1058.9,
+      "last_input_to_response_json_ms": 1059.4,
+      "last_input_to_dom_ms": 1067.1,
+      "last_input_to_visible_ms": 1079.2,
+      "request_to_response_json_ms": 908.4,
+      "response_json_to_visible_ms": 19.8
+    },
+    {
+      "case": 9,
+      "round": 1,
+      "request_id": "req_fd1afda745f2",
+      "prompt_revision": 182,
+      "status": 200,
+      "result_type": "autocomplete",
+      "outcome": "visible",
+      "error_code": null,
+      "input_events": 69,
+      "all_inputs_trusted": true,
+      "final_input_units": 69,
+      "request_count": 1,
+      "aborted_request_count": 0,
+      "typing_duration_ms": 663.1,
+      "last_input_to_request_ms": 152.1,
+      "last_input_to_response_headers_ms": 851.4,
+      "last_input_to_response_json_ms": 851.7,
+      "last_input_to_dom_ms": 856.4,
+      "last_input_to_visible_ms": 877.4,
+      "request_to_response_json_ms": 699.6,
+      "response_json_to_visible_ms": 25.7
+    },
+    {
+      "case": 7,
+      "round": 2,
+      "request_id": "req_118438c4ac30",
+      "prompt_revision": 246,
+      "status": 200,
+      "result_type": "autocomplete",
+      "outcome": "visible",
+      "error_code": null,
+      "input_events": 63,
+      "all_inputs_trusted": true,
+      "final_input_units": 63,
+      "request_count": 1,
+      "aborted_request_count": 0,
+      "typing_duration_ms": 654.2,
+      "last_input_to_request_ms": 151.2,
+      "last_input_to_response_headers_ms": 851.6,
+      "last_input_to_response_json_ms": 852.2,
+      "last_input_to_dom_ms": 856.8,
+      "last_input_to_visible_ms": 882.7,
+      "request_to_response_json_ms": 701,
+      "response_json_to_visible_ms": 30.5
+    },
+    {
+      "case": 8,
+      "round": 2,
+      "request_id": "req_d86dfe6a4de1",
+      "prompt_revision": 295,
+      "status": 200,
+      "result_type": "autocomplete",
+      "outcome": "visible",
+      "error_code": null,
+      "input_events": 48,
+      "all_inputs_trusted": true,
+      "final_input_units": 48,
+      "request_count": 1,
+      "aborted_request_count": 0,
+      "typing_duration_ms": 538.2,
+      "last_input_to_request_ms": 151,
+      "last_input_to_response_headers_ms": 909.9,
+      "last_input_to_response_json_ms": 910.7,
+      "last_input_to_dom_ms": 917.6,
+      "last_input_to_visible_ms": 935.9,
+      "request_to_response_json_ms": 759.7,
+      "response_json_to_visible_ms": 25.2
+    },
+    {
+      "case": 9,
+      "round": 2,
+      "request_id": "req_dadeefad8cc9",
+      "prompt_revision": 365,
+      "status": 200,
+      "result_type": "autocomplete",
+      "outcome": "visible",
+      "error_code": null,
+      "input_events": 69,
+      "all_inputs_trusted": true,
+      "final_input_units": 69,
+      "request_count": 1,
+      "aborted_request_count": 0,
+      "typing_duration_ms": 679.4,
+      "last_input_to_request_ms": 151.8,
+      "last_input_to_response_headers_ms": 958.3,
+      "last_input_to_response_json_ms": 958.8,
+      "last_input_to_dom_ms": 962.9,
+      "last_input_to_visible_ms": 991.4,
+      "request_to_response_json_ms": 807,
+      "response_json_to_visible_ms": 32.6
+    },
+    {
+      "case": 7,
+      "round": 3,
+      "request_id": "req_b5674627ddae",
+      "prompt_revision": 429,
+      "status": 200,
+      "result_type": "autocomplete",
+      "outcome": "visible",
+      "error_code": null,
+      "input_events": 63,
+      "all_inputs_trusted": true,
+      "final_input_units": 63,
+      "request_count": 1,
+      "aborted_request_count": 0,
+      "typing_duration_ms": 642.9,
+      "last_input_to_request_ms": 151.6,
+      "last_input_to_response_headers_ms": 928.1,
+      "last_input_to_response_json_ms": 929.4,
+      "last_input_to_dom_ms": 936.3,
+      "last_input_to_visible_ms": 951.6,
+      "request_to_response_json_ms": 777.8,
+      "response_json_to_visible_ms": 22.2
+    },
+    {
+      "case": 8,
+      "round": 3,
+      "request_id": "req_ff62c86653a2",
+      "prompt_revision": 478,
+      "status": 200,
+      "result_type": "autocomplete",
+      "outcome": "visible",
+      "error_code": null,
+      "input_events": 48,
+      "all_inputs_trusted": true,
+      "final_input_units": 48,
+      "request_count": 1,
+      "aborted_request_count": 0,
+      "typing_duration_ms": 455.9,
+      "last_input_to_request_ms": 151.1,
+      "last_input_to_response_headers_ms": 780.5,
+      "last_input_to_response_json_ms": 780.8,
+      "last_input_to_dom_ms": 786.1,
+      "last_input_to_visible_ms": 799.1,
+      "request_to_response_json_ms": 629.7,
+      "response_json_to_visible_ms": 18.3
+    },
+    {
+      "case": 9,
+      "round": 3,
+      "request_id": "req_00565905b2e8",
+      "prompt_revision": 548,
+      "status": 200,
+      "result_type": "autocomplete",
+      "outcome": "visible",
+      "error_code": null,
+      "input_events": 69,
+      "all_inputs_trusted": true,
+      "final_input_units": 69,
+      "request_count": 1,
+      "aborted_request_count": 0,
+      "typing_duration_ms": 610.1,
+      "last_input_to_request_ms": 151.4,
+      "last_input_to_response_headers_ms": 1014.6,
+      "last_input_to_response_json_ms": 1015.1,
+      "last_input_to_dom_ms": 1019.8,
+      "last_input_to_visible_ms": 1048.3,
+      "request_to_response_json_ms": 863.7,
+      "response_json_to_visible_ms": 33.2
+    }
+  ],
+  "summary": {
+    "samples": 9,
+    "errors": 0,
+    "none": 0,
+    "visible_suggestions": 9,
+    "subsecond_visible_suggestions": 6,
+    "results": {
+      "autocomplete": 9
+    },
+    "last_input_to_visible": {
+      "n": 9,
+      "p50_ms": 951.6,
+      "p95_ms": 1442.7,
+      "min_ms": 799.1,
+      "max_ms": 1442.7
+    },
+    "last_input_to_response_json": {
+      "n": 9,
+      "p50_ms": 929.4,
+      "p95_ms": 1405.1,
+      "min_ms": 780.8,
+      "max_ms": 1405.1
+    },
+    "last_input_to_request": {
+      "n": 9,
+      "p50_ms": 151.4,
+      "p95_ms": 152.1,
+      "min_ms": 151,
+      "max_ms": 152.1
+    },
+    "request_to_response_json": {
+      "n": 9,
+      "p50_ms": 777.8,
+      "p95_ms": 1253,
+      "min_ms": 629.7,
+      "max_ms": 1253
+    },
+    "response_json_to_visible": {
+      "n": 9,
+      "p50_ms": 25.7,
+      "p95_ms": 37.6,
+      "min_ms": 18.3,
+      "max_ms": 37.6
+    },
+    "extra_requests": 0
+  },
+  "by_round": {
+    "1": {
+      "samples": 3,
+      "errors": 0,
+      "none": 0,
+      "visible_suggestions": 3,
+      "subsecond_visible_suggestions": 1,
+      "results": {
+        "autocomplete": 3
+      },
+      "last_input_to_visible": {
+        "n": 3,
+        "p50_ms": 1079.2,
+        "p95_ms": 1442.7,
+        "min_ms": 877.4,
+        "max_ms": 1442.7
+      },
+      "last_input_to_response_json": {
+        "n": 3,
+        "p50_ms": 1059.4,
+        "p95_ms": 1405.1,
+        "min_ms": 851.7,
+        "max_ms": 1405.1
+      },
+      "last_input_to_request": {
+        "n": 3,
+        "p50_ms": 152.1,
+        "p95_ms": 152.1,
+        "min_ms": 151,
+        "max_ms": 152.1
+      },
+      "request_to_response_json": {
+        "n": 3,
+        "p50_ms": 908.4,
+        "p95_ms": 1253,
+        "min_ms": 699.6,
+        "max_ms": 1253
+      },
+      "response_json_to_visible": {
+        "n": 3,
+        "p50_ms": 25.7,
+        "p95_ms": 37.6,
+        "min_ms": 19.8,
+        "max_ms": 37.6
+      },
+      "extra_requests": 0
+    },
+    "2": {
+      "samples": 3,
+      "errors": 0,
+      "none": 0,
+      "visible_suggestions": 3,
+      "subsecond_visible_suggestions": 3,
+      "results": {
+        "autocomplete": 3
+      },
+      "last_input_to_visible": {
+        "n": 3,
+        "p50_ms": 935.9,
+        "p95_ms": 991.4,
+        "min_ms": 882.7,
+        "max_ms": 991.4
+      },
+      "last_input_to_response_json": {
+        "n": 3,
+        "p50_ms": 910.7,
+        "p95_ms": 958.8,
+        "min_ms": 852.2,
+        "max_ms": 958.8
+      },
+      "last_input_to_request": {
+        "n": 3,
+        "p50_ms": 151.2,
+        "p95_ms": 151.8,
+        "min_ms": 151,
+        "max_ms": 151.8
+      },
+      "request_to_response_json": {
+        "n": 3,
+        "p50_ms": 759.7,
+        "p95_ms": 807,
+        "min_ms": 701,
+        "max_ms": 807
+      },
+      "response_json_to_visible": {
+        "n": 3,
+        "p50_ms": 30.5,
+        "p95_ms": 32.6,
+        "min_ms": 25.2,
+        "max_ms": 32.6
+      },
+      "extra_requests": 0
+    },
+    "3": {
+      "samples": 3,
+      "errors": 0,
+      "none": 0,
+      "visible_suggestions": 3,
+      "subsecond_visible_suggestions": 2,
+      "results": {
+        "autocomplete": 3
+      },
+      "last_input_to_visible": {
+        "n": 3,
+        "p50_ms": 951.6,
+        "p95_ms": 1048.3,
+        "min_ms": 799.1,
+        "max_ms": 1048.3
+      },
+      "last_input_to_response_json": {
+        "n": 3,
+        "p50_ms": 929.4,
+        "p95_ms": 1015.1,
+        "min_ms": 780.8,
+        "max_ms": 1015.1
+      },
+      "last_input_to_request": {
+        "n": 3,
+        "p50_ms": 151.4,
+        "p95_ms": 151.6,
+        "min_ms": 151.1,
+        "max_ms": 151.6
+      },
+      "request_to_response_json": {
+        "n": 3,
+        "p50_ms": 777.8,
+        "p95_ms": 863.7,
+        "min_ms": 629.7,
+        "max_ms": 863.7
+      },
+      "response_json_to_visible": {
+        "n": 3,
+        "p50_ms": 22.2,
+        "p95_ms": 33.2,
+        "min_ms": 18.3,
+        "max_ms": 33.2
+      },
+      "extra_requests": 0
+    }
+  }
+}
