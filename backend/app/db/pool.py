@@ -19,15 +19,26 @@ async def _configure(conn: AsyncConnection) -> None:
 async def open_pool() -> AsyncConnectionPool:
     global _pool
     if _pool is None:
-        _pool = AsyncConnectionPool(
-            get_settings().database_url,
+        database_url = get_settings().database_url
+        # A fresh database has no vector type until migration 001 runs, but
+        # pool configuration registers that type before migrations can borrow a
+        # connection. Bootstrap the extension using a plain connection first.
+        async with await AsyncConnection.connect(database_url, autocommit=True) as bootstrap:
+            await bootstrap.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        candidate = AsyncConnectionPool(
+            database_url,
             min_size=1,
             max_size=10,
             open=False,
             configure=_configure,
             kwargs={"row_factory": dict_row, "autocommit": True},
         )
-        await _pool.open(wait=True, timeout=30)
+        try:
+            await candidate.open(wait=True, timeout=30)
+        except Exception:
+            await candidate.close()
+            raise
+        _pool = candidate
     return _pool
 
 

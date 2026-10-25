@@ -62,7 +62,7 @@ cd frontend && pnpm test:e2e
 
 Backend tests and Playwright e2e hit the real Tiger Data, Gemini and Snowflake services.
 
-History API tests can run without service credentials with `cd backend && uv run pytest --confcutdir=tests/offline tests/offline -q`.
+History API tests can run without service credentials with `cd backend && uv run python -m pytest --confcutdir=tests/offline tests/offline -q`.
 Browser history tests intercept the API and cover desktop and mobile without live AI calls: `cd frontend && pnpm test:e2e:offline`.
 Run plugin tests with `cd plugin/prompt-enhance/mcp && uv run --frozen pytest -q -m 'not live'`.
 
