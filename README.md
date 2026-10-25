@@ -2,7 +2,7 @@
 
 A prompt companion for Codex. Retrieves relevant skills and examples, reviews them with Gemini, and suggests ghost text or clarifying edits while you type.
 
-[Architecture](docs/architecture.md) · [API reference](docs/api.md) · [Codex plugin](docs/codex-plugin.md) · [Performance](docs/performance.md)
+[Architecture](docs/architecture.md) · [Retrieval detail](#retrieval-architecture) · [API reference](docs/api.md) · [Codex plugin](docs/codex-plugin.md) · [Performance](docs/performance.md)
 
 ## Architecture
 
@@ -18,6 +18,24 @@ The runtime consists of the companion, one API worker, and external services. Re
 3. **Validate and return.** Python checks response types, partial-word suffixes, anchored UTF-16 edits, and source freshness. Invalid output gets one retry. The editor enforces request/revision checks and bounded exact-prefix adoption of older suffixes.
 4. **Maintain knowledge and hand off.** Knowledge ingestion summarizes and tags concurrently, embeds new tags, saves atomically, and invalidates retrieval caches. Send to Codex stores one latest prompt for the MCP plugin to fetch.
 5. **Record and learn offline.** Metadata traces and usage counts persist in the background; reactions create outcome events. Explicit exports feed Snowflake classifier training, outside the suggestion path.
+
+## Retrieval architecture
+
+The retrieval router chooses the knowledge supplied to Gemini. It tries the routes below in order and stops at the first usable result. Each route runs inside the same FastAPI worker.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/retrieval-router-dark.svg">
+  <img alt="Detailed retrieval router: complete catalog, lexical shortlist, direct semantic index, then tags and pgvector. Each usable result joins fresh Gemini review and generation, followed by output validation and source-freshness checks. Side panels describe the shared Tiger snapshot, Retrieval result contract, and fallback semantics." src="docs/assets/retrieval-router-light.svg" width="1200">
+</picture>
+
+- **Complete catalog:** send every full body when the catalog fits 64 documents and 80,000 serialized characters.
+- **Lexical:** eligible end-cursor autocomplete uses metadata overlap and weighted term ranking to select up to three candidates.
+- **Direct semantic:** compare a query embedding with precomputed document chunks; return up to three documents with their best matching evidence.
+- **Tags / pgvector:** extract tags, reuse safe previous context or embed tags, then retrieve up to five documents through matching stored tags.
+
+An unavailable route falls through. An empty result is usable and proceeds to draft-only generation. Every candidate is freshly reviewed; rejecting all candidates does not start another retrieval pass. `SEMANTIC_FIRST_ENABLED` can swap lexical and semantic attempts, while complete-catalog review stays first. Source freshness is checked again before output returns.
+
+See the [retrieval router deep dive](docs/architecture.md#retrieval-router) for algorithms, cache reuse, route controls, and failure behavior.
 
 ## Stack
 

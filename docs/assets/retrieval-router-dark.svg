@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1450" viewBox="0 0 1200 1450" role="img" aria-labelledby="title desc">
+<title id="title">Skill Issue — retrieval router in detail</title>
+<desc id="desc">After nonempty input and enabled-mode checks, the router tries a complete catalog, eligible lexical matching, direct semantic retrieval, then Gemini tags and pgvector. An unavailable route falls through; any usable Retrieval, including an empty result, goes to fresh review and generation. A shared Tiger snapshot supplies the first three routes. Semantic-first only swaps lexical and semantic attempts. Final validation checks source age and mutation generation after trace backpressure; expired or changed sources return none. This diagram describes one FastAPI worker, not separately deployed retrieval services.</desc>
+<defs>
+<marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="#e6edf3" stroke-width="1.4"/></marker>
+<marker id="selected-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="#8cb7d3" stroke-width="1.4"/></marker>
+</defs>
+<style>text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#e6edf3;font-size:15px}.title{font-size:20px;font-weight:600}.meta{font-size:14px;fill:#a0a8b2}.small{font-size:13px;fill:#a0a8b2}.label{font-size:13px;fill:#a0a8b2;letter-spacing:1px}.selected{font-size:12px;fill:#8cb7d3}</style>
+<rect width="1200" height="1450" fill="#0d1117"/>
+
+<text x="42" y="38" class="title" text-anchor="start">RETRIEVAL ROUTER</text>
+<text x="1158" y="38" class="label" text-anchor="end">INSIDE ONE FASTAPI WORKER</text>
+<text x="42" y="65" class="meta" text-anchor="start">Choose context once; review its relevance against the current draft.</text>
+<g data-card="Input: draft + UTF-16 cursor + settings + previous_request_id" data-bounds="42,88,1116,88">
+<rect x="42" y="88" width="1116" height="88" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="62" y="120" class="title" text-anchor="start">Input: draft + UTF-16 cursor + settings + previous_request_id</text>
+<text x="62" y="151" class="meta" text-anchor="start">Empty draft or disabled response modes → none before retrieval. Otherwise, enter the router below.</text>
+</g>
+<rect x="42" y="211" width="730" height="936" rx="6" fill="#10151b" stroke="#727b86" stroke-width="1.2" stroke-dasharray="5 5"/>
+<text x="64" y="238" class="label" text-anchor="start">DEFAULT ORDER / FIRST USABLE RESULT WINS</text>
+<path d="M406 176 V211" fill="none" stroke="#e6edf3" stroke-width="1.4" marker-end="url(#arrow)"/>
+<path d="M406 244 V262" fill="none" stroke="#e6edf3" stroke-width="1.4" marker-end="url(#arrow)"/>
+<g data-card="1  Complete catalog" data-bounds="64,262,684,156">
+<rect x="64" y="262" width="684" height="156" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="84" y="294" class="title" text-anchor="start">1  Complete catalog</text>
+<text x="84" y="322" class="meta" text-anchor="start">CATALOG_REVIEW_ENABLED · fresh complete snapshot</text>
+<text x="84" y="350" class="" text-anchor="start">≤64 documents AND ≤80,000 serialized context characters</text>
+<text x="84" y="378" class="meta" text-anchor="start">Pass every full body; no query-tag or embedding call</text>
+<text x="84" y="401" class="small" text-anchor="start">Whole catalog exceeds bounds → fall through without truncating bodies</text>
+</g>
+<path d="M406 418 V473" fill="none" stroke="#e6edf3" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="421" y="451" class="small" text-anchor="start">disabled / unavailable / too large</text>
+<g data-card="2  Lexical shortlist" data-bounds="64,473,684,164">
+<rect x="64" y="473" width="684" height="164" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="84" y="505" class="title" text-anchor="start">2  Lexical shortlist</text>
+<text x="84" y="533" class="meta" text-anchor="start">FAST_AUTOCOMPLETE_ENABLED · autocomplete on · cursor at end</text>
+<text x="84" y="561" class="meta" text-anchor="start">Title / summary / tag overlap gates matching; body terms rank</text>
+<text x="84" y="589" class="" text-anchor="start">Weighted lexical score → up to 3 candidates</text>
+<text x="84" y="616" class="small" text-anchor="start">Ineligible / no match / ambiguous shared-topic match → next route</text>
+</g>
+<path d="M406 637 V692" fill="none" stroke="#e6edf3" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="421" y="670" class="small" text-anchor="start">no usable lexical result</text>
+<g data-card="3  Direct semantic index" data-bounds="64,692,684,190">
+<rect x="64" y="692" width="684" height="190" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="84" y="724" class="title" text-anchor="start">3  Direct semantic index</text>
+<text x="84" y="752" class="meta" text-anchor="start">DIRECT_SEMANTIC_ENABLED · current paired document/query index</text>
+<text x="84" y="780" class="meta" text-anchor="start">EmbeddingGemma 2 query → cosine vs precomputed chunks</text>
+<text x="84" y="808" class="" text-anchor="start">Best chunk per document → top 3; no 0.88 threshold</text>
+<text x="84" y="836" class="meta" text-anchor="start">Local ONNX default; Gemini embedding backend is optional</text>
+<text x="84" y="861" class="small" text-anchor="start">Missing / stale / busy / oversized / inference failure → next route</text>
+</g>
+<path d="M406 882 V937" fill="none" stroke="#e6edf3" stroke-width="1.4" marker-end="url(#arrow)"/>
+<text x="421" y="915" class="small" text-anchor="start">disabled / unavailable semantic route</text>
+<g data-card="4  Tags + pgvector" data-bounds="64,937,684,178">
+<rect x="64" y="937" width="684" height="178" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="84" y="969" class="title" text-anchor="start">4  Tags + pgvector</text>
+<text x="84" y="997" class="meta" text-anchor="start">Extract tags; compare previous draft / reuse candidates if safe</text>
+<text x="84" y="1025" class="meta" text-anchor="start">Otherwise: embed missing tags → Tiger pgvector tag search</text>
+<text x="84" y="1053" class="" text-anchor="start">8 neighbors per tag → similarity ≥0.88 → up to 5 documents</text>
+<text x="84" y="1081" class="small" text-anchor="start">No query tags / stored tags → empty candidates; continue to generation</text>
+<text x="84" y="1101" class="small" text-anchor="start">Caches and previous-context reuse preserve the original source age.</text>
+</g>
+<path d="M748 340 H808" fill="none" stroke="#8cb7d3" stroke-width="1.4" marker-end="url(#selected-arrow)"/>
+<text x="778" y="328" class="selected" text-anchor="middle">usable</text>
+<path d="M748 555 H808" fill="none" stroke="#8cb7d3" stroke-width="1.4" marker-end="url(#selected-arrow)"/>
+<text x="778" y="543" class="selected" text-anchor="middle">usable</text>
+<path d="M748 780 H808" fill="none" stroke="#8cb7d3" stroke-width="1.4" marker-end="url(#selected-arrow)"/>
+<text x="778" y="768" class="selected" text-anchor="middle">usable</text>
+<path d="M748 1026 H808" fill="none" stroke="#8cb7d3" stroke-width="1.4" marker-end="url(#selected-arrow)"/>
+<text x="778" y="1014" class="selected" text-anchor="middle">usable</text>
+<path d="M808 340 V1168 H307 V1200" fill="none" stroke="#8cb7d3" stroke-width="1.4" marker-end="url(#selected-arrow)"/>
+<text x="832" y="1174" class="selected" text-anchor="start">Retrieval → fresh review</text>
+<g data-card="Source snapshot" data-bounds="852,262,306,285">
+<rect x="852" y="262" width="306" height="285" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="872" y="294" class="title" text-anchor="start">Source snapshot</text>
+<text x="872" y="325" class="meta" text-anchor="start">Tiger → process memory</text>
+<text x="872" y="353" class="meta" text-anchor="start">Used by routes 1 / 2 / 3</text>
+<text x="872" y="389" class="" text-anchor="start">≤256 docs / ≤2M chars</text>
+<text x="872" y="417" class="meta" text-anchor="start">Refresh 10s / expiry 15s</text>
+<text x="872" y="445" class="small" text-anchor="start">Committed writes invalidate</text>
+<text x="872" y="481" class="meta" text-anchor="start">Complete review fits?</text>
+<text x="872" y="509" class="small" text-anchor="start">Skip semantic-index build.</text>
+<text x="872" y="532" class="small" text-anchor="start">Otherwise prepare if enabled.</text>
+</g>
+<g data-card="Shared result" data-bounds="852,582,306,240">
+<rect x="852" y="582" width="306" height="240" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="872" y="614" class="title" text-anchor="start">Shared result</text>
+<text x="872" y="645" class="small" text-anchor="start">candidates + tag_similarity</text>
+<text x="872" y="673" class="meta" text-anchor="start">fetched_at + generation</text>
+<text x="872" y="701" class="meta" text-anchor="start">complete_catalog flag</text>
+<text x="872" y="737" class="meta" text-anchor="start">Candidate: body / tags</text>
+<text x="872" y="765" class="small" text-anchor="start">+ optional evidence excerpt</text>
+<text x="872" y="801" class="" text-anchor="start">Empty ≠ unavailable</text>
+</g>
+<g data-card="When routing stops" data-bounds="852,857,306,258">
+<rect x="852" y="857" width="306" height="258" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="872" y="889" class="title" text-anchor="start">When routing stops</text>
+<text x="872" y="920" class="meta" text-anchor="start">Usable result → review</text>
+<text x="872" y="948" class="small" text-anchor="start">Empty result → draft alone</text>
+<text x="872" y="984" class="meta" text-anchor="start">All candidates rejected?</text>
+<text x="872" y="1012" class="small" text-anchor="start">No second retrieval pass.</text>
+<text x="872" y="1048" class="small" text-anchor="start">Database / provider errors</text>
+<text x="872" y="1076" class="small" text-anchor="start">can fail the request.</text>
+<text x="872" y="1099" class="small" text-anchor="start">Fallback is not a retry loop.</text>
+</g>
+<g data-card="Fresh review + generation" data-bounds="42,1200,530,172">
+<rect x="42" y="1200" width="530" height="172" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="62" y="1232" class="title" text-anchor="start">Fresh review + generation</text>
+<text x="62" y="1263" class="meta" text-anchor="start">One Gemini call reviews every selected candidate</text>
+<text x="62" y="1291" class="" text-anchor="start">Use only keep=true AND relevance score ≥0.5</text>
+<text x="62" y="1319" class="meta" text-anchor="start">Full catalog bodies OR bounded shortlist excerpts</text>
+<text x="62" y="1347" class="meta" text-anchor="start">No kept candidates → generate from the draft alone</text>
+</g>
+<path d="M572 1286 H628" fill="none" stroke="#e6edf3" stroke-width="1.4" marker-end="url(#arrow)"/>
+<g data-card="Validate + final freshness check" data-bounds="628,1200,530,172">
+<rect x="628" y="1200" width="530" height="172" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
+<text x="648" y="1232" class="title" text-anchor="start">Validate + final freshness check</text>
+<text x="648" y="1263" class="meta" text-anchor="start">Invalid output → retry once → none if invalid again</text>
+<text x="648" y="1291" class="small" text-anchor="start">Wait for trace capacity; then check source age/version</text>
+<text x="648" y="1319" class="meta" text-anchor="start">Expired / changed → discard suggestion, return none</text>
+<text x="648" y="1347" class="meta" text-anchor="start">Current → return validated response; queue trace</text>
+</g>
+<text x="42" y="1407" class="small" text-anchor="start">SEMANTIC_FIRST_ENABLED=true swaps 2 / 3 when direct semantics is enabled; route 1 stays first.</text>
+<text x="42" y="1435" class="small" text-anchor="start">Arrows down: try next route. Blue arrows: accept a usable result.</text>
+<text x="1158" y="1435" class="small" text-anchor="end">main 78e7821 · 2026-10-25</text>
+</svg>

@@ -9,6 +9,8 @@ Source snapshot: **25 October 2026**, verified against GitHub `main` at [`78e782
 
 The diagram separates the API process from Gemini, Tiger, and Snowflake. It is generated from [render_architecture.py](diagrams/render_architecture.py).
 
+[System overview](#runtime-and-ownership) · [Backend pipelines](#backend-pipelines-at-a-glance) · [Retrieval router deep dive](#retrieval-router)
+
 ## Runtime and ownership
 
 | Component                      | Responsibility                                                      | Source                                                                                            |
@@ -65,6 +67,15 @@ The graph shows default ordering. `SEMANTIC_FIRST_ENABLED=true` swaps lexical an
 4. **Validate and check freshness.** Python validates response types, partial-word spacing, suffix limits, option limits, anchors, and UTF-16 edits. Invalid output gets one retry; invalid twice returns `none`. After waiting for trace-queue capacity, the pipeline checks source age and the mutation generation counter. Any expired or changed retrieval is discarded.
 5. **Record and return.** Trace metadata is immediately readable in process and persists with knowledge usage counts in the background. Browser reactions arrive separately through `/v1/outcomes`. Trace queue backpressure can delay a response; persistence is not guaranteed before return.
 
+## Retrieval router
+
+The router in [`run_enhance`](../backend/app/pipeline/run.py) chooses one context source for each request. Retrieval is an in-process responsibility; Tiger remains the source of truth. The diagram below expands the context-selection box in the system overview.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/retrieval-router-dark.svg">
+  <img alt="Retrieval router detail: four ordered context routes feed a shared Retrieval result and fresh Gemini review, with source snapshots, cache validity, fallthrough conditions, and final freshness validation." src="assets/retrieval-router-light.svg" width="1200">
+</picture>
+
 ### Retrieval order and bounds
 
 | Order | Route | Conditions and context | Remote retrieval work before generation |
@@ -79,6 +90,45 @@ Source defaults in [`config.py`](../backend/app/config.py): catalog review, fast
 The tag route runs extraction and the knowledge-tag presence lookup concurrently when no reusable previous draft exists. Reuse never skips fresh review. Full-catalog context contains every body; shortlist context uses a 6,000-character body budget, with 1,200-character excerpts or the selected semantic chunk (up to 1,800 characters).
 
 A warm complete-catalog or lexical route normally uses **one remote review/generation call**. Local semantic retrieval adds local query encoding on cache miss. Remote semantic retrieval adds a query embedding call; index construction is separate. A cold tag route can require three serial provider calls: tags, embedding, and review/generation. Retries, refreshes, catalog size, and queueing affect latency; one call is not a subsecond guarantee.
+
+### How each route selects context
+
+**1. Complete catalog — coverage before ranking.** [`catalog.select_complete()`](../backend/app/pipeline/catalog.py) obtains a complete current snapshot, then checks its size with the same [`complete_knowledge_context()`](../backend/app/pipeline/generate.py) serializer used to construct the model input. The 80,000-character bound includes titles, summaries, bodies, wrappers, indices, and separators. If it fits, every document is copied into the result with `complete_catalog=true`; no query-word overlap or vector score can exclude a document. If it does not fit, the whole route falls through. A fitting catalog also skips semantic-index preparation, because the first route already has every source available for review.
+
+**2. Lexical — metadata-supported term ranking.** [`catalog.select()`](../backend/app/pipeline/catalog.py) normalizes Unicode/case, removes stop words, and applies conservative stemming. Tags, title, summary, and body contribute weights of 4, 3, 2, and 0.5 per term. A candidate must overlap the query in its title, summary, or tags; body-only overlap cannot nominate it. Ranking sums `IDF(term) × weight / (weight + 1.2)` over matching terms and returns up to three documents. An unfinished final token of at least three characters can match known term prefixes. When more than three candidates exist and the leading four rely on the same single metadata term, the route declines to choose among them and falls through. These lexical scores are not cosine similarities or relevance verdicts.
+
+**3. Direct semantic — rank document evidence by meaning.** [`semantic.select()`](../backend/app/pipeline/semantic.py) requires an index tied to the current source snapshot and encoder configuration. Document chunks are embedded during index preparation; a request computes or reuses its query vector, compares it with all indexed chunks, and ranks each document by its best chunk's cosine similarity. The top three documents retain that chunk as `evidence_excerpt`. The default encoder is optional local EmbeddingGemma 2 on CPU; `SEMANTIC_EMBED_BACKEND=gemini` uses paired remote document/query embeddings. There is no fixed 0.88 cutoff on this route. Missing dependencies, unavailable/stale indexes, queries over 1,800 UTF-8 bytes, queue saturation, and inference errors let later routes run. See [direct semantic retrieval](#direct-semantic-retrieval) for chunk/index bounds and installation.
+
+**4. Tags / pgvector — retrieve through the tag graph.** [`extract_tags()`](../backend/app/pipeline/tags.py) supplies task features and tags. With no valid previous context, tag extraction and the stored-tag-presence lookup run concurrently. If tags exist on both sides, [`retrieve()`](../backend/app/pipeline/retrieve.py) embeds missing query tags with `gemini-embedding-001`, then issues one SQL query: find up to eight nearest stored tags per query tag, retain matches at cosine similarity ≥0.88, join `knowledge_tag`, and return up to five documents ranked by their best tag match. The SQL fetches at most the first 8,000 body characters per document; generation subsequently selects bounded excerpts. No extracted tags, no stored tags, or no qualifying matches yields an empty candidate list.
+
+### Previous-draft reuse and cache validity
+
+Previous-draft reuse belongs to the **tag route**, after the catalog, lexical, and semantic attempts. [`context.py`](../backend/app/pipeline/context.py) remembers completed tag-route requests only when they have candidates and current sources. The caller's `previous_request_id` can retrieve that context if its model fingerprint still matches and its original retrieval is fresh.
+
+An unchanged draft can reuse its tag extraction without another tag-model call. For changed drafts, the tag model compares the drafts and must explicitly approve reuse. Python also requires a valid visible comparison, the same tag set, and the same task type. If a long draft changes in a middle section omitted from the comparison, reuse is vetoed and tags are extracted from the full current draft. Any veto triggers refreshed retrieval. Reusing candidates preserves `fetched_at` and `generation`, and every request still performs fresh relevance review. Embedding caches can outlive source snapshots because a cached vector does not establish that its knowledge source is still current.
+
+### The shared result and stopping rules
+
+All four routes converge on [`Retrieval`](../backend/app/pipeline/retrieve.py):
+
+| Field | Role in the next stage |
+| :--- | :--- |
+| `candidates` | Knowledge ID, kind, title, summary, body, similarity, matched tags, and optional semantic evidence excerpt. The candidate list may be empty. |
+| `tag_similarity` | Query-tag match scores for the tag route; empty for complete-catalog, lexical, and direct semantic results. |
+| `complete_catalog` | Selects full-body serialization instead of shortlist excerpts. |
+| `fetched_at`, `generation` | Preserve original source age and the committed-mutation version across reuse and cache hits. |
+
+| Condition | Router / pipeline behavior |
+| :--- | :--- |
+| Route returns `None` | Try the next enabled, eligible route. |
+| Route returns `Retrieval(candidates=[])` | Stop routing; generation uses the draft alone. An empty knowledge catalog is a usable result. |
+| Reviewer rejects every candidate | Generate from the draft alone or return `none`; do not run another retrieval pass. |
+| Semantic index/inference is unavailable | Fall through to the remaining route(s); with semantic-first, eligible lexical matching is still next. |
+| Tiger read or tag/generation provider fails | Request can fail through the API error handling; fallback is not a universal error-retry loop. |
+| Source changes or expires during generation | After trace backpressure clears, discard the suggestion and return `none`. |
+| Output is structurally invalid | Retry review/generation once with validation feedback, using the same candidates; invalid twice returns `none`. |
+
+The final freshness check requires the same mutation generation and an age below 15 seconds. Committed knowledge/tag mutations advance the process-local generation; older reads cannot republish a valid snapshot. External changes become visible through periodic refresh/expiry. This coordination assumes one worker; multiple workers would need shared invalidation. The [cache table](#freshness-and-caches) lists each cache's lifetime.
 
 ## Typing and cancellation
 
@@ -201,4 +251,11 @@ From `backend/`, with the API running, `PYTHONPATH=. uv run python scripts/bench
 
 ## Diagram maintenance
 
-Run `python3 docs/diagrams/render_architecture.py` from the repository root to regenerate both SVG themes. The assets contain text and vector geometry, with no JavaScript, external fonts, or image dependencies. Keep route ordering, feature flags, review bounds, and data boundaries aligned with the source files linked above. The optional [Three.js guide](architecture-view/README.md) describes the secondary 3D model and its capture/export workflow.
+Run these commands from the repository root to regenerate both SVG themes for the overview and retrieval detail:
+
+```bash
+python3 docs/diagrams/render_architecture.py
+python3 docs/diagrams/render_retrieval.py
+```
+
+The assets contain text and vector geometry, with no JavaScript, external fonts, or image dependencies. Keep route ordering, feature flags, review bounds, and data boundaries aligned with the source files linked above. The optional [Three.js guide](architecture-view/README.md) describes the secondary 3D model and its capture/export workflow.
