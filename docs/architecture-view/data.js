@@ -44,13 +44,13 @@ export const components = [
     color: 0x7964b7,
     model: "chip",
     kicker: "CANDIDATE NOMINATION",
-    body: "Prefer a fresh document index with local EmbeddingGemma 2 query vectors and exact cosine ranking. If unavailable, eligible end-cursor requests can try lexical matching. The shortlist still needs a fresh Gemini relevance review.",
+    body: "Active development: prefer a fresh document index with local EmbeddingGemma 2 query vectors and exact cosine ranking. If unavailable, eligible end-cursor requests can try lexical matching. The shortlist still needs a fresh Gemini relevance review.",
     facts: [
       ["Local encoder", "EmbeddingGemma 2"],
       ["Runtime", "Quantized ONNX / CPU"],
       ["Candidates", "Up to 3"],
     ],
-    source: "backend/app/pipeline/semantic.py",
+    source: "docs/architecture.md#active-development",
   },
   {
     id: "gemini",
@@ -144,7 +144,7 @@ export const routes = {
   overview: {
     title: "One fresh review. Three ways to retrieve.",
     kicker: "HOW IT FITS TOGETHER",
-    copy: "Prefer local document/query embeddings, then eligible lexical matching. If those cannot serve the request, use Gemini tags and Tiger pgvector. Every route finishes with fresh review and validated output.",
+    copy: "Development topology: prefer local document/query embeddings, then eligible lexical matching. If those cannot serve the request, use Gemini tags and Tiger pgvector. Every route finishes with fresh review and validated output.",
     nodes: components.map((c) => c.id),
     edges: [...requestEdges, "snapshot", "trace", "export", "mcp"],
     facts: [

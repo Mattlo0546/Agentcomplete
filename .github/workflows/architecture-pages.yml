@@ -2,12 +2,6 @@ name: Publish architecture explorer
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "docs/architecture-view/**"
-      - "docs/assets/architecture.png"
-      - ".github/workflows/architecture-pages.yml"
 
 permissions:
   contents: read
