@@ -12,6 +12,7 @@ class EnhanceRequest(BaseModel):
     prompt: str
     prompt_revision: int = Field(ge=0)
     cursor: int = Field(ge=0)
+    previous_request_id: str | None = Field(None, min_length=1, max_length=64)
 
 
 class Edit(BaseModel):

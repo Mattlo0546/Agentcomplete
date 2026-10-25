@@ -10,6 +10,8 @@ from pydantic import TypeAdapter
 
 from app.db.pool import connection
 from app.llm import gemini
+from app.pipeline.retrieve import invalidate_cache
+from app.pipeline.trace import flush as flush_traces
 from app.pipeline.validate import validate_response
 from app.schemas.enhance import EnhanceResponse, utf16_len
 from app.settings_store import load_settings
@@ -71,7 +73,9 @@ async def seeded() -> AsyncIterator[dict[str, str]]:
                     "INSERT INTO knowledge_tag (knowledge_id, tag_id) SELECT %s, id FROM tag WHERE name = %s",
                     (row["id"], tag),
                 )
+    invalidate_cache()
     yield ids
+    await flush_traces()
     async with connection() as conn:
         await conn.execute("DELETE FROM knowledge WHERE id = ANY(%s::uuid[])", (list(ids.values()),))
         await conn.execute(
@@ -79,6 +83,7 @@ async def seeded() -> AsyncIterator[dict[str, str]]:
             " WHERE kt.tag_id = t.id)",
             (created_tags,),
         )
+    invalidate_cache()
 
 
 def _rid() -> str:
@@ -113,6 +118,7 @@ async def test_end_of_prompt_uses_knowledge(client: AsyncClient, seeded: dict[st
     assert list(steps) == ["tags", "retrieve", "judge", "generate"]
     if steps["judge"]["status"] == "ok":  # a judge call over its latency budget counts as dropped
         assert hits[0]["kept"] and trace["general"] is False
+        await flush_traces()
         async with connection() as conn:
             row = await (await conn.execute("SELECT use_count FROM knowledge WHERE id = %s", (retry_id,))).fetchone()
         assert row is not None and row["use_count"] >= 1
@@ -123,6 +129,31 @@ async def test_vague_prompt_asks_question(client: AsyncClient) -> None:
     data = await _enhance(client, prompt)
     assert data.type == "multiple_choice", data
     assert 2 <= len(data.options) <= (await load_settings()).max_options
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    ["Add retr", "Añade reintentos con retroceso exponencial y"],
+)
+async def test_unfinished_words_and_other_languages_can_autocomplete(client: AsyncClient, prompt: str) -> None:
+    data = await _enhance(client, prompt)
+    assert data.type == "autocomplete", data
+    assert data.insert_at == utf16_len(prompt)
+    if prompt == "Add retr":
+        assert data.text[0].isalpha(), data  # Finish the partial word without inserting a word gap.
+
+
+@pytest.mark.parametrize("prompt", ["Make the API faster", "Perform a security check"])
+async def test_complete_requests_do_not_invent_autocomplete_requirements(client: AsyncClient, prompt: str) -> None:
+    data = await _enhance(client, prompt)
+    assert data.type in ("multiple_choice", "none"), data
+
+
+async def test_explicitly_excluded_platform_is_not_kept(client: AsyncClient) -> None:
+    prompt = "Implement the endpoint with FastAPI and PostgreSQL, not React, using"
+    data = await _enhance(client, prompt)
+    trace = (await client.get(f"/v1/traces/{data.request_id}")).json()
+    assert not any(k["kept"] and "react" in k["title"].lower() for k in trace["knowledge"]), trace["knowledge"]
 
 
 @pytest.mark.parametrize(
@@ -182,7 +213,13 @@ async def test_api_row_ai_calls_and_trace_share_the_body_request_id(client: Asyn
     )
     assert response.status_code == 200 and response.headers["X-Request-ID"] == rid
     await flush()
+    await flush_traces()
     detail = (await client.get(f"/v1/logs/{rid}")).json()
     assert detail["api"]["path"] == "/v1/enhance"
-    assert {call["operation"] for call in detail["ai"]} >= {"enhance.tags", "enhance.generate"}
+    operations = {call["operation"] for call in detail["ai"]}
+    assert "enhance.generate" in operations
+    if any(step["model"] == "tiger-lexical" for step in detail["trace"]["steps"]):
+        assert operations == {"enhance.generate"}
+    else:
+        assert "enhance.tags" in operations
     assert detail["trace"]["request_id"] == rid

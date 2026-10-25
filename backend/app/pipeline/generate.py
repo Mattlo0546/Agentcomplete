@@ -75,11 +75,17 @@ def excerpt(body: str, tags: list[str], limit: int = EXCERPT_CHARS) -> str:
 
 
 def build_contents(
-    prompt: str, cursor: int, settings: AppSettings, extraction: TagExtraction | None, knowledge: list[Candidate]
+    prompt: str,
+    cursor: int,
+    settings: AppSettings,
+    extraction: TagExtraction | None,
+    knowledge: list[Candidate],
+    *,
+    response_types: list[str] | None = None,
 ) -> str:
     parts = [
         "<settings>",
-        f"allowed_types: {', '.join(allowed_types(prompt, cursor, settings))}",
+        f"allowed_types: {', '.join(response_types or allowed_types(prompt, cursor, settings))}",
         f"max_options: {settings.max_options}",
         f"cursor_at_end: {str(cursor == utf16_len(prompt)).lower()}",
         "</settings>",
@@ -93,13 +99,13 @@ def build_contents(
         ]
     if knowledge:
         budget = KNOWLEDGE_BUDGET_CHARS
-        for item in knowledge:
+        for index, item in enumerate(knowledge):
             text = excerpt(
                 item.body, extraction.tags if extraction else item.matched_tags, min(EXCERPT_CHARS, max(budget, 0))
             )
             budget -= len(text)
             parts += [
-                f'<knowledge kind="{item.kind}">',
+                f'<knowledge candidate="{index}" kind="{item.kind}">',
                 f"Title: {item.title}",
                 f"Summary: {item.summary}",
                 f"Excerpt:\n{text}",
@@ -121,7 +127,8 @@ async def generate(contents: str, feedback: str | None = None) -> Generation:
         contents=contents,
         schema=Generation,
         temperature=0.3,
-        thinking_level="low",
+        thinking_level="minimal",
+        max_output_tokens=2048,
     )
 
 

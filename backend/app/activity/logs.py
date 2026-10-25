@@ -84,6 +84,11 @@ async def log_detail(request_id: str) -> LogDetail:
 
 
 async def clear_logs() -> None:
+    from app.observability.writers import flush as flush_calls
+    from app.pipeline.trace import flush as flush_traces
+
+    await flush_traces()
+    await flush_calls()
     async with connection() as conn, conn.transaction():
         for table in ("api_call_log", "ai_call_log", "enhance_trace"):
             await conn.execute(f"DELETE FROM {table}")  # type: ignore[arg-type]

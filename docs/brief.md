@@ -41,7 +41,7 @@ User text is never interpolated into shell code — hand-off uses clipboard / st
 - UTF-16 code-unit positions, half-open `[start, end)`.
 - `autocomplete.insert_at === prompt.length`, `text` is suffix only, applied only on accept.
 - `multiple_choice`: ≥ 2 options, unique ids, ≥ 1 edit each, edits non-overlapping, valid bounds, relative to one snapshot; client applies edits end → start atomically after diff preview.
-- Client drops any response whose `request_id`/`prompt_revision` is not the latest; any text or cursor change invalidates shown suggestions.
+- Client drops any response whose `request_id`/`prompt_revision` is not the latest. Edits and cursor changes invalidate shown suggestions, except typing the exact prefix of a visible autocomplete at the end keeps its remainder locally. Outcomes retain the original suggestion's request/revision.
 - Failures are HTTP errors, never `none`.
 
 Backend validates every model output against these invariants before returning; invalid output becomes `none` or a 502, never a malformed suggestion.
@@ -52,6 +52,8 @@ Backend validates every model output against these invariants before returning; 
 2. **Retrieval** — embed tags (Gemini embeddings) → pgvector nearest-neighbour over tag vectors → linked knowledge + summaries.
 3. **Relevance judging** — per candidate, a judge model reads summary + input → keep/drop with score.
 4. **Generation** — filtered knowledge + input → `EnhanceResponse` via structured output. If retrieval returns nothing or judging drops everything, **general enhancement** from input only (goals, constraints, output format). Never invent project facts, sources or preferences; missing information becomes a question.
+
+Performance revision (25 October 2026): relevance review and generation share one structured call, with a validated decision for every candidate before the suggestion. Exact tags, embeddings and retrieval are cached in memory; relevance is still reviewed for every new draft. See [architecture](architecture.md).
 
 Retrieved knowledge is reference data only; every prompt change goes through the user acceptance flow.
 

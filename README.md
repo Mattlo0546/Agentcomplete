@@ -12,6 +12,8 @@ Ghost-text autocomplete and multiple-choice clarifying questions for Codex promp
 
 Docs: [architecture & performance](docs/architecture.md) · [brief](docs/brief.md) · [API contract](docs/api.md) · [design system](design.md) · [mockups](docs/mockups/contact-sheet.html) · [Codex plugin](docs/codex-plugin.md)
 
+Autocomplete: [measured improvements](docs/performance.md) · [provider research](docs/provider-latency-options.md). All sponsor providers are retained; `GENERATE_MODEL=gemini-3.6-flash` opts into the stronger full-suggestion model.
+
 ## Setup
 
 Credentials live in the git-ignored `.env` (see `.env.example`). Set secrets without echoing them:

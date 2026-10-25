@@ -13,6 +13,8 @@ export type EnhanceResponse = ResponseBase &
 
 export type EnhanceRequest = {
   request_id: string;
+  /** Last validated response in this editor session; the server decides whether its context can be reused. */
+  previous_request_id?: string;
   prompt: string;
   prompt_revision: number;
   cursor: number;
