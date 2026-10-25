@@ -1,0 +1,936 @@
+{
+  "at": "2026-10-25T11:51:44.912253+00:00",
+  "scope": "Public seed fixtures only; production local retrieval; no DB, API, or generation calls",
+  "measurement": "One phase of 49 distinct uncached queries; startup measured separately; no concurrent load",
+  "limits": "Candidate recall is not final suggestion quality. Negative controls require the Gemini reviewer; they are not counted as successful zero-target recalls. Negated candidates may still be nominated.",
+  "semantic_sha256": "6b49204b05dc00138a65ad36f7e4ac0d62655b396758501574fd417ad3ebf187",
+  "local_encoder_sha256": "f2705ec333c1ad409925cb7bc893eb4a477e3e28ab42c8c761e733051fc0c288",
+  "fixture_sha256": "3bf0e69cc617029d4b523d5b27c4cef5e66dbd116c3addcd28a902659cf91d79",
+  "model": "onnx-community/embeddinggemma-2-ONNX",
+  "revision": "daa72c51243991dfcaf9f9137d2c573d8f7790c0",
+  "dimensions": 768,
+  "max_prefixed_document_bytes": 1800,
+  "target_overlap_characters": 128,
+  "documents": 29,
+  "unique_chunks": 39,
+  "cases": 49,
+  "cold_prepare_ms": 33413.76,
+  "cold_snapshot_published": false,
+  "fresh_publish_from_cache_ms": 8.39,
+  "target_count": 49,
+  "direct_semantic_targets_selected": 49,
+  "application_route_targets_selected": 49,
+  "semantic_calls": 49,
+  "negative_controls": [
+    "unknown-poem",
+    "complete-generic"
+  ],
+  "excluded_cases": [
+    "negated-payments"
+  ],
+  "missing_cases": [],
+  "source_excerpt_guard_passes": 49,
+  "query_latency": {
+    "min_ms": 90.26,
+    "median_ms": 130.78,
+    "p95_ms": 293.96,
+    "max_ms": 482.04
+  },
+  "original20_latency": {
+    "min_ms": 100.25,
+    "median_ms": 128.54,
+    "p95_ms": 188.26,
+    "max_ms": 224.82
+  },
+  "explicit29_latency": {
+    "min_ms": 90.26,
+    "median_ms": 139.16,
+    "p95_ms": 325.01,
+    "max_ms": 482.04
+  },
+  "samples": [
+    {
+      "case": "rename-live",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 137.97,
+      "selected": [
+        "postgres-zero-downtime-migrations",
+        "fastapi-postgres-atomic-operation",
+        "postgres-session-store"
+      ],
+      "targets": [
+        "postgres-zero-downtime-migrations"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "required-live",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 178.54,
+      "selected": [
+        "postgres-zero-downtime-migrations",
+        "fastapi-postgres-atomic-operation",
+        "postgres-session-store"
+      ],
+      "targets": [
+        "postgres-zero-downtime-migrations"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "upstream-codes",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 140.85,
+      "selected": [
+        "python-retry-backoff",
+        "api-error-handling",
+        "fastapi-dependency-injection"
+      ],
+      "targets": [
+        "python-retry-backoff"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "repeat-transient",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 188.26,
+      "selected": [
+        "api-error-handling",
+        "python-retry-backoff",
+        "fastapi-postgres-atomic-operation"
+      ],
+      "targets": [
+        "python-retry-backoff"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "negated-network",
+      "category": "negation",
+      "route": "semantic",
+      "ms": 130.78,
+      "selected": [
+        "release-notes-from-commits",
+        "docker-multi-stage-builds",
+        "explain-a-diff-for-review"
+      ],
+      "targets": [
+        "release-notes-from-commits"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "negated-payments",
+      "category": "negation",
+      "route": "semantic",
+      "ms": 134.33,
+      "selected": [
+        "fastapi-postgres-atomic-operation",
+        "stripe-webhook-idempotency",
+        "logging-and-observability"
+      ],
+      "targets": [
+        "fastapi-postgres-atomic-operation"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [
+        "stripe-webhook-idempotency"
+      ],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "recover-and-observe",
+      "category": "multiple_targets",
+      "route": "semantic",
+      "ms": 109.92,
+      "selected": [
+        "python-retry-backoff",
+        "api-error-handling",
+        "logging-and-observability"
+      ],
+      "targets": [
+        "python-retry-backoff",
+        "logging-and-observability"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "race-and-test",
+      "category": "multiple_targets",
+      "route": "semantic",
+      "ms": 106.6,
+      "selected": [
+        "react-async-response-races",
+        "react-testing-library-patterns",
+        "nextjs-app-router-data-fetching"
+      ],
+      "targets": [
+        "react-async-response-races",
+        "react-testing-library-patterns"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "ownership",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 100.25,
+      "selected": [
+        "security-review-checklist",
+        "authorization-access-matrix",
+        "logging-and-observability"
+      ],
+      "targets": [
+        "authorization-access-matrix"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "keyboard-overlay",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 106.09,
+      "selected": [
+        "accessible-react-dialog",
+        "react-async-response-races",
+        "incremental-react-adoption"
+      ],
+      "targets": [
+        "accessible-react-dialog"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "repro-ui",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 120.88,
+      "selected": [
+        "browser-bug-regression",
+        "api-error-handling",
+        "react-testing-library-patterns"
+      ],
+      "targets": [
+        "browser-bug-regression"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "session-persistence",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 126.3,
+      "selected": [
+        "postgres-session-store",
+        "fastapi-postgres-atomic-operation",
+        "postgres-zero-downtime-migrations"
+      ],
+      "targets": [
+        "postgres-session-store"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "excessive-scans",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 123.26,
+      "selected": [
+        "sql-query-optimisation",
+        "fastapi-postgres-atomic-operation",
+        "postgres-zero-downtime-migrations"
+      ],
+      "targets": [
+        "sql-query-optimisation"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "server-secrets",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 117.18,
+      "selected": [
+        "nextjs-server-client-boundary",
+        "react-async-response-races",
+        "nextjs-app-router-data-fetching"
+      ],
+      "targets": [
+        "nextjs-server-client-boundary"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "server-read-sharing",
+      "category": "paraphrase",
+      "route": "semantic",
+      "ms": 111.0,
+      "selected": [
+        "nextjs-app-router-data-fetching",
+        "nextjs-server-client-boundary",
+        "fastapi-dependency-injection"
+      ],
+      "targets": [
+        "nextjs-app-router-data-fetching"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "unknown-poem",
+      "category": "negative_control",
+      "route": "semantic",
+      "ms": 101.6,
+      "selected": [
+        "bug-triage-loop",
+        "explain-a-diff-for-review",
+        "writing-clear-codex-tasks"
+      ],
+      "targets": [],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": true,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "complete-generic",
+      "category": "negative_control",
+      "route": "semantic",
+      "ms": 134.24,
+      "selected": [
+        "explain-a-diff-for-review",
+        "release-notes-from-commits",
+        "writing-clear-codex-tasks"
+      ],
+      "targets": [],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": true,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "spanish-race",
+      "category": "multilingual",
+      "route": "semantic",
+      "ms": 224.82,
+      "selected": [
+        "react-async-response-races",
+        "nextjs-app-router-data-fetching",
+        "react-testing-library-patterns"
+      ],
+      "targets": [
+        "react-async-response-races"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "new-stack",
+      "category": "changed_technology",
+      "route": "semantic",
+      "ms": 177.85,
+      "selected": [
+        "fastapi-postgres-atomic-operation",
+        "fastapi-dependency-injection",
+        "postgres-zero-downtime-migrations"
+      ],
+      "targets": [
+        "fastapi-postgres-atomic-operation"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "typed-fragment",
+      "category": "partial_word",
+      "route": "semantic",
+      "ms": 173.08,
+      "selected": [
+        "python-retry-backoff",
+        "api-error-handling",
+        "fastapi-dependency-injection"
+      ],
+      "targets": [
+        "python-retry-backoff"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-accessible-react-dialog",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 129.16,
+      "selected": [
+        "accessible-react-dialog",
+        "incremental-react-adoption",
+        "react-testing-library-patterns"
+      ],
+      "targets": [
+        "accessible-react-dialog"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-api-contract-change",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 230.86,
+      "selected": [
+        "api-contract-change",
+        "api-error-handling",
+        "nextjs-server-client-boundary"
+      ],
+      "targets": [
+        "api-contract-change"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-api-error-handling",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 116.02,
+      "selected": [
+        "api-error-handling",
+        "api-contract-change",
+        "python-retry-backoff"
+      ],
+      "targets": [
+        "api-error-handling"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-authorization-access-matrix",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 139.16,
+      "selected": [
+        "authorization-access-matrix",
+        "repo-first-vertical-slice",
+        "security-review-checklist"
+      ],
+      "targets": [
+        "authorization-access-matrix"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-browser-bug-regression",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 151.39,
+      "selected": [
+        "browser-bug-regression",
+        "bug-triage-loop",
+        "accessible-react-dialog"
+      ],
+      "targets": [
+        "browser-bug-regression"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-bug-triage-loop",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 149.85,
+      "selected": [
+        "bug-triage-loop",
+        "writing-clear-codex-tasks",
+        "browser-bug-regression"
+      ],
+      "targets": [
+        "bug-triage-loop"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-choose-tech-stack-from-constraints",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 101.35,
+      "selected": [
+        "choose-tech-stack-from-constraints",
+        "repo-first-vertical-slice",
+        "docker-multi-stage-builds"
+      ],
+      "targets": [
+        "choose-tech-stack-from-constraints"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-docker-multi-stage-builds",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 167.12,
+      "selected": [
+        "docker-multi-stage-builds",
+        "bug-triage-loop",
+        "repo-first-vertical-slice"
+      ],
+      "targets": [
+        "docker-multi-stage-builds"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-explain-a-diff-for-review",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 110.65,
+      "selected": [
+        "explain-a-diff-for-review",
+        "security-review-checklist",
+        "writing-clear-codex-tasks"
+      ],
+      "targets": [
+        "explain-a-diff-for-review"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-fastapi-dependency-injection",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 229.6,
+      "selected": [
+        "fastapi-dependency-injection",
+        "fastapi-postgres-atomic-operation",
+        "logging-and-observability"
+      ],
+      "targets": [
+        "fastapi-dependency-injection"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-fastapi-postgres-atomic-operation",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 149.56,
+      "selected": [
+        "fastapi-postgres-atomic-operation",
+        "fastapi-dependency-injection",
+        "postgres-session-store"
+      ],
+      "targets": [
+        "fastapi-postgres-atomic-operation"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-incremental-react-adoption",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 482.04,
+      "selected": [
+        "incremental-react-adoption",
+        "react-async-response-races",
+        "nextjs-app-router-data-fetching"
+      ],
+      "targets": [
+        "incremental-react-adoption"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-llm-latency-experiment",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 189.27,
+      "selected": [
+        "llm-latency-experiment",
+        "logging-and-observability",
+        "sql-query-optimisation"
+      ],
+      "targets": [
+        "llm-latency-experiment"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-logging-and-observability",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 293.96,
+      "selected": [
+        "logging-and-observability",
+        "llm-latency-experiment",
+        "api-error-handling"
+      ],
+      "targets": [
+        "logging-and-observability"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-nextjs-app-router-data-fetching",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 163.4,
+      "selected": [
+        "nextjs-app-router-data-fetching",
+        "nextjs-server-client-boundary",
+        "fastapi-dependency-injection"
+      ],
+      "targets": [
+        "nextjs-app-router-data-fetching"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-nextjs-server-client-boundary",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 325.01,
+      "selected": [
+        "nextjs-server-client-boundary",
+        "nextjs-app-router-data-fetching",
+        "api-contract-change"
+      ],
+      "targets": [
+        "nextjs-server-client-boundary"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-postgres-session-store",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 96.55,
+      "selected": [
+        "postgres-session-store",
+        "fastapi-postgres-atomic-operation",
+        "postgres-zero-downtime-migrations"
+      ],
+      "targets": [
+        "postgres-session-store"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-postgres-zero-downtime-migrations",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 106.47,
+      "selected": [
+        "postgres-zero-downtime-migrations",
+        "postgres-session-store",
+        "fastapi-postgres-atomic-operation"
+      ],
+      "targets": [
+        "postgres-zero-downtime-migrations"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-python-retry-backoff",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 114.52,
+      "selected": [
+        "python-retry-backoff",
+        "llm-latency-experiment",
+        "fastapi-postgres-atomic-operation"
+      ],
+      "targets": [
+        "python-retry-backoff"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-react-async-response-races",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 108.26,
+      "selected": [
+        "react-async-response-races",
+        "nextjs-app-router-data-fetching",
+        "react-testing-library-patterns"
+      ],
+      "targets": [
+        "react-async-response-races"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-react-testing-library-patterns",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 150.66,
+      "selected": [
+        "react-testing-library-patterns",
+        "incremental-react-adoption",
+        "accessible-react-dialog"
+      ],
+      "targets": [
+        "react-testing-library-patterns"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-refactor-with-tests-first",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 170.33,
+      "selected": [
+        "refactor-with-tests-first",
+        "react-testing-library-patterns",
+        "repo-first-vertical-slice"
+      ],
+      "targets": [
+        "refactor-with-tests-first"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-release-notes-from-commits",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 216.4,
+      "selected": [
+        "release-notes-from-commits",
+        "explain-a-diff-for-review",
+        "security-review-checklist"
+      ],
+      "targets": [
+        "release-notes-from-commits"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-repo-first-vertical-slice",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 105.34,
+      "selected": [
+        "repo-first-vertical-slice",
+        "docker-multi-stage-builds",
+        "incremental-react-adoption"
+      ],
+      "targets": [
+        "repo-first-vertical-slice"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-security-review-checklist",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 103.23,
+      "selected": [
+        "security-review-checklist",
+        "authorization-access-matrix",
+        "explain-a-diff-for-review"
+      ],
+      "targets": [
+        "security-review-checklist"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-sql-query-optimisation",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 91.5,
+      "selected": [
+        "sql-query-optimisation",
+        "llm-latency-experiment",
+        "nextjs-app-router-data-fetching"
+      ],
+      "targets": [
+        "sql-query-optimisation"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-stripe-webhook-idempotency",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 127.38,
+      "selected": [
+        "stripe-webhook-idempotency",
+        "logging-and-observability",
+        "fastapi-postgres-atomic-operation"
+      ],
+      "targets": [
+        "stripe-webhook-idempotency"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-typescript-strict-migration",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 103.46,
+      "selected": [
+        "typescript-strict-migration",
+        "api-contract-change",
+        "docker-multi-stage-builds"
+      ],
+      "targets": [
+        "typescript-strict-migration"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    },
+    {
+      "case": "explicit-writing-clear-codex-tasks",
+      "category": "explicit_title",
+      "route": "semantic",
+      "ms": 90.26,
+      "selected": [
+        "writing-clear-codex-tasks",
+        "explain-a-diff-for-review",
+        "refactor-with-tests-first"
+      ],
+      "targets": [
+        "writing-clear-codex-tasks"
+      ],
+      "missing_targets": [],
+      "excluded_selected": [],
+      "negative_control": false,
+      "source_excerpt_guard": true
+    }
+  ],
+  "routing_policy": "semantic_first"
+}

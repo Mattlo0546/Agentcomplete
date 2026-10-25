@@ -53,6 +53,8 @@ class Candidate:
     body: str
     similarity: float
     matched_tags: list[str] = field(default_factory=list)
+    # Exact source chunk selected by a direct document index; the original body remains available.
+    evidence_excerpt: str | None = None
 
 
 @dataclass
@@ -62,6 +64,8 @@ class Retrieval:
     # Retain source age across cache hits and prompt revisions; reuse never renews freshness.
     fetched_at: float = field(default_factory=time.monotonic)
     generation: int = field(default_factory=lambda: _generation)
+    # Every item from a complete bounded snapshot is available to the fresh model reviewer.
+    complete_catalog: bool = False
 
 
 _embeddings: TTLCache[tuple[str, int, str], list[float]] = TTLCache(1024, 3600)

@@ -16,6 +16,7 @@ import type { VersionSnapshot } from "@/lib/history/api";
 
 import { ContextInspector } from "./context-inspector";
 import { EditorFooter } from "./editor-footer";
+import { InputContext } from "./input-context";
 import { PromptEditor } from "./prompt-editor";
 import { PromptHistory } from "./prompt-history";
 import { SaveVersionDialog } from "./save-version-dialog";
@@ -28,6 +29,8 @@ export function RefineView() {
   const enhance = useEnhance(settings.data?.trigger_delay_ms ?? DEFAULT_TRIGGER_DELAY_MS, {
     autocompleteEnabled: settings.data?.autocomplete_enabled,
     questionsEnabled: settings.data?.questions_enabled,
+    configurationKey: JSON.stringify(settings.data ?? null),
+    settingsReady: !settings.isPending,
   });
   const [target, setTarget] = useLocalStorage<"Codex" | "Claude">({ key: "pe.agentTarget", defaultValue: "Codex" });
   const send = useSendToCodex(target);
@@ -90,6 +93,7 @@ export function RefineView() {
           selectionStart={state.selectionStart}
           selectionEnd={state.selectionEnd}
           ghost={ghost}
+          ghostSource={state.suggestion?.type === "autocomplete" ? state.suggestion : undefined}
           quiet={question !== null}
           narrow={narrow}
           textareaRef={textareaRef}
@@ -100,7 +104,7 @@ export function RefineView() {
             enhance.acceptGhost();
             focusEditor();
           }}
-          onEscape={() => (ghost ? enhance.dismissGhost() : question && enhance.declineQuestion())}
+          onEscape={() => (question ? enhance.declineQuestion() : enhance.dismissGhost())}
           onSaveSuggestion={(prompt, suggestion) => setSaveSnapshot({ prompt, suggestion_text: suggestion })}
           footer={
             <EditorFooter
@@ -138,6 +142,7 @@ export function RefineView() {
             />
           )}
         </AnimatePresence>
+        {state.prompt.trim() !== "" && <InputContext requestId={state.traceId} />}
       </PageLayout>
       {historyOpen && (
         <PromptHistory

@@ -1,103 +1,127 @@
-# Agentcomplete — architecture and autocomplete performance
+# Skill Issue architecture
 
-Updated 25 October 2026. The companion panel, Codex MCP plugin, Gemini, Tiger Data and Snowflake remain the stack. See [performance results](performance.md) for measured before/after results and [provider options](provider-latency-options.md) for research-only alternatives.
+Source snapshot: **25 October 2026**. The published runtime uses lexical nomination with a tag/pgvector fallback. The local EmbeddingGemma index and bounded in-flight suffix adoption are **active development**, described separately below. Model names are source defaults, not a live service-health check. [Performance measurements](performance.md) retain their original corpus and settings.
 
-## Request path
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture-technical-dark.svg">
+  <img alt="Skill Issue technical architecture with client, API process, model provider, database, and offline analytics boundaries" src="assets/architecture-technical-light.svg" width="1200">
+</picture>
 
-```mermaid
-flowchart LR
-  Editor["Editor · 150 ms quiet time"] --> API["FastAPI /v1/enhance"]
-  API --> Settings["Cached settings"]
-  Settings --> Local["End cursor · local Tiger knowledge snapshot"]
-  Local -- "confident candidates" --> Generate["Gemini: review every candidate, then generate"]
-  Local -- "uncertain / no match / mid-cursor" --> Tags["Gemini tag extraction · exact-input cache"]
-  Tags --> Retrieve["Cached embeddings + Tiger pgvector retrieval"]
-  Retrieve --> Generate
-  Generate --> Validate["Validate suffix / anchored edits / UTF-16"]
-  Validate --> Editor
-  Validate -. "background metadata" .-> Trace["Trace + knowledge use counts"]
-  Trace --> Tiger[("Tiger Data")]
-  Tiger -. "refresh every 10 seconds" .-> Local
-  Tiger -. "outcomes / offline classifier" .-> Snowflake[("Snowflake")]
-```
+The diagram distinguishes the API's internal responsibilities from external services. It is generated from [render_architecture.py](diagrams/render_architecture.py). Its service boundaries and straight connectors take visual cues from [Supabase's architecture diagram](https://supabase.com/docs/guides/getting-started/architecture); the topology and labels describe this repository.
 
-1. The editor waits **150 ms** after input stops, configurable from 150–1500 ms. Migration 002 moved the old 400 ms preset to 200 ms; migration 003 moves the 200 ms preset to 150 ms. Other configured values are retained.
-2. `/v1/enhance` reads settings from a process cache refreshed every 2.5 seconds with a five-second hard expiry. Fresh reads do not wait behind maintenance. Empty prompts and disabled modes skip model calls. End-cursor requests with autocomplete enabled first try a bounded local snapshot of Tiger knowledge, using the full current draft to nominate up to three candidates. Metadata overlap is required; body terms only contribute to ranking. No fabricated tags or cosine similarities are reported. A fresh Gemini review remains mandatory.
-3. Uncertain matches, no matches in a nonempty corpus, oversized snapshots and mid-cursor requests use the semantic route. Tags come from a small Gemini model; without a valid previous request, tag extraction and knowledge-presence lookup run concurrently. The browser sends the last validated `previous_request_id`, including valid `none` responses. That same tag call compares previous/current drafts; approved immaterial edits, unchanged tags/task type, and fresh sources permit candidate reuse. Otherwise tags are embedded with `gemini-embedding-001` and retrieved with Tiger pgvector. At most five semantic candidates pass the 0.88 cutoff. Query vectors are parsed once as `vector[]`, avoiding per-row text casts.
-4. One structured call **reviews every candidate summary and then generates**. The schema puts reviews before the suggestion; Python requires exactly one review for every candidate and enforces the keep-score threshold. This replaces a separate request per judge plus a later generation request. Each new prompt receives a fresh relevance review, even when retrieval is cached.
-5. Obvious unfinished English clauses or autocomplete-only mode use a small suffix schema at the end cursor. The semantic route can also use its tag call's continuation classification. Other fast-route requests let the single generation call choose autocomplete for partial words/unfinished thoughts in any language, or a question/`none` for complete or ambiguous drafts. Questions prefer two short options with one anchored edit each; Python creates option IDs and UTF-16 offsets. The public API still permits multiple edits and up to the configured maximum options. Ordered boolean/score arrays reduce review output; both a true keep decision and score of at least 0.5 are required, before rounding.
-6. Both paths use Gemini Flash-Lite by default, at minimal thinking. `GENERATE_MODEL=gemini-3.6-flash` restores the stronger question/general model; `AUTOCOMPLETE_MODEL` separately controls the suffix path. Tags, judging and generation stay with the same sponsor.
-7. Output validation and one retry for invalid edits/reviews remain. Provider failures remain HTTP errors. No partially validated output is shown.
-8. Validated trace metadata becomes readable immediately in process, then persists to Tiger with usage counts in the background. Immediate `/traces` and `/outcomes` reads can resolve pending traces. Shutdown and log clearing drain pending writes. A bounded trace queue applies backpressure if the database stalls; process failure before a background write commits can lose that metadata.
+## Runtime and ownership
 
-The fast route makes one fresh generation call even for a new draft. The semantic route can require three serial provider calls (tags, embeddings, reviewed generation), reduced by caches. `FAST_AUTOCOMPLETE_ENABLED=false` restores semantic routing for comparisons. Neither route reuses completed model responses across different drafts.
+| Component                      | Responsibility                                                      | Source                                                                                            |
+| :----------------------------- | :------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------ |
+| Next.js 16 / React 19          | Refine, Knowledge, Activity, Settings; HTTP client and editor state | [`frontend/src/`](../frontend/src/)                                                               |
+| FastAPI / Pydantic / Psycopg 3 | Routing, validation, cancellation, database access                  | [`backend/app/`](../backend/app/)                                                                 |
+| Local lexical catalog          | Nominate candidates from a fresh Tiger snapshot                     | [`catalog.py`](../backend/app/pipeline/catalog.py)                                                |
+| Gemini / Google Gen AI SDK     | Analysis, fallback tags/embeddings, combined review and generation  | [`gemini.py`](../backend/app/llm/gemini.py), [`complete.py`](../backend/app/pipeline/complete.py) |
+| Tiger Data / PostgreSQL        | Knowledge, settings, handoffs, tag vectors, traces, outcomes        | [`migrations/`](../backend/app/db/migrations/)                                                    |
+| pgvector / TimescaleDB         | Tag similarity search; time-series logs/traces and retention        | [`001_init.sql`](../backend/app/db/migrations/001_init.sql)                                       |
+| Snowflake ML Classification    | Explicit feature export and offline acceptance-classifier training  | [`analytics/`](../backend/app/analytics/)                                                         |
+| MCP server + Codex skill       | Refined-prompt handoff, direct enhancement, knowledge lookup        | [`plugin/prompt-enhance/`](../plugin/prompt-enhance/)                                             |
 
-## Typing, cancellation and correctness
+The application assumes **one user and one backend worker**. Caches, invalidation counters, and pending trace reads are process-local. Multi-worker deployment requires shared invalidation and trace coordination.
 
-The browser aborts obsolete requests. The server listens for an ASGI disconnect and cancels the pipeline and child tasks, releasing local work/connections and avoiding later pipeline stages. Cancellation cannot guarantee that a provider stops billing inference already started remotely.
+## Request path on main
 
-Network responses still require the latest request ID and prompt revision. Every text change increments the revision. A narrow local exception preserves an already validated ghost: if the user appends exactly the beginning of that visible suffix, at the collapsed end cursor, the remainder stays visible immediately without a request. Any divergent edit, deletion, selection or cursor move invalidates it. Outcomes retain the original suggestion's request ID and source revision; typing the entire suggestion counts as acceptance.
+The orchestration lives in [`run.py`](../backend/app/pipeline/run.py).
 
-Ghost text paints without the old 120 ms fade. IME composition suppresses requests and Tab/Escape suggestion actions. Settings changes cancel old-mode work and remove disabled suggestion types. Settings arriving after typing starts preserve the queued request's original quiet-time timestamp. Draft storage is batched at 250 ms (one-second maximum wait), with navigation/unmount flushing.
+1. **Schedule.** The editor requests after 150 ms of quiet time by default, configurable from 150–1500 ms. It sends the entire draft, UTF-16 cursor position, request ID, revision, and last validated previous request ID. A valid `none` response can advance that pointer.
+2. **Short-circuit.** Empty drafts and disabled modes skip inference. Settings are cached with background refresh and a hard expiry.
+3. **Nominate locally.** With `FAST_AUTOCOMPLETE_ENABLED=true`, autocomplete enabled, and the cursor at the end, a bounded Tiger snapshot can nominate up to three candidates. Title/summary/tag overlap is required; body terms contribute to ranking. Unknown or ambiguous shared-topic matches use the remote route. Nomination is not a relevance verdict.
+4. **Fall back to tags and pgvector.** Gemini extracts tags and can compare a previous draft in the same call. Approved immaterial changes, unchanged tags/task type, and fresh sources permit candidate reuse. Otherwise `gemini-embedding-001` embeds tags with `SEMANTIC_SIMILARITY`, and Tiger pgvector returns up to five candidates passing the 0.88 tag threshold. Tag extraction and knowledge-presence lookup run concurrently when there is no previous context.
+5. **Review and generate together.** A single structured Gemini call reviews every candidate before generating a suffix, a multiple-choice question with anchored edits, or `none`. Python requires complete review coverage, a true keep decision, and an unrounded score of at least 0.5. Compact suffix and full suggestion requests use different schemas. Cached retrieval never skips fresh review.
+6. **Validate.** Python checks response types, suffix bounds, option limits, UTF-16 edits, and local source freshness. Invalid output gets one retry; invalid output twice returns `none`. Provider failures remain HTTP errors. A local snapshot that changes or expires during generation causes the suggestion to be discarded.
+7. **Record.** Trace metadata is immediately readable in process and persists with usage counts to Tiger in the background. Outcomes record user reactions. Snowflake export and training are explicit operations outside this path.
 
-The previous-response pointer stays in component memory and resets when the draft is cleared or the editor remounts. Failed, canceled, stale or invalid responses cannot replace it. Unknown/expired references trigger ordinary retrieval. Comparison occurs in the existing tag call, without adding a new inference round trip. Candidate relevance is always reassessed against the current text; an approval never reuses a previous verdict or suggestion.
+A warm lexical route uses one remote review/generation call. The fallback can require three serial provider calls: tags, embedding, and reviewed generation. Caches may eliminate earlier calls. Retries and source refreshes add work; one call is not a latency guarantee.
 
-Byte-identical linked drafts skip tag inference as well as retrieval while their context remains fresh. This covers cursor movement without changed text; generation still uses the current cursor, response-type settings and candidate review. The trace identifies this with `unchanged draft` in the tags step.
+## Typing and cancellation
 
-## Caches and freshness
+Every text change advances the revision. Responses must match the pending request and pass validation. Cursor changes, destructive edits, IME composition, settings changes, and invalid responses prevent unrelated output from being adopted. Obsolete browser requests are aborted; the API watches for disconnects and cancels pipeline tasks. Canceling local work cannot guarantee that a provider stops already-started inference.
 
-All caches are bounded, process-local memory. No new payload logging or persistent prompt cache is introduced.
+Typing exactly the beginning of an already validated ghost suffix reveals its remainder immediately. Divergent edits invalidate it; typing the full suffix counts as acceptance. IME suppresses requests and Tab/Escape suggestion actions. Draft storage is batched at 250 ms with a one-second maximum wait and flushes on navigation/unmount. The previous-response pointer is component memory, cleared on empty draft/remount.
 
-| Cache | Key / bound | Freshness |
-|---|---|---|
-| Settings | Singleton, copied for each caller | Background refresh every 2.5 seconds; hard expiry at 5 seconds; committed API updates replace it immediately |
-| Local knowledge snapshot | At most 256 documents and 2 million source characters; excerpts bounded to 8,000 characters per document | Refresh every 10 seconds, hard expiry at 15 seconds; committed local mutations invalidate it; rechecked after generation |
-| Tags and derived task features | Model + SHA-256 of full current/prior drafts and comparison options; 256 entries | 60 seconds; ordinary long inputs retain the first 4,000 and final 2,000 characters. A changed hidden middle disables reuse and extracts from the full current draft |
-| Tag embeddings | Model + dimensions + tag; 1,024 entries | One hour; same semantic-similarity embedding task |
-| Retrieved candidates | Embedding model/dimensions, normalized tag set and threshold; 128 entries | 15 seconds; create/edit/delete invalidates immediately after commit |
-| Knowledge presence | Singleton | 15 seconds; same mutation invalidation |
-| Previous draft context | Completed request ID; 128 entries | At most 15 seconds from the original candidate SQL read, never renewed by subsequent edits; model changes and knowledge mutations invalidate reuse |
-| Pending trace metadata | Request ID, at most 256 pending writes | Available until persistence completes |
+## Freshness and caches
 
-Knowledge invalidation advances a generation counter so an older in-flight read cannot repopulate a cleared cache. Fast-route suggestions whose snapshot changes or expires during inference are discarded. Relevance verdicts and completed responses are not reused across different drafts. Writes made externally or through another process become visible within the cache TTL. Failed background refreshes do not renew source age or settings expiry.
+| Data                                | Lifetime / boundary                                                   |
+| :---------------------------------- | :-------------------------------------------------------------------- |
+| Settings                            | 2.5-second refresh; five-second hard expiry                           |
+| Tiger knowledge snapshot            | 10-second refresh; 15-second source expiry; mutations invalidate      |
+| Tag extraction                      | Exact input/model; 256 entries; one-minute TTL                        |
+| Tag embeddings                      | Model, dimensions, normalized tag; 1,024 entries; one-hour TTL        |
+| Tag candidates / knowledge presence | 15 seconds; invalidated after committed knowledge mutations           |
+| Previous draft context              | 128 entries; 15 seconds from original retrieval, not renewed by edits |
+| Pending trace metadata              | Up to 256 pending writes; readable until persistence completes        |
 
-This is the existing single-user, single-worker topology. Pending-trace reads and invalidation assume that topology; multiple workers require shared cache/invalidation and trace handoff before deployment.
+Invalidation advances a generation counter so older reads cannot refill cleared caches. Failed refreshes do not renew freshness. External writes become visible within the refresh/expiry window. Process failure before a background trace write commits can lose pending metadata; a bounded queue applies backpressure when the database stalls.
 
-## Models and transport
+## Models and data boundaries
 
-| Operation | Default |
-|---|---|
-| Tags / knowledge analysis | `gemini-3.5-flash-lite` |
-| Suffix and full enhancement | `gemini-3.5-flash-lite` |
-| Embeddings | `gemini-embedding-001`, 768 dimensions |
-| Optional stronger full enhancement | `GENERATE_MODEL=gemini-3.6-flash` |
+| Operation                           | Source default                                                |
+| :---------------------------------- | :------------------------------------------------------------ |
+| Tag extraction / knowledge analysis | `gemini-3.5-flash-lite` (`TAG_MODEL`)                         |
+| Review + compact suffix             | `gemini-3.5-flash-lite` (`AUTOCOMPLETE_MODEL`)                |
+| Review + full suggestion            | `gemini-3.5-flash-lite` (`GENERATE_MODEL`)                    |
+| Tag embeddings                      | `gemini-embedding-001`, 768 dimensions, `SEMANTIC_SIMILARITY` |
 
-Generation output budgets are 768 tokens for compact suffixes and 2,048 for full suggestions; tags use 512. Minimal thinking reduces unnecessary reasoning, but output budgets still leave room for valid structured JSON. The existing Gemini client is reused. The MCP server now also reuses an HTTPX client through its lifespan.
+Overrides live in [`config.py`](../backend/app/config.py). Suffix output budgets are 768 tokens; full suggestions 2,048; tags 512. Generation uses minimal thinking. `judge_model` remains a configuration field for standalone judging; the active combined pipeline reviews with the selected generation model.
 
-Tiger remains the source of truth in us-east-1. Snowflake export/training stays off the suggestion path. No database region, provider endpoint, authentication or sponsor integration has been changed.
+Logs and traces keep metadata for 30 days without raw prompt, knowledge body, or model-response text. Knowledge and explicit handoff prompts are content-bearing Tiger records. Gemini receives the draft and candidate context required for generation. Snowflake receives derived outcome features rather than prompt bodies.
 
-## Inspect and reproduce
+## Handoff and analytics
 
-Important files:
+**Send to Codex** stores a refined prompt through `/v1/handoff`. The `prompt-enhance` MCP plugin fetches it with `get_refined_prompt` and also exposes `enhance_prompt` and `search_knowledge`. The companion hands off explicitly; it does not inject a widget into the Codex composer.
 
-- `backend/app/pipeline/complete.py`: small response schemas, candidate review, model routing.
-- `backend/app/pipeline/run.py`: orchestration and validation.
-- `backend/app/pipeline/{catalog,tags,retrieve,cache,context}.py`: local nominations, caches, draft comparison and retrieval.
-- `backend/app/api/enhance.py`: disconnect cancellation.
-- `backend/app/pipeline/trace.py`: asynchronous metadata persistence.
-- `frontend/src/lib/enhance/{use-enhance,state}.ts`: debounce, stale-response safety and local suffix reuse.
-- `plugin/prompt-enhance/mcp/prompt_enhance_mcp/{client,server}.py`: pooled plugin transport.
+Snowflake training uses the latest decisive outcome per request, requires at least 20 labeled requests with both classes, and reports evaluation metrics to the application. The classifier does not gate suggestions, select candidates, or retrain automatically on each outcome.
 
-From `backend/`, measure the running backend with real credentials/services:
+## Active development
+
+These changes are present in the development working tree and are **not part of the published main runtime** in this snapshot. They are included in the optional [3D viewer](architecture-view/README.md), and the local index is marked † in the technical diagram.
+
+### Direct local semantic retrieval
+
+The development pipeline tries a fresh paired document/query index first, then eligible lexical nomination, then tags/pgvector. `DIRECT_SEMANTIC_ENABLED=true` and `SEMANTIC_EMBED_BACKEND=local` select this path when optional packages and verified model files are available. Generation remains remote.
+
+- **Encoder:** `onnx-community/embeddinggemma-2-ONNX`, revision `daa72c51243991dfcaf9f9137d2c573d8f7790c0`; quantized ONNX on CPU; 768-dimensional normalized vectors.
+- **Installation:** the explicit setup script downloads approximately 346 MB and verifies sizes/SHA-256 hashes. Runtime verifies again and does not download models.
+- **Index:** prepared at startup and on background snapshot refresh, keyed by model/configuration, task, title, and content hash. Only a complete current snapshot publishes. Content-addressed vectors can be reused after a fresh source read.
+- **Bounds:** at most 256 documents, 2,000,000 source characters, and 4,096 chunks. Full document bodies within the corpus bound are split at Unicode boundaries into chunks of at most 1,800 UTF-8 bytes. Queries exceeding 1,800 bytes fall back without silent truncation.
+- **Inference:** local input is bounded to 8,192 tokens after search prefixes. Native inference runs off the async event loop, serialized, with at most four pending jobs.
+- **Ranking:** exact cosine nominates up to three documents, with the best-matching chunk passed as evidence. It does not use the tag route's 0.88 threshold or replace fresh relevance review.
+- **Fallback:** missing packages/files, a warming or stale index, exceeded bounds, a busy encoder, or inference failure preserve the lexical/tag routes. `SEMANTIC_EMBED_BACKEND=gemini` selects remote `RETRIEVAL_DOCUMENT` / `RETRIEVAL_QUERY` embeddings instead.
+
+The new implementation files are `backend/app/llm/local_embeddings.py`, `backend/app/pipeline/semantic.py`, and `backend/scripts/setup_local_embeddings.py`. When using a checkout that contains them, install the `local-retrieval` extra and run the setup script explicitly:
 
 ```bash
-PYTHONPATH=. uv run python scripts/bench_enhance.py --base-url http://127.0.0.1:8000 --rounds 2 --output /tmp/latency.json
-PYTHONPATH=. uv run python scripts/bench_enhance.py --base-url http://127.0.0.1:8000 --incremental
-PYTHONPATH=. uv run python scripts/bench_enhance.py --base-url http://127.0.0.1:8000 --incremental --previous-context
+cd backend
+uv sync --extra local-retrieval
+PYTHONPATH=. uv run --extra local-retrieval python scripts/setup_local_embeddings.py
+uv run --extra local-retrieval uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-The script records metadata only: fixture case number, timings, result type, model, review counts and errors. Round one is first visit; round two repeats exact inputs. Both still receive fresh generation/review. `--previous-context` chains successful response IDs through the incremental fixtures and records explicit candidate reuse on the semantic route. `--cases 7 8 9` selects suffix fixtures. Omitting `--base-url` measures in process, with startup warming recorded separately. `frontend/scripts/bench-latency.mjs` measures trusted last-input events through visible suggestions in an isolated browser context; `backend/scripts/eval_catalog.py` evaluates shortlist recall using synthetic fixtures and a read-only corpus snapshot.
+### In-flight suffix adoption
 
-The Activity timeline records actual AI calls. Logical `judge` trace time is zero when it shares generation's call; its detail and model make that explicit. Warm cached tag/retrieval stages can also report zero time. These figures must not be added as if shared stages were separate calls.
+Uninterrupted end-cursor typing can retain one older request alongside the current request. A response within three seconds can contribute a validated autocomplete suffix only when new text exactly matches its prefix, the remainder is nonempty, and UTF-16 code points remain intact. Questions and unrelated old responses are not adopted. Original request/revision attribution is preserved for outcomes.
 
-Contract tests cover bounds, surrogate pairs, edit anchoring, per-candidate reviews, upstream failures, cache invalidation, cancellation and immediate trace reads. Browser tests cover real provider suggestions, accept/decline, diff application, settings, knowledge and Codex handoff.
+## Verify and reproduce
+
+Use the [root setup instructions](../README.md#run-locally) for the published runtime. Backend tests require configured real services; frontend checks include unit/component and real-browser journeys.
+
+```bash
+cd backend
+uv run pytest -q
+
+cd ../frontend
+pnpm test
+pnpm typecheck
+pnpm test:e2e
+```
+
+From `backend/`, with the API running, `PYTHONPATH=. uv run python scripts/bench_enhance.py --base-url http://127.0.0.1:8000 --rounds 2 --output /tmp/latency.json` records API latency. `frontend/scripts/bench-latency.mjs` measures input-to-visible browser latency. Use the development extra when evaluating that route. Provider or embedding timings alone exclude debounce, retrieval, validation, transport, and paint. Review shares generation, so its logical stage must not be counted as a separate inference call.
+
+## Diagram maintenance
+
+Run `python3 docs/diagrams/render_architecture.py` from the repository root to regenerate both SVG themes. The assets contain text and vector geometry, with no JavaScript, external fonts, or image dependencies. Update runtime/development labels when the semantic changes land. The optional [Three.js guide](architecture-view/README.md) describes the secondary 3D model and its capture/export workflow.

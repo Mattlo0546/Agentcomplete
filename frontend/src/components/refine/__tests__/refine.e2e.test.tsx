@@ -17,6 +17,7 @@ const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 
 let enhanceHandler: EnhanceHandler;
+let traceHandler: (requestId: string) => Promise<Response> | Response;
 let calls: { path: string; body: unknown }[];
 let versions: PromptVersion[];
 let historySaveFails: boolean;
@@ -62,6 +63,7 @@ beforeEach(() => {
   historySaveFails = false;
   waitForSettings = null;
   enhanceHandler = (body) => json(autocomplete(body, " and jitter."));
+  traceHandler = (requestId) => json(trace(requestId));
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: string, init?: RequestInit) => {
@@ -105,7 +107,7 @@ beforeEach(() => {
         });
       }
       if (path === "/v1/enhance") return enhanceHandler(body);
-      if (path.startsWith("/v1/traces/")) return json(trace(path.split("/").pop()!));
+      if (path.startsWith("/v1/traces/")) return traceHandler(path.split("/").pop()!);
       if (path === "/v1/outcomes") return new Response(null, { status: 204 });
       if (path === "/v1/handoff") return json({ id: "h1", created_at: "2026-10-24T14:02:00Z" });
       return json({ error: { code: "not_found", message: "Not found" } }, 404);
@@ -202,6 +204,47 @@ describe("Refine journeys", () => {
     expect(await screen.findByText("Copied for Claude")).toBeInTheDocument();
     expect(calls.find((call) => call.path === "/v1/handoff")?.body).toEqual({ prompt: "Review the parser" });
   });
+
+  it("shows the current retrieval trace when generation returns no suggestion", async () => {
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    await screen.findByTestId("ghost-text");
+    expect(
+      within(await screen.findByRole("region", { name: "Input context" })).getByText("python-retry-backoff"),
+    ).toBeInTheDocument();
+
+    traceHandler = (requestId) =>
+      json({
+        ...trace(requestId),
+        result_type: "none",
+        knowledge: [{ id: "current", kind: "skill", title: "current-draft-candidate", score: 0.2, kept: false }],
+      });
+    enhanceHandler = (body) =>
+      json({ schema_version: 1, request_id: body.request_id, prompt_revision: body.prompt_revision, type: "none" });
+    await typeInto(user, editor, " elsewhere");
+    expect(await screen.findByText("No suggestion for this draft")).toBeInTheDocument();
+    expect(screen.queryByText("No suggestion yet")).not.toBeInTheDocument();
+    expect(screen.queryByText("python-retry-backoff")).not.toBeInTheDocument();
+    expect(screen.getByText("No relevant knowledge kept")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show dropped (1)" }));
+    expect(screen.getByText("current-draft-candidate")).toBeInTheDocument();
+    const current = enhanceCalls().at(-1)!;
+    expect(calls.some((call) => call.path === `/v1/traces/${current.request_id}`)).toBe(true);
+    expect(screen.queryByTestId("ghost-text")).not.toBeInTheDocument();
+  });
+
+  it("requests a restored draft once on returning without applying or handing it off", async () => {
+    window.localStorage.setItem("pe.refine.draft", JSON.stringify("Saved migration draft"));
+    const { editor } = setup();
+    expect(editor.value).toBe("Saved migration draft");
+    await screen.findByTestId("ghost-text");
+    expect(enhanceCalls()).toHaveLength(1);
+    expect(enhanceCalls()[0].prompt).toBe("Saved migration draft");
+    expect(editor.value).toBe("Saved migration draft");
+    expect(outcomes().map((outcome) => outcome.event)).toEqual(["shown"]);
+    expect(calls.some((call) => call.path === "/v1/handoff")).toBe(false);
+  });
+
   it("debounces typing into one request, shows ghost text and accepts it with Tab", async () => {
     const { user, editor } = setup();
     expect(screen.getByText("No suggestion yet")).toBeInTheDocument();
@@ -214,17 +257,117 @@ describe("Refine journeys", () => {
     expect(enhanceCalls()[0]).toMatchObject({ prompt: "Retry with backoff", prompt_revision: 18, cursor: 18 });
     expect(enhanceCalls()[0].request_id).toMatch(/^req_[0-9a-f]{12}$/);
 
-    // Inspector loads the trace for the response.
-    expect(await screen.findByText("python-retry-backoff")).toBeInTheDocument();
+    // The main view shows current tags and only kept knowledge; detailed context stays in the inspector.
+    const context = await screen.findByRole("region", { name: "Input context" });
+    expect(screen.getByRole("main")).toContainElement(context);
+    expect(within(context).getByText("retry")).toBeInTheDocument();
+    expect(within(context).getByText("python-retry-backoff")).toBeInTheDocument();
+    expect(within(context).getByLabelText("Relevance 0.91")).toBeInTheDocument();
+    expect(within(context).queryByText("celery-beat-schedules")).not.toBeInTheDocument();
     expect(screen.getByText("Show dropped (1)")).toBeInTheDocument();
+    expect(calls.filter((call) => call.path.startsWith("/v1/traces/"))).toHaveLength(1);
 
     await user.keyboard("{Tab}");
     expect(editor.value).toBe("Retry with backoff and jitter.");
     expect(editor).toHaveFocus();
     expect(editor.selectionStart).toBe(editor.value.length);
     expect(screen.queryByTestId("ghost-text")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Input context" })).not.toBeInTheDocument();
     expect(screen.getByText("rev 19 · 30:30")).toBeInTheDocument();
     await waitFor(() => expect(outcomes().map((o) => o.event)).toEqual(["shown", "accepted"]));
+  });
+
+  it("shows skipped tags and no kept knowledge even when the response has no suggestion", async () => {
+    enhanceHandler = (body) =>
+      json({
+        schema_version: 1,
+        request_id: body.request_id,
+        prompt_revision: body.prompt_revision,
+        type: "none",
+      });
+    traceHandler = (requestId) =>
+      json({
+        ...trace(requestId),
+        result_type: "none",
+        general: true,
+        tags: [],
+        knowledge: trace(requestId).knowledge.filter((item) => !item.kept),
+        steps: [{ step: "tags", model: "local", latency_ms: 0, status: "skipped", detail: "no tag inference" }],
+      });
+    const { user, editor } = setup();
+    await typeInto(user, editor, "A complete specification.");
+    const context = await screen.findByRole("region", { name: "Input context" });
+    expect(within(context).getByText("Tag generation skipped")).toBeInTheDocument();
+    expect(within(context).getByText("No knowledge kept")).toBeInTheDocument();
+    expect(within(context).queryByText("celery-beat-schedules")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("ghost-text")).not.toBeInTheDocument();
+  });
+
+  it("hides old context immediately on editing and ignores a late trace response", async () => {
+    let releaseTrace!: () => void;
+    traceHandler = (requestId) =>
+      new Promise<Response>((resolve) => {
+        releaseTrace = () => resolve(json(trace(requestId)));
+      });
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    await screen.findByText("Loading input context…");
+    enhanceHandler = () => new Promise<Response>(() => {});
+    await typeInto(user, editor, " differently");
+    releaseTrace();
+    await waitFor(() => expect(enhanceCalls()).toHaveLength(2));
+    expect(screen.queryByRole("region", { name: "Input context" })).not.toBeInTheDocument();
+    expect(screen.queryByText("python-retry-backoff")).not.toBeInTheDocument();
+  });
+
+  it("labels previous input tags when generation is skipped, while displaying freshly kept knowledge", async () => {
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    expect(within(await screen.findByRole("region", { name: "Input context" })).getByText("retry")).toBeInTheDocument();
+
+    traceHandler = (requestId) =>
+      json({
+        ...trace(requestId),
+        tags: [],
+        knowledge: [{ id: "fresh", kind: "skill", title: "Updated knowledge", score: 0.9, kept: true }],
+        steps: [{ step: "tags", model: "local", latency_ms: 0, status: "skipped", detail: "no tag inference" }],
+      });
+    await typeInto(user, editor, " differently");
+    const context = await screen.findByRole("region", { name: "Input context" });
+    expect(within(context).getByText("retry")).toBeInTheDocument();
+    expect(within(context).getByText("Previous input")).toBeInTheDocument();
+    expect(within(context).getByText("Updated knowledge")).toBeInTheDocument();
+    expect(within(context).queryByText("python-retry-backoff")).not.toBeInTheDocument();
+
+    await user.clear(editor);
+    expect(screen.queryByRole("region", { name: "Input context" })).not.toBeInTheDocument();
+    await typeInto(user, editor, "A new draft");
+    const newContext = await screen.findByRole("region", { name: "Input context" });
+    expect(within(newContext).getByText("Tag generation skipped")).toBeInTheDocument();
+    expect(within(newContext).queryByText("retry")).not.toBeInTheDocument();
+  });
+
+  it("does not substitute previous tags when tag generation ran and returned no tags", async () => {
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    await screen.findByRole("region", { name: "Input context" });
+    traceHandler = (requestId) => json({ ...trace(requestId), tags: [] });
+    await typeInto(user, editor, " something else");
+    const context = await screen.findByRole("region", { name: "Input context" });
+    expect(within(context).getByText("No tags generated")).toBeInTheDocument();
+    expect(within(context).queryByText("Previous input")).not.toBeInTheDocument();
+  });
+
+  it("lets a failed context fetch retry without losing the suggestion or generating it again", async () => {
+    traceHandler = () => json({ error: { code: "unavailable", message: "Unavailable" } }, 503);
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    expect(await screen.findByText("Input context unavailable")).toBeInTheDocument();
+    expect(screen.getByTestId("ghost-text")).toHaveTextContent("and jitter.");
+    traceHandler = (requestId) => json(trace(requestId));
+    await user.click(screen.getByRole("button", { name: "Retry context" }));
+    expect(await screen.findByRole("region", { name: "Input context" })).toBeInTheDocument();
+    expect(enhanceCalls()).toHaveLength(1);
   });
 
   it("does not swallow Tab without a ghost and dismisses ghost text with Esc", async () => {
@@ -260,6 +403,49 @@ describe("Refine journeys", () => {
       expect.objectContaining({ event: "shown", prompt_revision: 5 }),
       expect.objectContaining({ event: "accepted", prompt_revision: 5 }),
     ]);
+  });
+
+  it("salvages an in-flight completion after matching typing and accepts only its remainder", async () => {
+    let releaseFirst!: () => void;
+    enhanceHandler = (body) =>
+      new Promise<Response>((resolve) => {
+        if (enhanceCalls().length === 1) releaseFirst = () => resolve(json(autocomplete(body, " and jitter.")));
+      });
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    await waitFor(() => expect(enhanceCalls()).toHaveLength(1));
+    const source = enhanceCalls()[0];
+    await typeInto(user, editor, " and");
+    releaseFirst();
+    const ghost = await screen.findByTestId("ghost-text");
+    expect(ghost).toHaveTextContent("jitter.");
+    expect(ghost).toHaveAttribute("data-request-id", source.request_id);
+    expect(ghost).toHaveAttribute("data-source-revision", "5");
+    expect(ghost).toHaveAttribute("data-render-revision", "9");
+    await user.keyboard("{Tab}");
+    expect(editor.value).toBe("Retry and jitter.");
+    expect(outcomes()).toEqual([
+      expect.objectContaining({ event: "shown", prompt_revision: 5 }),
+      expect.objectContaining({ event: "accepted", prompt_revision: 5 }),
+    ]);
+  });
+
+  it("Escape invalidates an unseen in-flight suffix before a compatible late answer arrives", async () => {
+    let releaseFirst!: () => void;
+    enhanceHandler = (body) =>
+      new Promise<Response>((resolve) => {
+        if (enhanceCalls().length === 1) releaseFirst = () => resolve(json(autocomplete(body, " and jitter.")));
+      });
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry");
+    await waitFor(() => expect(enhanceCalls()).toHaveLength(1));
+    await typeInto(user, editor, " and");
+    await user.keyboard("{Escape}");
+    releaseFirst();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(screen.queryByTestId("ghost-text")).not.toBeInTheDocument();
+    expect(enhanceCalls()).toHaveLength(1);
+    expect(outcomes()).toHaveLength(0);
   });
 
   it("waits for composition to finish before requesting an enhancement", async () => {

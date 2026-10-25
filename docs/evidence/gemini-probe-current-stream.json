@@ -1,0 +1,212 @@
+{
+  "measured_at": "2026-10-25T11:11:04.028754+00:00",
+  "sdk_version": "2.33.0",
+  "scope": "Sequential randomized synthetic provider-only probes; no application database writes",
+  "seed": 20261025,
+  "inventory": [
+    {
+      "name": "gemini-3.5-flash-lite",
+      "actions": [
+        "generateContent",
+        "countTokens",
+        "createCachedContent",
+        "batchGenerateContent"
+      ]
+    }
+  ],
+  "summaries": {
+    "gemini-3.5-flash-lite/standard/stream": {
+      "n": 5,
+      "valid": 5,
+      "expected_type_pass": 5,
+      "relevance_pass": 5,
+      "median_validated_ms": 707.97,
+      "median_first_token_ms": 561.38
+    }
+  },
+  "samples": [
+    {
+      "case": "semantic_suffix",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "standard",
+      "mode": "stream",
+      "schema": "ReviewedCompletion",
+      "candidate_count": 3,
+      "thinking": "minimal",
+      "first_non_thinking_token_ms": 517.68,
+      "first_text_field_ms": 615.02,
+      "complete_schema_ms": 699.93,
+      "response_complete_ms": 707.44,
+      "result_type": "autocomplete",
+      "wire_valid": true,
+      "expected_type": true,
+      "expected_relevance": true,
+      "keep": [
+        true,
+        false,
+        false
+      ],
+      "scores": [
+        0.9,
+        0.1,
+        0.2
+      ],
+      "text_chars": 63,
+      "text_sha256": "efd9ea1121617ab1d0dd5198640bf5778bc6d2afd33a152acb1c9bc6699f5847",
+      "option_count": 0,
+      "validated_ms": 707.97,
+      "status": "ok",
+      "applied_tier": null,
+      "finish_reason": "FinishReason.STOP",
+      "prompt_token_count": 758,
+      "candidates_token_count": 76,
+      "thoughts_token_count": null,
+      "cached_content_token_count": null
+    },
+    {
+      "case": "question",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "standard",
+      "mode": "stream",
+      "schema": "ReviewedGeneration",
+      "candidate_count": 2,
+      "thinking": "minimal",
+      "first_non_thinking_token_ms": 807.7,
+      "first_text_field_ms": 890.88,
+      "complete_schema_ms": 1183.29,
+      "response_complete_ms": 1189.77,
+      "result_type": "multiple_choice",
+      "wire_valid": true,
+      "expected_type": true,
+      "expected_relevance": true,
+      "keep": [
+        true,
+        false
+      ],
+      "scores": [
+        0.9,
+        0.1
+      ],
+      "text_chars": 61,
+      "text_sha256": "83a0fb98bd8f992e85a1d9ac22ed329f5bb29e23f8278e813b413314fbcebc96",
+      "option_count": 2,
+      "validated_ms": 1195.59,
+      "status": "ok",
+      "applied_tier": null,
+      "finish_reason": "FinishReason.STOP",
+      "prompt_token_count": 889,
+      "candidates_token_count": 191,
+      "thoughts_token_count": null,
+      "cached_content_token_count": null
+    },
+    {
+      "case": "retry_suffix",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "standard",
+      "mode": "stream",
+      "schema": "ReviewedCompletion",
+      "candidate_count": 3,
+      "thinking": "minimal",
+      "first_non_thinking_token_ms": 538.68,
+      "first_text_field_ms": 633.77,
+      "complete_schema_ms": 698.96,
+      "response_complete_ms": 703.26,
+      "result_type": "autocomplete",
+      "wire_valid": true,
+      "expected_type": true,
+      "expected_relevance": true,
+      "keep": [
+        true,
+        false,
+        false
+      ],
+      "scores": [
+        0.9,
+        0.1,
+        0.2
+      ],
+      "text_chars": 83,
+      "text_sha256": "d29aca0996bddb96fc02300c1cc77457189cf538b95ffb423fcd9416138c4d64",
+      "option_count": 0,
+      "validated_ms": 703.37,
+      "status": "ok",
+      "applied_tier": null,
+      "finish_reason": "FinishReason.STOP",
+      "prompt_token_count": 764,
+      "candidates_token_count": 78,
+      "thoughts_token_count": null,
+      "cached_content_token_count": null
+    },
+    {
+      "case": "spanish",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "standard",
+      "mode": "stream",
+      "schema": "ReviewedGeneration",
+      "candidate_count": 2,
+      "thinking": "minimal",
+      "first_non_thinking_token_ms": 574.26,
+      "first_text_field_ms": 684.89,
+      "complete_schema_ms": 757.21,
+      "response_complete_ms": 767.82,
+      "result_type": "autocomplete",
+      "wire_valid": true,
+      "expected_type": true,
+      "expected_relevance": true,
+      "keep": [
+        true,
+        false
+      ],
+      "scores": [
+        0.95,
+        0.0
+      ],
+      "text_chars": 49,
+      "text_sha256": "06ac5684930717d3333c880f9f2b739764c7fbddc7c19b98be07d39a4e7a9b57",
+      "option_count": 0,
+      "validated_ms": 768.24,
+      "status": "ok",
+      "applied_tier": null,
+      "finish_reason": "FinishReason.STOP",
+      "prompt_token_count": 909,
+      "candidates_token_count": 70,
+      "thoughts_token_count": null,
+      "cached_content_token_count": null
+    },
+    {
+      "case": "partial_word",
+      "round": 1,
+      "model": "gemini-3.5-flash-lite",
+      "requested_tier": "standard",
+      "mode": "stream",
+      "schema": "Proposal",
+      "candidate_count": 0,
+      "thinking": "minimal",
+      "first_non_thinking_token_ms": 561.38,
+      "first_text_field_ms": 648.29,
+      "complete_schema_ms": 648.36,
+      "response_complete_ms": 655.47,
+      "result_type": "autocomplete",
+      "wire_valid": true,
+      "expected_type": true,
+      "expected_relevance": true,
+      "keep": [],
+      "scores": [],
+      "text_chars": 43,
+      "text_sha256": "56f0c8673c383a7eb97628d57e7f151d283e46aee55fc7a4a54d3e52c251c577",
+      "option_count": 0,
+      "validated_ms": 655.6,
+      "status": "ok",
+      "applied_tier": null,
+      "finish_reason": "FinishReason.STOP",
+      "prompt_token_count": 486,
+      "candidates_token_count": 34,
+      "thoughts_token_count": null,
+      "cached_content_token_count": null
+    }
+  ]
+}

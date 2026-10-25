@@ -24,7 +24,12 @@ const request = (state: EnhanceState, requestId: string): EnhanceAction => ({
   type: "request",
   snapshot: { requestId, revision: state.revision, prompt: state.prompt, cursor: state.selectionEnd },
 });
-const autocomplete = (requestId: string, revision: number, insertAt: number, text = " and jitter."): EnhanceAction => ({
+const autocomplete = (
+  requestId: string,
+  revision: number,
+  insertAt: number,
+  text = " and jitter.",
+): Extract<EnhanceAction, { type: "response" }> => ({
   type: "response",
   now: 1000,
   response: {
@@ -35,6 +40,60 @@ const autocomplete = (requestId: string, revision: number, insertAt: number, tex
     insert_at: insertAt,
     text,
   },
+});
+
+describe("retained response validation", () => {
+  const pending = () => {
+    const typed = run([type("Add retr")]);
+    return enhanceReducer(typed, request(typed, "old"));
+  };
+  const append = (state: EnhanceState, prompt: string) =>
+    enhanceReducer(state, {
+      type: "change",
+      prompt,
+      selectionStart: prompt.length,
+      selectionEnd: prompt.length,
+      retainInFlight: true,
+    });
+  const receive = (state: EnhanceState, response: EnhanceResponse) =>
+    enhanceReducer(state, { type: "retainedResponse", requestId: "old", response, now: 2000 });
+
+  it.each([
+    ["wrong ID", { request_id: "wrong" }],
+    ["wrong revision", { prompt_revision: 999 }],
+    ["wrong insertion", { insert_at: 0 }],
+    ["unsupported schema", { schema_version: 2 }],
+    ["empty suffix", { text: "" }],
+    ["none", { type: "none" }],
+  ])("does not adopt %s from the retained request", (_name, change) => {
+    const state = append(pending(), "Add retries");
+    const result = receive(state, {
+      ...autocomplete("old", 1, 8, "ies with a cap").response,
+      ...change,
+    } as EnhanceResponse);
+    expect(ghostText(result)).toBe("");
+    expect(result.retained).toBeNull();
+  });
+
+  it.each([
+    ["emoji", "🧪", "🧪 tests", " tests"],
+    ["combining marks", "e\u0301", "e\u0301 tests", " tests"],
+    ["non-English", "日本", "日本語", "語"],
+    ["split surrogate", "\ud83e", "🧪 tests", ""],
+    ["no Unicode normalization", "é", "e\u0301 tests", ""],
+  ])("preserves exact Unicode for %s", (_name, added, predicted, remaining) => {
+    const source = pending();
+    const state = append(source, source.prompt + added);
+    const result = receive(state, autocomplete("old", 1, 8, predicted).response);
+    expect(ghostText(result)).toBe(remaining);
+    if (remaining) expect(result.prompt + remaining).toBe(source.prompt + predicted);
+  });
+
+  it("does not treat a historical snapshot passed through the ordinary response action as current", () => {
+    const state = append(pending(), "Add retries");
+    expect(enhanceReducer(state, autocomplete("old", 1, 8, "ies with a cap"))).toBe(state);
+    expect(ghostText(receive(state, autocomplete("old", 1, 8, "ies with a cap").response))).toBe(" with a cap");
+  });
 });
 
 describe("enhanceReducer", () => {
@@ -69,6 +128,25 @@ describe("enhanceReducer", () => {
     expect(state.pending).toBeNull();
   });
 
+  it("updates the inspector for valid none responses but rejects stale none identities", () => {
+    const typed = run([type("Retry")]);
+    const shown = run([request(typed, "old"), autocomplete("old", 1, 5)], typed);
+    const current = enhanceReducer(shown, request(shown, "current"));
+    const response: EnhanceResponse = {
+      schema_version: 1,
+      request_id: "current",
+      prompt_revision: current.revision,
+      type: "none",
+    };
+    expect(enhanceReducer(current, { type: "response", response: { ...response, request_id: "old" }, now: 0 })).toBe(
+      current,
+    );
+    const result = enhanceReducer(current, { type: "response", response, now: 0 });
+    expect(result.traceId).toBe("current");
+    expect(result.suggestion).toBeNull();
+    expect(result.pending).toBeNull();
+  });
+
   it("drops responses for an older revision or a superseded request id", () => {
     const typed = run([type("Retry")]);
     let state = enhanceReducer(typed, request(typed, "req_old"));
@@ -76,11 +154,48 @@ describe("enhanceReducer", () => {
     expect(state.pending).toBeNull();
     state = enhanceReducer(state, autocomplete("req_old", 1, 5));
     expect(state.suggestion).toBeNull();
+    expect(state.traceId).toBeNull();
 
     state = enhanceReducer(state, request(state, "req_a"));
     state = enhanceReducer(state, request(state, "req_b"));
     expect(enhanceReducer(state, autocomplete("req_a", 2, 10))).toBe(state);
     expect(ghostText(enhanceReducer(state, autocomplete("req_b", 2, 10)))).toBe(" and jitter.");
+  });
+
+  it("replaces context with a validated none response and keeps it when dismissing a suggestion", () => {
+    const typed = run([type("abc")]);
+    const shown = run([request(typed, "r"), autocomplete("r", 1, 3)], typed);
+    expect(enhanceReducer(shown, { type: "dismiss" }).traceId).toBe("r");
+    const refreshed = run(
+      [
+        request(shown, "next"),
+        {
+          type: "response",
+          now: 2000,
+          response: {
+            schema_version: 1,
+            request_id: "next",
+            prompt_revision: 1,
+            type: "none",
+          },
+        },
+      ],
+      shown,
+    );
+    expect(refreshed.traceId).toBe("next");
+    expect(refreshed.suggestion).toBeNull();
+  });
+
+  it.each<EnhanceAction>([
+    type("changed"),
+    type("abc and"), // Typing through a ghost still changes the input that generated its context.
+    { type: "select", selectionStart: 0, selectionEnd: 0 },
+    { type: "acceptGhost" },
+    { type: "cancel" },
+  ])("clears context on input invalidation: $type", (action) => {
+    const typed = run([type("abc")]);
+    const shown = run([request(typed, "r"), autocomplete("r", 1, 3)], typed);
+    expect(enhanceReducer(shown, action).traceId).toBeNull();
   });
 
   it("ignores a request whose snapshot is no longer current", () => {
@@ -139,6 +254,7 @@ describe("enhanceReducer", () => {
     expect(applied.prompt).toBe("Write a runbook. Go.");
     expect(applied.selectionStart).toBe(applied.prompt.length);
     expect(applied.revision).toBe(2);
+    expect(applied.traceId).toBeNull();
 
     const declined = enhanceReducer(shown, { type: "dismiss" });
     expect(declined.prompt).toBe("Write a plan.");

@@ -1,0 +1,616 @@
+{
+  "measured_at": "2026-10-25T11:09:58.829969+00:00",
+  "script_sha256": "ee133fc64049ece20a4853fe27b293339ef01c3b7c02f85935989a27682c3ba6",
+  "scope": "Experimental read-only snapshot; separately authored synthetic held-out tasks; no database writes",
+  "embed_model": "gemini-embedding-001",
+  "embed_dims": 768,
+  "limitations": [
+    "Hand-authored target recall is not exhaustive relevance or proof of unchanged suggestion quality.",
+    "Direct vectors always nominate top three; negative-control and excluded-topic nominations remain visible.",
+    "Batch embedding time is preprocessing throughput, never substituted for individual request latency.",
+    "Embedding-only latency excludes the dependent generation call and UI debounce/transport.",
+    "Stored tag vectors use SEMANTIC_SIMILARITY; new document vectors use paired RETRIEVAL_DOCUMENT/QUERY.",
+    "Sparse full-catalog verdicts are a prototype contract; output quality needs independent review."
+  ],
+  "snapshot_read_ms": 622.091,
+  "corpus": {
+    "documents": 29,
+    "tags": 61,
+    "digest": "edd1c8a8b5ded5d79d74574d30f0c9c0c15b7e8219a77794e6fb9377073883bc",
+    "body_chars": 43468
+  },
+  "lexical": {
+    "summary": {
+      "fixtures": 20,
+      "expected_targets": 20,
+      "targets_in_top_three": 17,
+      "targets_in_top_five": 17,
+      "positive_fixtures_missing_target": [
+        "required-live",
+        "repeat-transient",
+        "spanish-race"
+      ],
+      "negative_controls_nominating_candidates": [],
+      "fixtures_nominating_excluded_topics": [
+        "negated-network",
+        "negated-payments"
+      ]
+    },
+    "samples": [
+      {
+        "fixture": "rename-live",
+        "category": "paraphrase",
+        "selected": [
+          "postgres-zero-downtime-migrations",
+          "fastapi-postgres-atomic-operation",
+          "nextjs-server-client-boundary"
+        ],
+        "top_five": [
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          },
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "postgres-zero-downtime-migrations": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "required-live",
+        "category": "paraphrase",
+        "selected": [],
+        "top_five": [],
+        "targets": {
+          "postgres-zero-downtime-migrations": {
+            "rank": null,
+            "selected": false
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "semantic_fallback"
+      },
+      {
+        "fixture": "upstream-codes",
+        "category": "paraphrase",
+        "selected": [
+          "python-retry-backoff",
+          "docker-multi-stage-builds",
+          "fastapi-dependency-injection"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          },
+          {
+            "document": "docker-multi-stage-builds",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-dependency-injection",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "repeat-transient",
+        "category": "paraphrase",
+        "selected": [
+          "api-error-handling",
+          "postgres-zero-downtime-migrations",
+          "logging-and-observability"
+        ],
+        "top_five": [
+          {
+            "document": "api-error-handling",
+            "score": 0.0
+          },
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.0
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": null,
+            "selected": false
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "negated-network",
+        "category": "negation",
+        "selected": [
+          "release-notes-from-commits",
+          "python-retry-backoff",
+          "explain-a-diff-for-review"
+        ],
+        "top_five": [
+          {
+            "document": "release-notes-from-commits",
+            "score": 0.0
+          },
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          },
+          {
+            "document": "explain-a-diff-for-review",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "release-notes-from-commits": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [
+          "python-retry-backoff"
+        ],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "negated-payments",
+        "category": "negation",
+        "selected": [
+          "fastapi-postgres-atomic-operation",
+          "stripe-webhook-idempotency",
+          "fastapi-dependency-injection"
+        ],
+        "top_five": [
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          },
+          {
+            "document": "stripe-webhook-idempotency",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-dependency-injection",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "fastapi-postgres-atomic-operation": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [
+          "stripe-webhook-idempotency"
+        ],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "recover-and-observe",
+        "category": "multiple_targets",
+        "selected": [
+          "python-retry-backoff",
+          "logging-and-observability",
+          "fastapi-dependency-injection"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-dependency-injection",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          },
+          "logging-and-observability": {
+            "rank": 2,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "race-and-test",
+        "category": "multiple_targets",
+        "selected": [
+          "react-async-response-races",
+          "react-testing-library-patterns",
+          "accessible-react-dialog"
+        ],
+        "top_five": [
+          {
+            "document": "react-async-response-races",
+            "score": 0.0
+          },
+          {
+            "document": "react-testing-library-patterns",
+            "score": 0.0
+          },
+          {
+            "document": "accessible-react-dialog",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "react-async-response-races": {
+            "rank": 1,
+            "selected": true
+          },
+          "react-testing-library-patterns": {
+            "rank": 2,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "ownership",
+        "category": "paraphrase",
+        "selected": [
+          "authorization-access-matrix",
+          "nextjs-server-client-boundary",
+          "logging-and-observability"
+        ],
+        "top_five": [
+          {
+            "document": "authorization-access-matrix",
+            "score": 0.0
+          },
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.0
+          },
+          {
+            "document": "logging-and-observability",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "authorization-access-matrix": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "keyboard-overlay",
+        "category": "paraphrase",
+        "selected": [
+          "accessible-react-dialog",
+          "react-testing-library-patterns",
+          "nextjs-app-router-data-fetching"
+        ],
+        "top_five": [
+          {
+            "document": "accessible-react-dialog",
+            "score": 0.0
+          },
+          {
+            "document": "react-testing-library-patterns",
+            "score": 0.0
+          },
+          {
+            "document": "nextjs-app-router-data-fetching",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "accessible-react-dialog": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "repro-ui",
+        "category": "paraphrase",
+        "selected": [
+          "browser-bug-regression",
+          "accessible-react-dialog",
+          "nextjs-server-client-boundary"
+        ],
+        "top_five": [
+          {
+            "document": "browser-bug-regression",
+            "score": 0.0
+          },
+          {
+            "document": "accessible-react-dialog",
+            "score": 0.0
+          },
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "browser-bug-regression": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "session-persistence",
+        "category": "paraphrase",
+        "selected": [
+          "postgres-session-store",
+          "browser-bug-regression",
+          "fastapi-postgres-atomic-operation"
+        ],
+        "top_five": [
+          {
+            "document": "postgres-session-store",
+            "score": 0.0
+          },
+          {
+            "document": "browser-bug-regression",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "postgres-session-store": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "excessive-scans",
+        "category": "paraphrase",
+        "selected": [
+          "sql-query-optimisation",
+          "fastapi-postgres-atomic-operation",
+          "postgres-zero-downtime-migrations"
+        ],
+        "top_five": [
+          {
+            "document": "sql-query-optimisation",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          },
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "sql-query-optimisation": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "server-secrets",
+        "category": "paraphrase",
+        "selected": [
+          "nextjs-server-client-boundary",
+          "nextjs-app-router-data-fetching",
+          "browser-bug-regression"
+        ],
+        "top_five": [
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.0
+          },
+          {
+            "document": "nextjs-app-router-data-fetching",
+            "score": 0.0
+          },
+          {
+            "document": "browser-bug-regression",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "nextjs-server-client-boundary": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "server-read-sharing",
+        "category": "paraphrase",
+        "selected": [
+          "nextjs-server-client-boundary",
+          "nextjs-app-router-data-fetching",
+          "fastapi-dependency-injection"
+        ],
+        "top_five": [
+          {
+            "document": "nextjs-server-client-boundary",
+            "score": 0.0
+          },
+          {
+            "document": "nextjs-app-router-data-fetching",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-dependency-injection",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "nextjs-app-router-data-fetching": {
+            "rank": 2,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "unknown-poem",
+        "category": "negative_control",
+        "selected": [],
+        "top_five": [],
+        "targets": {},
+        "excluded_selected": [],
+        "negative_control": true,
+        "route": "semantic_fallback"
+      },
+      {
+        "fixture": "complete-generic",
+        "category": "negative_control",
+        "selected": [],
+        "top_five": [],
+        "targets": {},
+        "excluded_selected": [],
+        "negative_control": true,
+        "route": "semantic_fallback"
+      },
+      {
+        "fixture": "spanish-race",
+        "category": "multilingual",
+        "selected": [],
+        "top_five": [],
+        "targets": {
+          "react-async-response-races": {
+            "rank": null,
+            "selected": false
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "semantic_fallback"
+      },
+      {
+        "fixture": "new-stack",
+        "category": "changed_technology",
+        "selected": [
+          "fastapi-postgres-atomic-operation",
+          "fastapi-dependency-injection",
+          "postgres-zero-downtime-migrations"
+        ],
+        "top_five": [
+          {
+            "document": "fastapi-postgres-atomic-operation",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-dependency-injection",
+            "score": 0.0
+          },
+          {
+            "document": "postgres-zero-downtime-migrations",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "fastapi-postgres-atomic-operation": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      },
+      {
+        "fixture": "typed-fragment",
+        "category": "partial_word",
+        "selected": [
+          "python-retry-backoff",
+          "fastapi-dependency-injection",
+          "docker-multi-stage-builds"
+        ],
+        "top_five": [
+          {
+            "document": "python-retry-backoff",
+            "score": 0.0
+          },
+          {
+            "document": "fastapi-dependency-injection",
+            "score": 0.0
+          },
+          {
+            "document": "docker-multi-stage-builds",
+            "score": 0.0
+          }
+        ],
+        "targets": {
+          "python-retry-backoff": {
+            "rank": 1,
+            "selected": true
+          }
+        },
+        "excluded_selected": [],
+        "negative_control": false,
+        "route": "local"
+      }
+    ]
+  }
+}

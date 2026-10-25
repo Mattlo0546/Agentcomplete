@@ -1,5 +1,7 @@
 # Integration research (updated 2026-10-25)
 
+> Historical research, including model choices that changed during implementation. For installed versions, active defaults, and current routing, use [the README](../README.md) and [architecture guide](architecture.md).
+
 Findings gathered by a research agent; items marked *uncertain* need verification during implementation.
 
 ## Codex

@@ -34,6 +34,8 @@ async def database() -> AsyncIterator[None]:
 def clear_caches(monkeypatch: pytest.MonkeyPatch) -> None:
     # These tests retain coverage of the semantic fallback; fast routing has its own suite.
     monkeypatch.setattr(run.get_settings(), "fast_autocomplete_enabled", False)
+    monkeypatch.setattr(run.get_settings(), "direct_semantic_enabled", False)
+    monkeypatch.setattr(run.get_settings(), "catalog_review_enabled", False)
     tags._cache.clear()
     retrieve_module.invalidate_cache()
     retrieve_module._embeddings.clear()
@@ -395,19 +397,32 @@ async def test_provider_cancellation_is_propagated_and_logged(monkeypatch: pytes
     assert logged.call_args.args[-1] == "cancelled"
 
 
-async def test_complete_vague_draft_requires_explicit_choices(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_complete_draft_can_receive_grounded_steps_without_legacy_tag_veto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from app.pipeline.generate import Generation
+    from app.pipeline.judge import Judged
+
+    item = Candidate(
+        uuid4(),
+        "skill",
+        "Profile API latency",
+        "Measure before optimizing",
+        "Measure a baseline, profile the slow path, and verify the change against it.",
+        0.9,
+        ["performance"],
+    )
 
     generate = AsyncMock(
         return_value=(
             Generation(
-                type="none",
-                autocomplete_text="",
+                type="autocomplete",
+                autocomplete_text=" Measure a baseline, profile the slow path, and verify the change against it.",
                 completes_partial_word=False,
                 question="",
                 options=[],
             ),
-            [],
+            [Judged(item, 0.9, True)],
         )
     )
     monkeypatch.setattr(run, "complete", generate)
@@ -415,12 +430,12 @@ async def test_complete_vague_draft_requires_explicit_choices(monkeypatch: pytes
         request("Make the API faster"),
         AppSettings(),
         extraction(),
-        [],
+        [item],
         ["autocomplete", "multiple_choice", "none"],
     )
-    assert result.type == "none"
+    assert result.type == "autocomplete"
     contents = generate.call_args.args[0]
-    assert "allowed_types: multiple_choice, none" in contents
+    assert "allowed_types: autocomplete, multiple_choice, none" in contents
     assert generate.call_args.kwargs["compact"] is False
 
 

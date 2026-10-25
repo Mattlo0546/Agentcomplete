@@ -154,7 +154,8 @@ async def main(args: argparse.Namespace) -> None:
         await open_pool()
         try:
             await start_settings_refresh()
-            if get_settings().fast_autocomplete_enabled:
+            cfg = get_settings()
+            if cfg.catalog_review_enabled or cfg.fast_autocomplete_enabled or cfg.direct_semantic_enabled:
                 await catalog.start()
             startup_ms = round((time.perf_counter() - startup_started) * 1000)
             result = await benchmark(args, None)

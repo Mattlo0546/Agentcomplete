@@ -1,0 +1,425 @@
+{
+  "limitation": "Sequential development runs with model/provider variability and changed coverage; not a controlled latency attribution experiment.",
+  "rows": [
+    {
+      "fixture_id": "fresh_insertion_retries",
+      "before_type": "autocomplete",
+      "after_type": "autocomplete",
+      "before_visible_ms": 1171.4,
+      "after_visible_ms": 3509.5,
+      "before_json_ms": 1141.6,
+      "after_json_ms": 3458.3,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 2080,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1161,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "new_settings_tests",
+      "before_type": "autocomplete",
+      "after_type": "autocomplete",
+      "before_visible_ms": 1050.9,
+      "after_visible_ms": 1302.7,
+      "before_json_ms": 1025.3,
+      "after_json_ms": 1271.9,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 297,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 807,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "paraphrased_online_migration",
+      "before_type": "autocomplete",
+      "after_type": "autocomplete",
+      "before_visible_ms": 954.9,
+      "after_visible_ms": 1166.6,
+      "before_json_ms": 928,
+      "after_json_ms": 1139.7,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 199,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 773,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "vague_api_performance",
+      "before_type": "multiple_choice",
+      "after_type": "multiple_choice",
+      "before_visible_ms": 2695.3,
+      "after_visible_ms": 1470.8,
+      "before_json_ms": 2573.7,
+      "after_json_ms": 1315.3,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 141,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1014,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "negated_web_frameworks",
+      "before_type": "none",
+      "after_type": "none",
+      "before_visible_ms": null,
+      "after_visible_ms": null,
+      "before_json_ms": 939.1,
+      "after_json_ms": 1138.3,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 162,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 807,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "partial_retry_word",
+      "before_type": "autocomplete",
+      "after_type": "autocomplete",
+      "before_visible_ms": 918.8,
+      "after_visible_ms": 1118.1,
+      "before_json_ms": 891.9,
+      "after_json_ms": 1092,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 166,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 767,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "spanish_retries",
+      "before_type": "autocomplete",
+      "after_type": "autocomplete",
+      "before_visible_ms": 987.4,
+      "after_visible_ms": 1287.8,
+      "before_json_ms": 955,
+      "after_json_ms": 1261.7,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 138,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 947,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "unicode_test_suite",
+      "before_type": "none",
+      "after_type": "autocomplete",
+      "before_visible_ms": null,
+      "after_visible_ms": 1088.2,
+      "before_json_ms": 838.3,
+      "after_json_ms": 1067.4,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 117,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 766,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "complete_arithmetic",
+      "before_type": "none",
+      "after_type": "none",
+      "before_visible_ms": null,
+      "after_visible_ms": null,
+      "before_json_ms": 1745.6,
+      "after_json_ms": 1156.6,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 142,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 827,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "ambiguous_migration_plan",
+      "before_type": "multiple_choice",
+      "after_type": "multiple_choice",
+      "before_visible_ms": 1337.5,
+      "after_visible_ms": 1414.5,
+      "before_json_ms": 1308.7,
+      "after_json_ms": 1376.5,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 110,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 1094,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "inflight_append_retries",
+      "before_type": "autocomplete",
+      "after_type": "autocomplete",
+      "before_visible_ms": 777.5,
+      "after_visible_ms": 1044.2,
+      "before_json_ms": 750.9,
+      "after_json_ms": 1027,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 91,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 778,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "fixture_id": "inflight_append_negation",
+      "before_type": "autocomplete",
+      "after_type": "none",
+      "before_visible_ms": 985.6,
+      "after_visible_ms": null,
+      "before_json_ms": 965.1,
+      "after_json_ms": 1143.3,
+      "after_steps": [
+        {
+          "step": "tags",
+          "model": "local",
+          "latency_ms": 0,
+          "status": "skipped"
+        },
+        {
+          "step": "retrieve",
+          "model": "google/embeddinggemma-2 \u00b7 local semantic",
+          "latency_ms": 131,
+          "status": "ok"
+        },
+        {
+          "step": "judge",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 0,
+          "status": "ok"
+        },
+        {
+          "step": "generate",
+          "model": "gemini-3.5-flash-lite",
+          "latency_ms": 854,
+          "status": "ok"
+        }
+      ]
+    }
+  ]
+}

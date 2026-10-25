@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1000" viewBox="0 0 1200 1000" role="img" aria-labelledby="title desc">
+<title id="title">Skill Issue — technical architecture</title>
+<desc id="desc">The Next.js browser and Codex MCP client call a single FastAPI worker. Its retrieval router uses a lexical snapshot or Gemini tag and pgvector fallback; a local EmbeddingGemma index is in development. Gemini reviews candidates and generates structured output, then Python validates UTF-16 edits and freshness. Tiger Data PostgreSQL stores knowledge, vectors, and telemetry. Snowflake receives explicit offline exports. Solid arrows show requests and responses; dashed arrows show persistence and background refresh.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="#171a1c" stroke-width="1.4"/></marker>
+<marker id="muted-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="#a5abb0" stroke-width="1.4"/></marker></defs>
+<style>text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#171a1c;font-size:16px}.title{font-size:20px;font-weight:600}.meta{font-size:14px;fill:#62686e}.label{font-size:13px;fill:#62686e;letter-spacing:1.2px}.small{font-size:13px;fill:#62686e}</style>
+<rect width="1200" height="1000" fill="#ffffff"/>
+
+<text x="42" y="31" class="label">CLIENTS</text>
+<text x="1148" y="31" class="label" text-anchor="end">SINGLE-USER TOPOLOGY</text>
+<rect x="42" y="52" width="350" height="88" rx="6" fill="#ffffff" stroke="#d8dcdf" stroke-width="1.2"/>
+<text x="62" y="84" class="title">Browser companion</text>
+<text x="62" y="111" class="meta">Next.js 16 / React 19</text>
+<rect x="444" y="52" width="350" height="88" rx="6" fill="#ffffff" stroke="#d8dcdf" stroke-width="1.2"/>
+<text x="464" y="84" class="title">Codex</text>
+<text x="464" y="111" class="meta">MCP server + skill</text>
+<text x="910" y="89" class="label">REQUEST CONTRACT</text>
+<text x="910" y="115" class="meta">prompt · cursor</text>
+<text x="910" y="139" class="meta">request_id · revision</text>
+<rect x="42" y="205" width="752" height="489" rx="8" fill="#fafafa" stroke="#a5abb0" stroke-width="1.2" stroke-dasharray="5 5"/>
+<text x="62" y="232" class="label">BACKEND PROCESS</text>
+<text x="470" y="232" class="meta" text-anchor="middle">Python / one worker</text>
+<path d="M217 140 V262" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)"/>
+<path d="M619 140 V262" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)"/>
+<rect x="141" y="166" width="152" height="26" rx="4" fill="#f1f3f4" stroke="#f1f3f4" stroke-width="1.2"/>
+<text x="217.0" y="184" class="small" text-anchor="middle">HTTP / JSON</text>
+<rect x="550" y="166" width="138" height="26" rx="4" fill="#f1f3f4" stroke="#f1f3f4" stroke-width="1.2"/>
+<text x="619.0" y="184" class="small" text-anchor="middle">MCP → HTTP</text>
+<rect x="64" y="262" width="708" height="78" rx="6" fill="#ffffff" stroke="#a5abb0" stroke-width="1.2"/>
+<text x="86" y="291" class="title">FastAPI</text>
+<text x="749" y="291" class="" text-anchor="end">POST /v1/enhance</text>
+<text x="86" y="319" class="meta">settings cache · request cancellation · previous_request_id</text>
+<path d="M217 340 V385" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)"/>
+<rect x="64" y="385" width="340" height="267" rx="6" fill="#ffffff" stroke="#a5abb0" stroke-width="1.2"/>
+<text x="84" y="418" class="title">Retrieval router</text>
+<path d="M64 435 H404" stroke="#d8dcdf" stroke-width="1"/>
+<text x="84" y="463" class="">Lexical shortlist</text>
+<text x="84" y="487" class="meta">metadata overlap · top 3</text>
+<path d="M64 505 H404" stroke="#d8dcdf" stroke-width="1"/>
+<text x="84" y="532" class="">Tag + vector fallback</text>
+<text x="84" y="556" class="meta">Gemini tags → pgvector · top 5</text>
+<path d="M64 574 H404" stroke="#d8dcdf" stroke-width="1"/>
+<text x="84" y="601" class="">Local semantic index †</text>
+<text x="84" y="626" class="meta">EmbeddingGemma 2 / ONNX / 768d</text>
+<path d="M404 463 H450" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)"/>
+<rect x="450" y="385" width="322" height="132" rx="6" fill="#ffffff" stroke="#a5abb0" stroke-width="1.2"/>
+<text x="470" y="417" class="title">Review + generate</text>
+<text x="470" y="446" class="meta">One structured Gemini call</text>
+<text x="470" y="473" class="meta">Every candidate reviewed</text>
+<text x="470" y="498" class="meta">keep=true AND score ≥ 0.5</text>
+<path d="M611 517 V558" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)"/>
+<rect x="450" y="558" width="322" height="94" rx="6" fill="#ffffff" stroke="#a5abb0" stroke-width="1.2"/>
+<text x="470" y="590" class="title">Output validation</text>
+<text x="470" y="617" class="meta">UTF-16 edits · source freshness</text>
+<text x="470" y="638" class="small">invalid → retry once → none</text>
+<path d="M450 614 H427 V674 H20 V96 H42" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)"/>
+<text x="14" y="547" class="small" transform="rotate(-90 14 547)">validated response</text>
+<text x="848" y="232" class="label">EXTERNAL SERVICES</text>
+<rect x="848" y="262" width="310" height="390" rx="6" fill="#ffffff" stroke="#a5abb0" stroke-width="1.2"/>
+<text x="868" y="297" class="title">Google Gemini</text>
+<path d="M848 315 H1158" stroke="#d8dcdf" stroke-width="1"/>
+<text x="868" y="345" class="">Review / generation</text>
+<text x="868" y="370" class="meta">gemini-3.5-flash-lite</text>
+<path d="M772 407 H848" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
+<rect x="783" y="372" width="55" height="26" rx="4" fill="#f1f3f4" stroke="#f1f3f4" stroke-width="1.2"/>
+<text x="810.5" y="390" class="small" text-anchor="middle">HTTPS</text>
+<path d="M848 431 H1158" stroke="#d8dcdf" stroke-width="1"/>
+<text x="868" y="461" class="">Fallback tagging</text>
+<text x="868" y="486" class="meta">gemini-3.5-flash-lite</text>
+<text x="868" y="528" class="">Fallback embeddings</text>
+<text x="868" y="553" class="meta">gemini-embedding-001</text>
+<text x="868" y="580" class="small">768d / SEMANTIC_SIMILARITY</text>
+<text x="868" y="624" class="small">Invoked only when needed</text>
+<path d="M404 542 H417 V710 H825 V543 H848" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)"/>
+<rect x="579" y="697" width="210" height="26" rx="4" fill="#f1f3f4" stroke="#f1f3f4" stroke-width="1.2"/>
+<text x="684.0" y="715" class="small" text-anchor="middle">tags + embed fallback</text>
+<path d="M150 652 V779" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)"/>
+<rect x="66" y="730" width="160" height="26" rx="4" fill="#f1f3f4" stroke="#f1f3f4" stroke-width="1.2"/>
+<text x="146.0" y="748" class="small" text-anchor="middle">pgvector SQL</text>
+<path d="M303 779 V652" fill="none" stroke="#a5abb0" stroke-width="1.35" stroke-dasharray="5 5" marker-end="url(#muted-arrow)"/>
+<rect x="231" y="730" width="158" height="26" rx="4" fill="#f1f3f4" stroke="#f1f3f4" stroke-width="1.2"/>
+<text x="310.0" y="748" class="small" text-anchor="middle">snapshot refresh</text>
+<text x="303" y="770" class="small" text-anchor="middle">10s / TTL 15s</text>
+<path d="M611 652 V779" fill="none" stroke="#a5abb0" stroke-width="1.35" stroke-dasharray="5 5" marker-end="url(#muted-arrow)"/>
+<rect x="620" y="739" width="166" height="26" rx="4" fill="#f1f3f4" stroke="#f1f3f4" stroke-width="1.2"/>
+<text x="703.0" y="757" class="small" text-anchor="middle">metadata + outcomes</text>
+<rect x="42" y="779" width="752" height="146" rx="6" fill="#ffffff" stroke="#a5abb0" stroke-width="1.2"/>
+<text x="62" y="813" class="title">Tiger Data / PostgreSQL</text>
+<text x="774" y="813" class="label" text-anchor="end">SOURCE OF TRUTH</text>
+<path d="M42 832 H794" stroke="#d8dcdf" stroke-width="1"/>
+<text x="62" y="861" class="">Knowledge + config</text>
+<text x="62" y="887" class="small">knowledge / app_settings</text>
+<text x="62" y="909" class="small">handoff / tag</text>
+<path d="M322 832 V925 M539 832 V925" stroke="#d8dcdf"/>
+<text x="342" y="861" class="">pgvector</text>
+<text x="342" y="887" class="small">tag embeddings</text>
+<text x="342" y="909" class="small">vector(768)</text>
+<text x="559" y="861" class="">TimescaleDB</text>
+<text x="559" y="887" class="small">traces / outcomes</text>
+<text x="559" y="909" class="small">logs: 30-day retention</text>
+<rect x="848" y="779" width="310" height="146" rx="6" fill="#ffffff" stroke="#a5abb0" stroke-width="1.2"/>
+<text x="868" y="813" class="title">Snowflake</text>
+<text x="868" y="850" class="">ML Classification</text>
+<text x="868" y="879" class="meta">Derived outcome features</text>
+<text x="868" y="909" class="small">OFFLINE · EXPLICIT TRAINING</text>
+<path d="M794 852 H848" fill="none" stroke="#a5abb0" stroke-width="1.35" stroke-dasharray="5 5" marker-end="url(#muted-arrow)"/>
+<text x="821" y="841" class="small" text-anchor="middle">export</text>
+<text x="42" y="958" class="small">† Local semantic index: active development; main uses lexical → tag/pgvector.</text>
+<path d="M42 982 H80" fill="none" stroke="#171a1c" stroke-width="1.35" marker-end="url(#arrow)"/>
+<text x="90" y="987" class="small">request / response</text>
+<path d="M330 982 H368" fill="none" stroke="#a5abb0" stroke-width="1.35" stroke-dasharray="5 5" marker-end="url(#muted-arrow)"/>
+<text x="378" y="987" class="small">persistence / background refresh</text>
+<text x="1158" y="987" class="small" text-anchor="end">2026-10-25</text>
+</svg>
