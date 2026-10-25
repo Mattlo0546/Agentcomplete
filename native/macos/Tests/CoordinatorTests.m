@@ -10,9 +10,11 @@
 @end
 
 @interface PEExternalCoordinatorFixtureTextView : PECoordinatorFixtureTextView
+@property(nonatomic) NSRect editorBounds;
 @end
 @implementation PEExternalCoordinatorFixtureTextView
 - (BOOL)usesExternalPreview { return YES; }
+- (NSRect)focusedEditorRect { return self.editorBounds; }
 - (BOOL)replaceEntireDraft:(NSString *)prompt expectedPrompt:(NSString *)expectedPrompt {
     if (![self.string isEqualToString:expectedPrompt] || self.selectedRange.length != 0 || self.selectedRange.location != self.string.length) return NO;
     self.string = prompt;
@@ -249,12 +251,52 @@ static void TestAccessibilityDraftWatcher(void) {
     PECoordinatorRunFor(0.35);
     PECoordinatorRequire(PEEnhancementRequestCount == requestsAfterInvalidFocus, @"refocusing an unchanged draft establishes a baseline instead of resending it");
 
+    [coordinator dismiss];
+    PECoordinatorRunFor(1.4);
+    NSUInteger idleReads = view.draftReadCount;
+    PECoordinatorRunFor(0.7);
+    PECoordinatorRequire(view.draftReadCount - idleReads <= 4, @"idle sessions back off AX snapshot reads instead of sampling every 200 ms");
+
     [coordinator close];
     NSUInteger readsAfterClose = view.draftReadCount;
     view.string = @"No watcher should read this after close.";
     view.selectedRange = NSMakeRange(view.string.length, 0);
     PECoordinatorRunFor(0.35);
     PECoordinatorRequire(view.draftReadCount == readsAfterClose, @"closing the coordinator invalidates the accessibility draft watcher");
+}
+
+static void TestFieldAnchoredPreviewWithoutCaretGeometry(void) {
+    NSScreen *screen = NSScreen.mainScreen ?: NSScreen.screens.firstObject;
+    PEExternalCoordinatorFixtureTextView *view = [[PEExternalCoordinatorFixtureTextView alloc] initWithFrame:NSMakeRect(0, 0, 400, 80)];
+    view.clientBundleID = @"com.openai.codex";
+    view.usesSyntheticCaret = YES;
+    view.syntheticCaret = NSZeroRect;
+    view.editorBounds = NSMakeRect(NSMidX(screen.visibleFrame) - 200, NSMidY(screen.visibleFrame) - 40, 400, 80);
+    view.string = @"A draft whose editor exposes bounds but no caret rectangle.";
+    view.selectedRange = NSMakeRange(view.string.length, 0);
+    __block NSMenu *history = nil;
+    PECoordinator *coordinator = [[PECoordinator alloc] initWithClient:view backend:PECoordinatorBackend() menuPresenter:^(NSMenu *menu, NSPoint point) { history = menu; }];
+    [coordinator activate];
+    PECompletionEngine *engine = [coordinator valueForKey:@"engine"];
+    engine.debounceInterval = 0.01;
+    NSPanel *palette = [coordinator valueForKey:@"palette"];
+    PECoordinatorRequire(palette.isVisible && PEFrameIntersectsVisibleScreen(palette.frame), @"verified editor bounds show the history bar when caret geometry is unavailable");
+    PECoordinatorWait(^BOOL { return engine.suggestion.length > 0; });
+    NSPanel *preview = [coordinator valueForKey:@"preview"];
+    PECoordinatorRequire(preview.isVisible && PEFrameIntersectsVisibleScreen(preview.frame), @"automatic preview remains visible without a fabricated caret rectangle");
+    PECoordinatorRequire((palette.collectionBehavior & NSWindowCollectionBehaviorCanJoinAllSpaces) && (preview.collectionBehavior & NSWindowCollectionBehaviorCanJoinAllApplications), @"nonactivating candidate windows join the host's Space and Stage Manager set");
+    PECoordinatorRequire(!NSIntersectsRect(preview.frame, view.editorBounds) && !NSIntersectsRect(palette.frame, view.editorBounds), @"field-anchored controls do not cover the verified editor");
+    [coordinator saveCurrent:nil];
+    PECoordinatorWait(^BOOL { return [PELastSaveBody[@"prompt"] isEqualToString:view.string]; });
+    PECoordinatorRequire([PELastSaveBody[@"suggestion_text"] isEqualToString:engine.suggestion], @"field-anchored saving preserves the unaccepted suffix separately");
+    [coordinator showHistory:nil];
+    PECoordinatorWait(^BOOL { return history != nil; });
+    [coordinator restoreVersion:[history itemAtIndex:1].submenu.itemArray.lastObject];
+    PECoordinatorRequire([view.string isEqualToString:PEHistoryPrompt], @"field-anchored history restores through the guarded text client");
+    view.editorBounds = NSMakeRect(CGFLOAT_MAX, CGFLOAT_MAX, 400, 80);
+    [coordinator updatePalette];
+    PECoordinatorRequire(!palette.isVisible && !preview.isVisible, @"invalid field bounds never create detached controls");
+    [coordinator close];
 }
 
 int PECoordinatorTests(void) {
@@ -347,6 +389,7 @@ int PECoordinatorTests(void) {
         [coordinator close];
 
         TestAccessibilityDraftWatcher();
+        TestFieldAnchoredPreviewWithoutCaretGeometry();
 
         PECoordinatorFixtureTextView *blockedView = [[PECoordinatorFixtureTextView alloc] initWithFrame:NSMakeRect(0, 0, 320, 120)];
         blockedView.clientBundleID = @"com.openai.codex";

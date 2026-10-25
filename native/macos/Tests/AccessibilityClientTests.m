@@ -70,6 +70,9 @@
 @property(nonatomic) NSUInteger valueSetCount;
 @property(nonatomic) NSUInteger rangeSetCount;
 @property(nonatomic) CGRect bounds;
+@property(nonatomic) BOOL exposesEditorFrame;
+@property(nonatomic) CGPoint editorPosition;
+@property(nonatomic) CGSize editorSize;
 @property(nonatomic) AXError boundsError;
 @property(nonatomic) BOOL selectedRangeAvailable;
 @property(nonatomic) BOOL changesFocusOnSecondRead;
@@ -127,6 +130,8 @@
     if (CFEqual(attribute, kAXRoleAttribute)) return [(__bridge NSString *)kAXTextAreaRole copy];
     if (CFEqual(attribute, kAXSubroleAttribute)) return _secure ? [@"AXSecureTextField" copy] : nil;
     if (CFEqual(attribute, kAXValueAttribute)) return [_value copy];
+    if (_exposesEditorFrame && CFEqual(attribute, kAXPositionAttribute)) return CFBridgingRelease(AXValueCreate(kAXValueCGPointType, &_editorPosition));
+    if (_exposesEditorFrame && CFEqual(attribute, kAXSizeAttribute)) return CFBridgingRelease(AXValueCreate(kAXValueCGSizeType, &_editorSize));
     if (CFEqual(attribute, kAXSelectedTextRangeAttribute)) {
         if (!_selectedRangeAvailable) return nil;
         AXValueRef value = AXValueCreate(kAXValueCFRangeType, &_selectedRange);
@@ -297,6 +302,10 @@ static void TestReadsFullAccessibilityValueAndUsesExternalPreview(void) {
     PEAccessRequire([client usesExternalPreview], @"accessibility path requests an external preview");
     [client setMarkedText:@"never inserted" selectionRange:NSMakeRange(0, 0) replacementRange:NSMakeRange(NSNotFound, 0)];
     PEAccessRequire(native.marked.location == NSNotFound, @"accessibility preview never creates native marked text");
+    native.bundle = nil;
+    PEAccessRequire(client.length == (NSInteger)api.value.length && [client.bundleIdentifier isEqualToString:@"com.openai.codex"], @"asynchronous AX reads retain the copied session identity when an IME proxy omits it");
+    api.frontBundle = @"com.example.other";
+    PEAccessRequire(client.length == NSNotFound, @"cached session identity never allows a different frontmost app");
 }
 
 static void TestSecureFieldIsRejectedWithoutParentTraversal(void) {
@@ -329,6 +338,28 @@ static void TestExternalGeometryUsesAuthorizedAXBoundsInsteadOfNativePlaceholder
     NSUInteger priorReads = api.focusedCallCount;
     PEAccessRequire(NSEqualRects([client firstRectForCharacterRange:range actualRange:NULL], NSZeroRect), @"untrusted helper cannot use native geometry to appear operational");
     PEAccessRequire(api.focusedCallCount == priorReads, @"geometry checks never inspect the focused field before authorization");
+}
+
+static void TestEditorBoundsAndGuardedNativeCaret(void) {
+    PENativeClientMock *native = nil;
+    PEAccessibilityAPIMock *api = nil;
+    PEAccessibilityClient *client = PEAccessClient(&native, &api);
+    api.exposesEditorFrame = YES;
+    api.editorPosition = CGPointMake(80, 100);
+    api.editorSize = CGSizeMake(400, 80);
+    api.boundsError = kAXErrorParameterizedAttributeUnsupported;
+    NSScreen *primary = NSScreen.screens.firstObject ?: NSScreen.mainScreen;
+    NSRect editor = NSMakeRect(80, NSMaxY(primary.frame) - 180, 400, 80);
+    PEAccessRequire(NSEqualRects([client focusedEditorRect], editor), @"editor fallback uses only verified focused AX position and size");
+    native.nativeCaret = NSMakeRect(100, NSMinY(editor) + 10, 0, 18);
+    NSRange range = NSMakeRange(api.value.length, 0);
+    PEAccessRequire(NSEqualRects([client firstRectForCharacterRange:range actualRange:NULL], native.nativeCaret), @"an exact native caret is accepted only inside the verified editor frame");
+    native.nativeCaret = NSMakeRect(0, 0, 1, 18);
+    PEAccessRequire(NSEqualRects([client firstRectForCharacterRange:range actualRange:NULL], NSZeroRect), @"the native origin placeholder never becomes a caret fallback");
+    api.editorSize = CGSizeMake(NAN, 80);
+    PEAccessRequire(NSIsEmptyRect([client focusedEditorRect]), @"nonfinite editor geometry is rejected");
+    api.trusted = NO;
+    PEAccessRequire(NSIsEmptyRect([client focusedEditorRect]), @"editor bounds require the same Accessibility permission as draft reads");
 }
 
 static void TestFocusedChildNeverEscalatesToAParentTextArea(void) {
@@ -409,6 +440,7 @@ int PEAccessibilityClientTests(void) {
         TestReadsFullAccessibilityValueAndUsesExternalPreview();
         TestSecureFieldIsRejectedWithoutParentTraversal();
         TestExternalGeometryUsesAuthorizedAXBoundsInsteadOfNativePlaceholders();
+        TestEditorBoundsAndGuardedNativeCaret();
         TestFocusedChildNeverEscalatesToAParentTextArea();
         TestTabInsertRequiresTheBoundFocusedField();
         TestRestoreRevalidatesAndUsesSettableAXValue();

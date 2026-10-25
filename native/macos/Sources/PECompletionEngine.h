@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// A content-free reason a focused draft could not be read.
 @property (nonatomic, copy, readonly, nullable) NSString *safeError;
 - (NSRect)caretRect;
+/// Verified focused editor bounds when the host cannot expose a caret rect.
+- (NSRect)focusedEditorRect;
 - (BOOL)isPointInMarkedText:(NSPoint)point;
 /// When enabled by an accessibility-authorized adapter, the coordinator draws
 /// the preview itself. The engine must not use the host's marked-text APIs.

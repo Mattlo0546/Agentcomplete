@@ -18,6 +18,10 @@
                       caretAtEnd:(BOOL)caretAtEnd
                    paletteVisible:(BOOL)paletteVisible
                 positionOnScreen:(BOOL)positionOnScreen
+                  fieldAnchorUsed:(BOOL)fieldAnchorUsed
+               suggestionAvailable:(BOOL)suggestionAvailable
+                  suggestionVisible:(BOOL)suggestionVisible
+              autocompleteInFlight:(BOOL)autocompleteInFlight
                           safeError:(NSString *)safeError {
     // Fixtures and unit-test processes must not overwrite a live host report.
     if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.promptenhance.inputmethod.PromptEnhance"]) return;
@@ -46,6 +50,10 @@
         @"caretAtEnd": @(caretAtEnd),
         @"paletteVisible": @(paletteVisible),
         @"positionOnScreen": @(positionOnScreen),
+        @"fieldAnchorUsed": @(fieldAnchorUsed),
+        @"suggestionAvailable": @(suggestionAvailable),
+        @"suggestionVisible": @(suggestionVisible),
+        @"autocompleteInFlight": @(autocompleteInFlight),
         @"safeError": safeError ?: NSNull.null,
         @"timestamp": [[NSISO8601DateFormatter new] stringFromDate:NSDate.date],
     };

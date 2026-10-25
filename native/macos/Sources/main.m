@@ -1,6 +1,7 @@
 #import <AppKit/AppKit.h>
 #import <InputMethodKit/InputMethodKit.h>
 #import "PEAccessibilityClient.h"
+#import "PECoordinator.h"
 
 static IMKServer *inputServer;
 static NSString *const PEQueryAccessibility = @"com.promptenhance.inputmethod.PromptEnhance.queryAccessibility";
@@ -16,11 +17,12 @@ static void PEWriteAccessibilityStatus(void) {
     NSError *error = nil;
     if (![files createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions: @0700} error:&error]) return;
     [files setAttributes:@{NSFilePosixPermissions: @0700} ofItemAtPath:directory.path error:nil];
-    NSDictionary *status = @{
+    NSMutableDictionary *status = [@{
         @"accessibilityTrusted": @([PEAccessibilityClient isTrusted]),
         @"buildVersion": [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown",
         @"updatedAt": @(NSDate.date.timeIntervalSince1970),
-    };
+    } mutableCopy];
+    [status addEntriesFromDictionary:[PECoordinator runtimeWindowCapabilities]];
     NSData *data = [NSJSONSerialization dataWithJSONObject:status options:0 error:nil];
     NSURL *target = [directory URLByAppendingPathComponent:@"accessibility-status.json"];
     if (data && [data writeToURL:target options:NSDataWritingAtomic error:nil]) {

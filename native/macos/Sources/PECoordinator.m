@@ -80,6 +80,14 @@ static BOOL PEFrameIsOnScreen(NSRect frame) {
     return NO;
 }
 
+static NSScreen *PEScreenForEditorRect(NSRect rect) {
+    if (!isfinite(rect.origin.x) || !isfinite(rect.origin.y) || !isfinite(rect.size.width)
+        || !isfinite(rect.size.height) || rect.size.width <= 0 || rect.size.height <= 0
+        || rect.size.width > 20000 || rect.size.height > 20000) return nil;
+    for (NSScreen *screen in NSScreen.screens) if (NSIntersectsRect(rect, screen.visibleFrame)) return screen;
+    return nil;
+}
+
 static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat maximum) {
     return MIN(MAX(value, minimum), MAX(minimum, maximum));
 }
@@ -92,6 +100,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
 @property(nonatomic, strong) PECompletionEngine *engine;
 @property(nonatomic, strong) PEPalettePanel *palette;
 @property(nonatomic, strong) PEPalettePanel *preview;
+@property(nonatomic) NSRect fieldAnchorRect;
 @property(nonatomic, strong) PEPreviewTextField *previewText;
 @property(nonatomic, strong) NSTextField *caption;
 @property(nonatomic, strong) NSButton *saveButton;
@@ -104,6 +113,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
 @property(nonatomic, copy) NSString *pendingDraft;
 @property(nonatomic) BOOL hasWatchedDraft;
 @property(nonatomic) NSUInteger pendingDraftObservations;
+@property(nonatomic) NSUInteger unchangedDraftObservations;
 @property(nonatomic) NSUInteger sessionEpoch;
 @property(nonatomic) NSUInteger requestEpoch;
 @property(nonatomic) BOOL diagnosticFailureWritten;
@@ -111,7 +121,21 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
 @property(nonatomic, copy) NSString *status;
 @end
 
+static __weak PECoordinator *PEActiveCoordinator;
+
 @implementation PECoordinator
++ (NSDictionary<NSString *, NSNumber *> *)runtimeWindowCapabilities {
+    PECoordinator *coordinator = PEActiveCoordinator;
+    return @{
+        @"applicationHidden": @(NSApp.isHidden),
+        @"inputSessionActive": @(coordinator.engine.active),
+        @"draftWatcherActive": @(coordinator.draftWatchTimer.isValid),
+        @"paletteOnActiveSpace": @(coordinator.palette.isOnActiveSpace),
+        @"paletteUnoccluded": @((coordinator.palette.occlusionState & NSWindowOcclusionStateVisible) != 0),
+        @"previewOnActiveSpace": @(coordinator.preview.isOnActiveSpace),
+        @"previewUnoccluded": @((coordinator.preview.occlusionState & NSWindowOcclusionStateVisible) != 0),
+    };
+}
 - (instancetype)initWithClient:(id<PETextClient>)client {
     PEBackendClient *backend = [[PEBackendClient alloc] initWithBaseURL:[NSURL URLWithString:@"http://127.0.0.1:8000"] error:nil];
     return [self initWithClient:client backend:backend menuPresenter:nil];
@@ -138,15 +162,18 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
                 self.status = nil;
                 completion(result.suffix, safeError);
                 [self updatePalette];
+                [self recordDiagnostic:YES];
             }];
+            [self recordDiagnostic:YES];
         }];
         _engine.debounceInterval = 0.9;
         [_engine attachClient:client];
-        _engine.stateDidChange = ^{ [weakSelf updatePalette]; [weakSelf recordDiagnosticFailureIfNeeded]; };
+        _engine.stateDidChange = ^{ [weakSelf updatePalette]; [weakSelf recordDiagnostic:YES]; };
     }
     return self;
 }
 - (void)activate {
+    PEActiveCoordinator = self;
     self.sessionEpoch++;
     self.diagnosticFailureWritten = NO;
     BOOL provider = [self isInputMethodProvider];
@@ -170,6 +197,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
 }
 - (BOOL)isAccessibilityTrusted { return [PEAccessibilityClient isTrusted]; }
 - (void)deactivate {
+    if (PEActiveCoordinator == self) PEActiveCoordinator = nil;
     [self stopDraftWatcher];
     self.sessionEpoch++;
     self.requestEpoch++;
@@ -227,6 +255,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     self.pendingDraft = nil;
     self.hasWatchedDraft = NO;
     self.pendingDraftObservations = 0;
+    self.unchangedDraftObservations = 0;
 }
 
 - (void)resetDraftWatcherBaseline {
@@ -236,6 +265,8 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     self.hasWatchedDraft = draft != nil;
     self.pendingDraft = nil;
     self.pendingDraftObservations = 0;
+    self.unchangedDraftObservations = 0;
+    self.draftWatchTimer.fireDate = [NSDate dateWithTimeIntervalSinceNow:0.2];
 }
 
 - (void)pollAccessibilityDraft {
@@ -245,6 +276,8 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     }
     NSString *draft = [self.engine readCurrentPrompt];
     if (draft == nil) {
+        self.unchangedDraftObservations = 0;
+        self.draftWatchTimer.fireDate = [NSDate dateWithTimeIntervalSinceNow:0.8];
         if (self.hasWatchedDraft || self.pendingDraft != nil) {
             [self.autocompleteTask cancel];
             self.requestEpoch++;
@@ -259,6 +292,8 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
         return;
     }
     if (!self.hasWatchedDraft) {
+        self.unchangedDraftObservations = 0;
+        self.draftWatchTimer.fireDate = [NSDate dateWithTimeIntervalSinceNow:0.2];
         BOOL unchanged = [draft isEqualToString:self.watchedDraft];
         self.watchedDraft = draft;
         self.hasWatchedDraft = YES;
@@ -276,8 +311,13 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     } else if ([draft isEqualToString:self.watchedDraft]) {
         self.pendingDraft = nil;
         self.pendingDraftObservations = 0;
+        self.unchangedDraftObservations++;
+        BOOL idle = !self.engine.suggestion.length && ![self.status isEqualToString:@"Suggesting…"];
+        self.draftWatchTimer.fireDate = [NSDate dateWithTimeIntervalSinceNow:idle && self.unchangedDraftObservations >= 3 ? 0.8 : 0.2];
         return;
     } else {
+        self.unchangedDraftObservations = 0;
+        self.draftWatchTimer.fireDate = [NSDate dateWithTimeIntervalSinceNow:0.2];
         self.pendingDraft = draft;
         self.pendingDraftObservations = 1;
         return;
@@ -329,7 +369,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     BOOL positionOnScreen = NO;
     if (paletteVisible) for (NSScreen *screen in NSScreen.screens) if (NSIntersectsRect(self.palette.frame, screen.visibleFrame)) { positionOnScreen = YES; break; }
     NSString *version = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown";
-    [PEDiagnostics writeStatusWithBuildVersion:version clientBundleID:bundleID active:self.engine.active enabled:allowed selectedRangeSupported:selectedRangeSupported documentLengthSupported:documentLengthSupported caretRectSupported:caretRectSupported draftNonempty:draftNonempty minimumLengthMet:minimumLengthMet selectionEmpty:selectionEmpty caretAtEnd:caretAtEnd paletteVisible:paletteVisible positionOnScreen:positionOnScreen safeError:self.permissionRequired ? @"Enable Accessibility in Prompt Enhance setup." : self.engine.safeError];
+    [PEDiagnostics writeStatusWithBuildVersion:version clientBundleID:bundleID active:self.engine.active enabled:allowed selectedRangeSupported:selectedRangeSupported documentLengthSupported:documentLengthSupported caretRectSupported:caretRectSupported draftNonempty:draftNonempty minimumLengthMet:minimumLengthMet selectionEmpty:selectionEmpty caretAtEnd:caretAtEnd paletteVisible:paletteVisible positionOnScreen:positionOnScreen fieldAnchorUsed:!NSIsEmptyRect(self.fieldAnchorRect) suggestionAvailable:self.engine.suggestion.length > 0 suggestionVisible:self.preview.isVisible autocompleteInFlight:[self.status isEqualToString:@"Suggesting…"] safeError:self.permissionRequired ? @"Enable Accessibility in Prompt Enhance setup." : self.engine.safeError];
 }
 - (BOOL)handleEvent:(NSEvent *)event {
     if (self.permissionRequired) {
@@ -348,6 +388,10 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
         }
     }
     BOOL plainKey = !(event.modifierFlags & (NSEventModifierFlagCommand | NSEventModifierFlagControl | NSEventModifierFlagOption | NSEventModifierFlagShift));
+    if (event.type == NSEventTypeKeyDown) {
+        self.unchangedDraftObservations = 0;
+        self.draftWatchTimer.fireDate = [NSDate dateWithTimeIntervalSinceNow:0.2];
+    }
     if (event.type == NSEventTypeKeyDown && plainKey && event.keyCode == 48 && [self.engine acceptSuggestion]) {
         [self resetDraftWatcherBaseline];
         return YES;
@@ -408,7 +452,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     self.palette.backgroundColor = NSColor.clearColor;
     self.palette.opaque = NO;
     self.palette.hasShadow = YES;
-    self.palette.collectionBehavior = NSWindowCollectionBehaviorMoveToActiveSpace | NSWindowCollectionBehaviorFullScreenAuxiliary;
+    self.palette.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorCanJoinAllApplications | NSWindowCollectionBehaviorIgnoresCycle;
     PEPaletteSurface *surface = [[PEPaletteSurface alloc] initWithFrame:NSMakeRect(0, 0, 196, 36)];
     surface.material = NSVisualEffectMaterialPopover;
     surface.blendingMode = NSVisualEffectBlendingModeBehindWindow;
@@ -451,6 +495,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     return button;
 }
 - (void)updatePalette {
+    self.fieldAnchorRect = NSZeroRect;
     if (self.permissionRequired && self.engine.active) {
         [self showPermissionPalette];
         return;
@@ -461,6 +506,11 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     NSRect caret = [self.textClient firstRectForCharacterRange:NSMakeRange(selection.location, 0) actualRange:NULL];
     if (!PEScreenForCaretRect(caret) && [self.textClient respondsToSelector:@selector(caretRect)]) caret = [self.textClient caretRect];
     NSScreen *screen = PEScreenForCaretRect(caret);
+    if (!screen && [self.textClient respondsToSelector:@selector(focusedEditorRect)]) {
+        NSRect editor = [self.textClient focusedEditorRect];
+        screen = PEScreenForEditorRect(editor);
+        if (screen) self.fieldAnchorRect = editor;
+    }
     if (!screen) { [self.palette orderOut:nil]; [self.preview orderOut:nil]; return; }
     [self ensurePalette];
     [self configurePermissionPalette:NO];
@@ -475,11 +525,18 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     CGFloat x = PEClampPaletteCoordinate(caret.origin.x, NSMinX(visible) + inset, NSMaxX(visible) - paletteSize.width - inset);
     CGFloat y = NSMinY(caret) - paletteSize.height - 6;
     if (y < NSMinY(visible) + inset) y = NSMaxY(caret) + 6;
+    if (!NSIsEmptyRect(self.fieldAnchorRect)) {
+        x = PEClampPaletteCoordinate(NSMinX(self.fieldAnchorRect) + 8, NSMinX(visible) + inset, NSMaxX(visible) - paletteSize.width - inset);
+        y = NSMaxY(self.fieldAnchorRect) + 6;
+        if (y + paletteSize.height > NSMaxY(visible) - inset) y = NSMinY(self.fieldAnchorRect) - paletteSize.height - 6;
+        self.caption.toolTip = [self.caption.toolTip stringByAppendingString:@" · Anchored to the editor; caret geometry unavailable"];
+    }
     y = PEClampPaletteCoordinate(y, NSMinY(visible) + inset, NSMaxY(visible) - paletteSize.height - inset);
     if (!self.palette.userPositioned || !PEFrameIsOnScreen(self.palette.frame)) {
         self.palette.userPositioned = NO;
         [self.palette setFrameOrigin:NSMakePoint(x, y)];
     }
+    if (NSApp.isHidden) [NSApp unhideWithoutActivation];
     [self.palette orderFrontRegardless];
     [self updateExternalPreviewAtCaret:caret screen:screen];
 }
@@ -506,6 +563,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
         self.palette.userPositioned = NO;
         [self.palette setFrameOrigin:NSMakePoint(NSMidX(visible) - self.palette.frame.size.width / 2, NSMaxY(visible) - self.palette.frame.size.height - 48)];
     }
+    if (NSApp.isHidden) [NSApp unhideWithoutActivation];
     [self.palette orderFrontRegardless];
 }
 - (void)updateExternalPreviewAtCaret:(NSRect)caret screen:(NSScreen *)screen {
@@ -519,7 +577,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
         self.preview.backgroundColor = NSColor.clearColor;
         self.preview.hasShadow = NO;
         self.preview.hidesOnDeactivate = NO;
-        self.preview.collectionBehavior = NSWindowCollectionBehaviorMoveToActiveSpace | NSWindowCollectionBehaviorFullScreenAuxiliary;
+        self.preview.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorCanJoinAllApplications | NSWindowCollectionBehaviorIgnoresCycle;
         self.previewText = [[PEPreviewTextField alloc] initWithFrame:NSMakeRect(0, 0, 400, 52)];
         self.previewText.editable = NO;
         self.previewText.selectable = NO;
@@ -533,17 +591,38 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
         self.preview.contentView = self.previewText;
     }
     NSRect visible = screen.visibleFrame;
+    BOOL fieldAnchored = !NSIsEmptyRect(self.fieldAnchorRect);
     CGFloat x = PEClampPaletteCoordinate(NSMinX(caret) + 2, NSMinX(visible) + 4, NSMaxX(visible) - 124);
     CGFloat width = MIN(560, MAX(120, NSMaxX(visible) - x - 8));
     CGFloat height = MAX(22, MIN(60, caret.size.height * 3));
     CGFloat y = PEClampPaletteCoordinate(NSMaxY(caret) - height, NSMinY(visible) + 4, NSMaxY(visible) - height - 4);
-    self.previewText.font = [NSFont systemFontOfSize:MAX(12, MIN(17, caret.size.height * 0.8))];
+    if (fieldAnchored) {
+        width = MIN(560, MIN(MAX(120, NSWidth(self.fieldAnchorRect)), NSWidth(visible) - 8));
+        height = 60;
+        x = PEClampPaletteCoordinate(NSMinX(self.fieldAnchorRect) + 8, NSMinX(visible) + 4, NSMaxX(visible) - width - 4);
+        y = NSMaxY(self.fieldAnchorRect) + 6;
+        if (y + height + self.palette.frame.size.height + 4 > NSMaxY(visible) - 4)
+            y = NSMinY(self.fieldAnchorRect) - height - self.palette.frame.size.height - 10;
+        if (self.palette.userPositioned) {
+            x = PEClampPaletteCoordinate(NSMinX(self.palette.frame), NSMinX(visible) + 4, NSMaxX(visible) - width - 4);
+            y = NSMinY(self.palette.frame) - height - 4;
+        }
+        y = PEClampPaletteCoordinate(y, NSMinY(visible) + 4, NSMaxY(visible) - height - self.palette.frame.size.height - 8);
+    }
+    self.preview.hasShadow = fieldAnchored;
+    self.previewText.drawsBackground = fieldAnchored;
+    self.previewText.backgroundColor = NSColor.windowBackgroundColor;
+    self.previewText.wantsLayer = YES;
+    self.previewText.layer.cornerRadius = fieldAnchored ? 8 : 0;
+    self.previewText.layer.masksToBounds = YES;
+    self.previewText.font = [NSFont systemFontOfSize:fieldAnchored ? 14 : MAX(12, MIN(17, caret.size.height * 0.8))];
     self.previewText.stringValue = self.engine.suggestion;
     self.previewText.frame = NSMakeRect(0, 0, width, height);
     [self.preview setFrame:NSMakeRect(x, y, width, height) display:YES];
     [self.preview orderFrontRegardless];
     NSPoint bar = self.palette.frame.origin;
-    bar.y = PEClampPaletteCoordinate(y - 42, NSMinY(visible) + 4, NSMaxY(visible) - 40);
+    bar.y = PEClampPaletteCoordinate(fieldAnchored ? y + height + 4 : y - 42, NSMinY(visible) + 4, NSMaxY(visible) - 40);
+    if (fieldAnchored) bar.x = x;
     if (!self.palette.userPositioned) [self.palette setFrameOrigin:bar];
 }
 - (void)showActionsAtPoint:(NSPoint)point {

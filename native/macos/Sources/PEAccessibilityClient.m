@@ -99,6 +99,7 @@ static BOOL PEReadAXRange(id value, CFRange *range);
 // client proxy. Retaining that adapter keeps this bridge usable between Tab
 // and the verified Accessibility re-read.
 @property(nonatomic, strong) id<PETextClient> nativeClient;
+@property(nonatomic, copy) NSString *sessionBundleIdentifier;
 @property(nonatomic, strong) id<PEAccessibilityAPI> accessibilityAPI;
 @property(nonatomic, copy, readwrite, nullable) NSString *safeError;
 @property(nonatomic) AXUIElementRef boundElement;
@@ -117,6 +118,7 @@ static BOOL PEReadAXRange(id value, CFRange *range);
     self = [super init];
     if (self) {
         _nativeClient = nativeClient;
+        _sessionBundleIdentifier = [[nativeClient bundleIdentifier] copy];
         _accessibilityAPI = accessibilityAPI;
     }
     return self;
@@ -136,7 +138,10 @@ static BOOL PEReadAXRange(id value, CFRange *range);
 
 - (BOOL)usesExternalPreview { return YES; }
 
-- (NSString *)bundleIdentifier { return [self.nativeClient bundleIdentifier]; }
+- (NSString *)bundleIdentifier {
+    NSString *liveBundle = [self.nativeClient bundleIdentifier];
+    return liveBundle.length ? liveBundle : self.sessionBundleIdentifier;
+}
 - (NSRange)markedRange { return [self.nativeClient markedRange]; }
 
 - (void)setMarkedText:(id)string selectionRange:(NSRange)selectionRange replacementRange:(NSRange)replacementRange {
@@ -250,17 +255,56 @@ static BOOL PEReadAXRange(id value, CFRange *range);
 
 - (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(NSRangePointer)actualRange {
     if (actualRange != NULL) *actualRange = range;
-    // The IME can return a finite placeholder rectangle even when it cannot
-    // describe this editor. Only the authorized, focused AX field can anchor
-    // an external preview; a placeholder must never create a detached clock.
-    return [self accessibilityRectForRange:range];
+    NSRect caret = [self accessibilityRectForRange:range];
+    if (isfinite(caret.origin.x) && isfinite(caret.origin.y) && caret.size.width >= 0
+        && caret.size.width <= 300 && caret.size.height > 0 && caret.size.height <= 300) return caret;
+    NSRect editor = [self focusedEditorRect];
+    if (NSIsEmptyRect(editor) || range.location == NSNotFound) return NSZeroRect;
+    NSRange actual = NSMakeRange(NSNotFound, 0);
+    caret = [self.nativeClient firstRectForCharacterRange:range actualRange:&actual];
+    BOOL bounded = isfinite(caret.origin.x) && isfinite(caret.origin.y)
+        && isfinite(caret.size.width) && isfinite(caret.size.height)
+        && caret.size.width >= 0 && caret.size.width <= 300 && caret.size.height > 0 && caret.size.height <= 300;
+    BOOL inside = NSMinX(caret) >= NSMinX(editor) - 2 && NSMaxX(caret) <= NSMaxX(editor) + 2
+        && NSMinY(caret) >= NSMinY(editor) - 2 && NSMaxY(caret) <= NSMaxY(editor) + 2;
+    if (!bounded || !inside || NSEqualPoints(caret.origin, NSZeroPoint)) return NSZeroRect;
+    if (actualRange != NULL && actual.location != NSNotFound) *actualRange = actual;
+    return caret;
 }
 
 - (NSRect)caretRect {
     NSString *value = nil;
     NSRange selection;
     if (![self readFocusedValue:&value selection:&selection bind:YES]) return NSZeroRect;
-    return [self accessibilityRectForRange:NSMakeRange(selection.location, 0)];
+    return [self firstRectForCharacterRange:NSMakeRange(selection.location, 0) actualRange:NULL];
+}
+
+- (NSRect)focusedEditorRect {
+    NSString *value = nil;
+    AXUIElementRef element = NULL;
+    if (![self copyFocusedElementValue:&value element:&element]) return NSZeroRect;
+    id positionValue = [self.accessibilityAPI copyAttribute:kAXPositionAttribute fromElement:element];
+    id sizeValue = [self.accessibilityAPI copyAttribute:kAXSizeAttribute fromElement:element];
+    CGPoint position = CGPointZero;
+    CGSize size = CGSizeZero;
+    BOOL valid = positionValue != nil && sizeValue != nil
+        && CFGetTypeID((__bridge CFTypeRef)positionValue) == AXValueGetTypeID()
+        && CFGetTypeID((__bridge CFTypeRef)sizeValue) == AXValueGetTypeID()
+        && AXValueGetType((__bridge AXValueRef)positionValue) == kAXValueCGPointType
+        && AXValueGetType((__bridge AXValueRef)sizeValue) == kAXValueCGSizeType
+        && AXValueGetValue((__bridge AXValueRef)positionValue, kAXValueCGPointType, &position)
+        && AXValueGetValue((__bridge AXValueRef)sizeValue, kAXValueCGSizeType, &size)
+        && isfinite(position.x) && isfinite(position.y) && isfinite(size.width) && isfinite(size.height)
+        && size.width > 0 && size.height > 0 && size.width <= 20000 && size.height <= 20000;
+    NSString *confirmedValue = nil;
+    AXUIElementRef confirmedElement = NULL;
+    if (valid) valid = [self copyFocusedElementValue:&confirmedValue element:&confirmedElement]
+        && confirmedElement != NULL && CFEqual(element, confirmedElement) && [value isEqualToString:confirmedValue];
+    if (confirmedElement != NULL) CFRelease(confirmedElement);
+    CFRelease(element);
+    NSScreen *primary = NSScreen.screens.firstObject ?: NSScreen.mainScreen;
+    if (!valid || !primary) return NSZeroRect;
+    return NSMakeRect(position.x, NSMaxY(primary.frame) - position.y - size.height, size.width, size.height);
 }
 
 - (NSRect)accessibilityRectForRange:(NSRange)range {
@@ -316,7 +360,7 @@ static BOOL PEReadAXRange(id value, CFRange *range);
         [self setSafeError:@"Accessibility permission is required to read the active Codex draft."];
         return NO;
     }
-    NSString *clientBundle = self.nativeClient.bundleIdentifier;
+    NSString *clientBundle = self.bundleIdentifier;
     NSString *frontBundle = [self.accessibilityAPI frontmostApplicationBundleIdentifier];
     pid_t frontPID = [self.accessibilityAPI frontmostApplicationPID];
     if (!PEAllowedBundle(clientBundle) || ![frontBundle isEqualToString:clientBundle] || frontPID <= 0) {
@@ -368,6 +412,7 @@ static BOOL PEReadAXRange(id value, CFRange *range);
     }
     *value = rawValue;
     *outElement = candidate;
+    [self setSafeError:nil];
     return YES;
 }
 

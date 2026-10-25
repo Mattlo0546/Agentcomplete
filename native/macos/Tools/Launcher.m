@@ -52,7 +52,7 @@ static NSString *PEBooleanDiagnostic(NSDictionary<NSString *, id> *report, NSStr
     return [value isKindOfClass:NSNumber.class] ? ([value boolValue] ? @"yes" : @"no") : @"unknown";
 }
 
-static NSString *PESafeRuntimeDiagnosticSummary(void) {
+static NSString *PESafeRuntimeDiagnosticSummary(NSString *buildVersion) {
     NSData *data = [NSData dataWithContentsOfURL:PERuntimeStatusURL() options:NSDataReadingMappedIfSafe error:nil];
     if (data.length == 0 || data.length > 16384) {
         return @"No input-method diagnostic report is available yet.";
@@ -62,6 +62,13 @@ static NSString *PESafeRuntimeDiagnosticSummary(void) {
         return @"The input-method diagnostic report is unavailable.";
     }
     NSDictionary<NSString *, id> *report = decoded;
+    NSString *timestamp = [report[@"timestamp"] isKindOfClass:NSString.class] ? report[@"timestamp"] : nil;
+    NSDate *checkedAt = timestamp ? [[NSISO8601DateFormatter new] dateFromString:timestamp] : nil;
+    NSTimeInterval age = checkedAt ? -checkedAt.timeIntervalSinceNow : INFINITY;
+    if (![report[@"buildVersion"] isEqual:buildVersion] || ![report[@"accessibilityTrusted"] boolValue]
+        || ![report[@"enabled"] boolValue] || age < -1 || age > 10) {
+        return @"Input helper access is allowed. Return to Codex and focus your draft to refresh the editor check.";
+    }
     NSString *safeError = [report[@"safeError"] isKindOfClass:NSString.class] ? report[@"safeError"] : nil;
     if (safeError != nil && (safeError.length > 240 || [safeError rangeOfCharacterFromSet:NSCharacterSet.controlCharacterSet].location != NSNotFound)) {
         safeError = @"Input method reported an invalid diagnostic error.";
@@ -241,18 +248,18 @@ static void PEPrintStatus(void) {
     PEInputSourceStatus *status = PEReadStatus(operationStatus);
     PEWriteStatusReport(status);
     NSNumber *trusted = PELatestAccessibilityTrust(status.installedBundleVersion);
-    NSString *permission = trusted == nil ? @"Checking the installed helper…"
-        : trusted.boolValue ? @"Allowed" : @"Off — click Allow Accessibility, then enable Prompt Enhance in macOS settings.";
+    NSString *permission = trusted == nil ? @"Checking the installed input helper…"
+        : trusted.boolValue ? @"Allowed for the input helper" : @"Off — add Prompt Enhance at the path above, then enable it.";
     self.permissionButton.enabled = !trusted.boolValue;
-    self.permissionButton.title = trusted.boolValue ? @"Accessibility allowed" : @"Allow Accessibility…";
+    self.permissionButton.title = trusted.boolValue ? @"Input helper allowed" : @"Allow input helper…";
     self.statusLabel.stringValue = [NSString stringWithFormat:
-        @"%@\n\nAccessibility: %@\nInput source: %@\nInstalled helper: %@ (build %@)\n\n%@",
+        @"%@\n\nInput helper Accessibility: %@\nKeyboard input source: %@\nInstalled input helper: %@ (build %@)\n\n%@",
         message,
         permission,
         status.currentIsOurs ? @"Prompt Enhance is selected" : @"Click Activate Prompt Enhance when ready",
         status.installedBundleIdentifierMatches ? @"Prompt Enhance" : @"Not found — reinstall required",
         status.installedBundleVersion,
-        trusted.boolValue ? PESafeRuntimeDiagnosticSummary() : @"Autocomplete stays off until macOS allows the input helper to read the focused draft."];
+        trusted.boolValue ? PESafeRuntimeDiagnosticSummary(status.installedBundleVersion) : @"Allowing Prompt Enhance Setup does not authorize the input helper. Autocomplete stays off until the helper itself is allowed."];
 }
 
 - (void)queryAccessibilityStatus:(id)sender {
@@ -281,7 +288,8 @@ static void PEPrintStatus(void) {
             [NSDistributedNotificationCenter.defaultCenter postNotificationName:request ? PERequestAccessibility : PEQueryAccessibility object:PESetupSender userInfo:nil deliverImmediately:YES];
             if (request) {
                 [self openAccessibilitySettings:nil];
-                [self refreshStatusWithMessage:@"Enable Prompt Enhance in Accessibility settings. If it is missing, use + and select the helper shown by Show helper in Finder." operationStatus:noErr];
+                [self showInstalledHelper:nil];
+                [self refreshStatusWithMessage:@"The exact input helper is selected in Finder. Add that Prompt Enhance app in Accessibility settings, then enable it." operationStatus:noErr];
             }
         });
     }];
@@ -400,7 +408,7 @@ static void PEPrintStatus(void) {
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     (void)notification;
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-    NSRect frame = NSMakeRect(0, 0, 760, 560);
+    NSRect frame = NSMakeRect(0, 0, 760, 640);
     self.window = [[NSWindow alloc] initWithContentRect:frame
                                               styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable)
                                                 backing:NSBackingStoreBuffered
@@ -426,17 +434,24 @@ static void PEPrintStatus(void) {
     [stack addArrangedSubview:headline];
 
     NSTextField *instructions = [NSTextField wrappingLabelWithString:
-        @"1. Click Allow Accessibility and enable Prompt Enhance in macOS settings.\n2. Click Reconnect Prompt Enhance.\n3. Return to Codex, type a sentence and pause. Tab accepts a suggestion; the clock opens history. Drag the toolbar by its caption to move it."];
+        @"1. Allow the Prompt Enhance input helper shown below in macOS Accessibility.\n2. Activate the input source, or reconnect it if already selected.\n3. Return to Codex, type a sentence and pause. Tab accepts a suggestion; right-click saves it; the clock restores history."];
     instructions.maximumNumberOfLines = 0;
     [stack addArrangedSubview:instructions];
+
+    NSTextField *helperIdentity = [NSTextField wrappingLabelWithString:[NSString stringWithFormat:
+        @"APP TO ALLOW: Prompt Enhance (input helper)\n%@\n\nPrompt Enhance Setup only manages settings. Its Accessibility permission does not enable autocomplete.", PEInstalledInputMethodURL().path]];
+    helperIdentity.maximumNumberOfLines = 0;
+    helperIdentity.selectable = YES;
+    helperIdentity.font = [NSFont systemFontOfSize:12.0];
+    [stack addArrangedSubview:helperIdentity];
 
     NSStackView *buttons = [NSStackView stackViewWithViews:@[]];
     buttons.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     buttons.spacing = 10.0;
-    NSButton *activate = [NSButton buttonWithTitle:@"Activate Prompt Enhance" target:self action:@selector(activatePromptEnhance:)];
+    NSButton *activate = [NSButton buttonWithTitle:@"Activate input source" target:self action:@selector(activatePromptEnhance:)];
     activate.keyEquivalent = @"\r";
     [buttons addArrangedSubview:activate];
-    NSButton *reconnect = [NSButton buttonWithTitle:@"Reconnect Prompt Enhance" target:self action:@selector(reconnectPromptEnhance:)];
+    NSButton *reconnect = [NSButton buttonWithTitle:@"Reconnect helper" target:self action:@selector(reconnectPromptEnhance:)];
     [buttons addArrangedSubview:reconnect];
     self.restoreButton = [NSButton buttonWithTitle:@"Use previous keyboard" target:self action:@selector(restorePreviousKeyboard:)];
     [buttons addArrangedSubview:self.restoreButton];
@@ -445,10 +460,10 @@ static void PEPrintStatus(void) {
     NSStackView *permissionButtons = [NSStackView stackViewWithViews:@[]];
     permissionButtons.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     permissionButtons.spacing = 10;
-    self.permissionButton = [NSButton buttonWithTitle:@"Allow Accessibility…" target:self action:@selector(requestAccessibility:)];
+    self.permissionButton = [NSButton buttonWithTitle:@"Allow input helper…" target:self action:@selector(requestAccessibility:)];
     [permissionButtons addArrangedSubview:self.permissionButton];
-    [permissionButtons addArrangedSubview:[NSButton buttonWithTitle:@"Open Accessibility settings" target:self action:@selector(openAccessibilitySettings:)]];
-    [permissionButtons addArrangedSubview:[NSButton buttonWithTitle:@"Show helper in Finder" target:self action:@selector(showInstalledHelper:)]];
+    [permissionButtons addArrangedSubview:[NSButton buttonWithTitle:@"Accessibility settings" target:self action:@selector(openAccessibilitySettings:)]];
+    [permissionButtons addArrangedSubview:[NSButton buttonWithTitle:@"Reveal app to allow" target:self action:@selector(showInstalledHelper:)]];
     [stack addArrangedSubview:permissionButtons];
 
     self.statusLabel = [NSTextField wrappingLabelWithString:@""];

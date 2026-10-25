@@ -212,7 +212,10 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
     NSRange marked = [client markedRange];
     // Some native clients represent "no composition" as { caret, 0 } instead
     // of { NSNotFound, 0 }. A non-empty composition is always left alone.
-    if (requireNoMarkedText && marked.location != NSNotFound && marked.length != 0) return nil;
+    if (requireNoMarkedText && marked.location != NSNotFound && marked.length != 0) {
+        [self setSafeError:@"Waiting for the editor to finish text composition."];
+        return nil;
+    }
     NSAttributedString *attributed = [client attributedSubstringFromRange:NSMakeRange(0, (NSUInteger)documentLength)];
     if (!attributed || attributed.string.length != (NSUInteger)documentLength) {
         [self setSafeError:[self readFailureForClient:client]];

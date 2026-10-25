@@ -18,6 +18,10 @@ NS_ASSUME_NONNULL_BEGIN
                       caretAtEnd:(BOOL)caretAtEnd
                    paletteVisible:(BOOL)paletteVisible
                 positionOnScreen:(BOOL)positionOnScreen
+                  fieldAnchorUsed:(BOOL)fieldAnchorUsed
+               suggestionAvailable:(BOOL)suggestionAvailable
+                  suggestionVisible:(BOOL)suggestionVisible
+              autocompleteInFlight:(BOOL)autocompleteInFlight
                           safeError:(nullable NSString *)safeError;
 @end
 

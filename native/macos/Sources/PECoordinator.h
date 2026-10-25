@@ -6,6 +6,8 @@ NS_ASSUME_NONNULL_BEGIN
 typedef void (^PEMenuPresenter)(NSMenu *menu, NSPoint point);
 
 @interface PECoordinator : NSObject
+/// Capability-only window state from the helper, without querying host text.
++ (NSDictionary<NSString *, NSNumber *> *)runtimeWindowCapabilities;
 - (instancetype)initWithClient:(id<PETextClient>)client;
 /// The injected backend and presenter make the native save/history behavior
 /// testable. Passing nil for presenter retains the standard AppKit popup.

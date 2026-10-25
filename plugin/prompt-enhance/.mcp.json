@@ -2,7 +2,7 @@
   "mcpServers": {
     "prompt-enhance": {
       "command": "uv",
-      "args": ["run", "--quiet", "--frozen", "--project", "mcp", "prompt-enhance-mcp"],
+      "args": ["run", "--quiet", "--frozen", "--no-dev", "--project", "mcp", "prompt-enhance-mcp"],
       "cwd": ".",
       "env": { "PROMPT_ENHANCE_API_URL": "http://127.0.0.1:8000" }
     }

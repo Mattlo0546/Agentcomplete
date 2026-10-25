@@ -1,6 +1,16 @@
 # Accessibility helper verification
 
-Build: 0.4.1 (9), macOS 14+; Setup 1.1.0 (2).
+Current build: 0.4.4 (12), macOS 14+; Setup 1.2.0 (3). The earlier sections retain the investigation evidence for prior builds.
+
+## Current verification status
+
+Real Codex end-to-end verification remains incomplete: the latest user check on build 11 reported neither suggestion nor clock. Do not interpret passing native tests or a window's `isVisible` flag as proof of host success.
+
+Build 12 passes all six native test groups, strict compilation, signing and signature verification. Regressions cover a verified field without caret geometry, preserving app scoping when an input-method proxy omits its bundle identifier, history save/restore, overlay collection behavior and idle polling backoff. The panels join application Spaces without taking focus, and a hidden helper unhides its own windows without activating. Fresh helper reports now distinguish active input session, draft watcher, application hiding, active Space and window occlusion without recording text.
+
+Setup identifies the actual input helper and its exact installed path; it does not mistake the Setup app's permission or stale editor diagnostics for current helper permission. The final installed development build must be granted access after replacement. No stable code-signing identity is available locally.
+
+The native bundle is 320 KB. Excluding six development packages reduces the installed Codex MCP environment from 41 MB to 34 MB. MCP checks passed 18 tests with three optional skips, and the installed Codex server completed initialization and tool discovery. Claude host verification is deferred at the user's request.
 
 The prior InputMethodKit-only build could obtain a Codex caret but not the full draft. This build adds a permission-gated Accessibility adapter and an external gray preview. Tab and history restoration require the same focused element, full draft and collapsed end caret immediately before writing.
 
