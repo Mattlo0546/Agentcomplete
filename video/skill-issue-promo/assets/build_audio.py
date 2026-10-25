@@ -28,9 +28,9 @@ LINES = [
     ("11", 30.1, "Here it is. <em>Live.</em>"),
     ("12", 32.8, "Type the <em>big idea.</em>"),
     ("13", 34.55, "Send it with <em>full context.</em>"),
-    ("14", 37.6, "Tag. <em>Retrieve.</em> <em>Judge.</em> Write."),
-    ("15", 41.1, "Powered by <em>Gemini, Tiger Data</em> and <em>Snowflake.</em>"),
-    ("16", 45.4, "Hand it to <em>Claude, Codex,</em> or any <em>MCP</em> tool."),
+    ("14", 37.6, "Match. Review. Write. <em>In about a second.</em>"),
+    ("15", 41.35, "Powered by <em>Gemini, Tiger Data</em> and <em>Snowflake.</em>"),
+    ("16", 45.55, "Hand it to <em>Claude, Codex,</em> or any <em>MCP</em> tool."),
     ("18", 50.7, "Stop fighting your tools."),
     ("19", 53.0, "Go build <em>something massive.</em>"),
     ("20", 55.9, "Skill Issue. <em>Context clicks.</em>"),
@@ -62,7 +62,7 @@ subprocess.run(
         "[0]volume=0.55[m];"
         "[m][sc]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=350:makeup=1[duck];"
         "[voice]volume=1.6,acompressor=threshold=0.1:ratio=3:attack=5:release=80[vv];"
-        "[duck][vv]amix=inputs=2:normalize=0,alimiter=limit=0.95[out]",
+        "[duck][vv]amix=inputs=2:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[out]",
         "-map", "[out]", "-t", str(END), "-b:a", "192k", os.path.join(A, "mix.mp3"),
     ],
     check=True,

@@ -459,6 +459,23 @@
         padding: 8px 14px;
         border-radius: 10px;
       }
+      #s4-stat {
+        position: absolute;
+        right: 120px;
+        top: 150px;
+        text-align: right;
+      }
+      #s4-stat b {
+        display: block;
+        font-size: 64px;
+        font-weight: 800;
+        color: #4c2fb5;
+      }
+      #s4-stat span {
+        display: block;
+        font-size: 22px;
+        color: #5f6472;
+      }
       #s4-handoff {
         position: absolute;
         left: 120px;
@@ -575,7 +592,7 @@
       data-start="0"
       data-width="1920"
       data-height="1080"
-      data-duration="56.25"
+      data-duration="60"
     >
       <!-- Scene 1: Title (bars 0–3) -->
       <section data-hf-id="hf-fbhk" id="s1" class="clip" data-start="0" data-duration="7.5" data-track-index="0">
@@ -602,7 +619,7 @@
       </section>
 
       <!-- Scene 2: Problem (bars 4–7) -->
-      <section data-hf-id="hf-mmtr" id="s2" class="clip" data-start="7.5" data-duration="7.5" data-track-index="0">
+      <section data-hf-id="hf-mmtr" id="s2" class="clip" data-start="7.5" data-duration="9.375" data-track-index="0">
         <div data-hf-id="hf-wcpl" class="cam">
           <div data-hf-id="hf-xfiv" class="brand">SKILL ISSUE</div>
           <div data-hf-id="hf-vso1" class="kicker">THE PROBLEM</div>
@@ -628,7 +645,7 @@
       </section>
 
       <!-- Scene 3: Solution (bars 8–14, the drop) -->
-      <section data-hf-id="hf-fumw" id="s3" class="clip" data-start="15" data-duration="13.125" data-track-index="0">
+      <section data-hf-id="hf-fumw" id="s3" class="clip" data-start="16.875" data-duration="13.125" data-track-index="0">
         <div data-hf-id="hf-xjmo" class="cam">
           <div data-hf-id="hf-ej13" class="brand">SKILL ISSUE</div>
           <div data-hf-id="hf-s7tl" class="kicker">THE SOLUTION</div>
@@ -661,7 +678,7 @@
       </section>
 
       <!-- Demo scene: real recording (bars 15–18) -->
-      <section data-hf-id="hf-pq13" id="sd" class="clip" data-start="28.125" data-duration="7.5" data-track-index="0">
+      <section data-hf-id="hf-pq13" id="sd" class="clip" data-start="30" data-duration="7.5" data-track-index="0">
         <div data-hf-id="hf-ykgw" id="sd-bg"></div>
         <div data-hf-id="hf-7e2m" id="sd-label"><div data-hf-id="hf-7c87" id="sd-live"></div>LIVE DEMO</div>
       </section>
@@ -673,24 +690,25 @@
         </div>
         <div data-hf-id="hf-165e" id="demo-view">
           <div data-hf-id="hf-ycus" id="demo-zoom">
-            <video data-hf-id="hf-fceu" id="demo-vid" class="clip" src="assets/demo.mp4" muted playsinline data-start="28.125" data-duration="7.5" data-track-index="3"></video>
+            <video data-hf-id="hf-fceu" id="demo-vid" class="clip" src="assets/demo.mp4" muted playsinline data-start="30" data-duration="7.5" data-track-index="3"></video>
           </div>
         </div>
       </div>
 
       <!-- Scene 4: Architecture (bars 19–24) -->
-      <section data-hf-id="hf-7iax" id="s4" class="clip" data-start="35.625" data-duration="11.25" data-track-index="0">
+      <section data-hf-id="hf-7iax" id="s4" class="clip" data-start="37.5" data-duration="13.125" data-track-index="0">
         <div data-hf-id="hf-x5bn" class="cam">
           <div data-hf-id="hf-e4q2" class="brand">SKILL ISSUE</div>
           <div data-hf-id="hf-7gkt" class="kicker">THE ARCHITECTURE</div>
           <h1 data-hf-id="hf-unhq" id="s4-title">From thought to context.</h1>
           <div data-hf-id="hf-70xd" class="steps">
-            <div data-hf-id="hf-uqbq" class="step"><div data-hf-id="hf-mfcd" class="n">1</div><h3 data-hf-id="hf-2glo">Type</h3><p data-hf-id="hf-8ep9">Companion panel</p><div data-hf-id="hf-magv" class="tech">Next · React · TS</div></div>
-            <div data-hf-id="hf-jlje" class="step"><div data-hf-id="hf-nm9g" class="n">2</div><h3 data-hf-id="hf-9695">Route</h3><p data-hf-id="hf-yxdf">FastAPI</p><div data-hf-id="hf-08sr" class="tech">Pydantic · Uvicorn</div></div>
-            <div data-hf-id="hf-jzuf" class="step"><div data-hf-id="hf-n7yf" class="n">3</div><h3 data-hf-id="hf-dlk0">Tag + embed</h3><p data-hf-id="hf-p6gf">Google Gemini</p><div data-hf-id="hf-h5sf" class="tech">Gemini</div></div>
-            <div data-hf-id="hf-ke5g" class="step"><div data-hf-id="hf-oevi" class="n">4</div><h3 data-hf-id="hf-q2s0">Retrieve</h3><p data-hf-id="hf-7yju">Tiger Data</p><div data-hf-id="hf-v1mo" class="tech">Postgres · pgvector</div></div>
-            <div data-hf-id="hf-ksgh" class="step"><div data-hf-id="hf-o0kh" class="n">5</div><h3 data-hf-id="hf-6pr1">Judge + write</h3><p data-hf-id="hf-9wcv">Google Gemini</p><div data-hf-id="hf-4r73" class="tech">Gemini</div></div>
+            <div class="step"><div class="n">1</div><h3>Type</h3><p>Companion panel</p><div class="tech">Next · React · TS</div></div>
+            <div class="step"><div class="n">2</div><h3>Route</h3><p>FastAPI</p><div class="tech">Pydantic · Uvicorn</div></div>
+            <div class="step"><div class="n">3</div><h3>Match</h3><p>Local Tiger snapshot</p><div class="tech">Fast path</div></div>
+            <div class="step"><div class="n">4</div><h3>Fallback</h3><p>Gemini tags + pgvector</p><div class="tech">Semantic retrieval</div></div>
+            <div class="step"><div class="n">5</div><h3>Review + write</h3><p>Gemini Flash-Lite</p><div class="tech">One call</div></div>
           </div>
+          <div id="s4-stat"><b>~0.95s</b><span>median, keystroke → suggestion</span></div>
           <div data-hf-id="hf-jm8x" id="s4-handoff">
             <h3 data-hf-id="hf-7d5z"><i data-hf-id="hf-ab0e">6</i>Accept + hand off</h3>
             <div data-hf-id="hf-s622" class="targets"><span data-hf-id="hf-hd3j">MCP</span><span data-hf-id="hf-1vio">Codex</span><span data-hf-id="hf-fncj">Claude</span></div>
@@ -703,7 +721,7 @@
       </section>
 
       <!-- Scene 5: Outro (bars 25–29) -->
-      <section data-hf-id="hf-y0is" id="s5" class="clip" data-start="46.875" data-duration="9.375" data-track-index="0">
+      <section data-hf-id="hf-y0is" id="s5" class="clip" data-start="50.625" data-duration="9.375" data-track-index="0">
         <div data-hf-id="hf-v5si" class="cam">
           <div data-hf-id="hf-gkvx" id="s5-glow"></div>
           <svg data-hf-id="hf-1b3z" id="s5-logo" viewBox="90 50 670 500">
@@ -720,45 +738,44 @@
       </section>
 
       <!-- Captions (narration) -->
-      <div data-hf-id="hf-3vmf" class="cap clip" data-start="0.15" data-duration="3.5" data-track-index="1"><div data-hf-id="hf-zuow" class="cap-pill">This is <em data-hf-id="hf-hiiz">Skill Issue.</em></div></div>
-      <div data-hf-id="hf-l83n" class="cap clip" data-start="3.75" data-duration="3.6" data-track-index="1"><div data-hf-id="hf-8lwi" class="cap-pill">Your next thought, with the <em data-hf-id="hf-t7lm">right context.</em></div></div>
-      <div data-hf-id="hf-5rdl" class="cap clip" data-start="7.6" data-duration="1.8" data-track-index="1"><div data-hf-id="hf-zxg5" class="cap-pill">Great ideas. <em data-hf-id="hf-fp0o">Missing context.</em></div></div>
-      <div data-hf-id="hf-wtki" class="cap clip" data-start="9.4" data-duration="1.85" data-track-index="1"><div data-hf-id="hf-frxg" class="cap-pill">Your <em data-hf-id="hf-nkt9">skills</em> get buried.</div></div>
-      <div data-hf-id="hf-4jvi" class="cap clip" data-start="11.25" data-duration="1.85" data-track-index="1"><div data-hf-id="hf-hzu5" class="cap-pill">Your <em data-hf-id="hf-do4p">stack</em> gets retyped.</div></div>
-      <div data-hf-id="hf-honu" class="cap clip" data-start="13.1" data-duration="1.85" data-track-index="1"><div data-hf-id="hf-yzhc" class="cap-pill">And the <em data-hf-id="hf-cznj">details</em> slip away.</div></div>
-      <div data-hf-id="hf-qejy" class="cap clip" data-start="15.05" data-duration="1.9" data-track-index="1"><div data-hf-id="hf-s0nw" class="cap-pill"><em data-hf-id="hf-3g9b">Not anymore.</em></div></div>
-      <div data-hf-id="hf-iueu" class="cap clip" data-start="16.95" data-duration="2.75" data-track-index="1"><div data-hf-id="hf-pj2g" class="cap-pill">The <em data-hf-id="hf-u07o">right context,</em> right as you type.</div></div>
-      <div data-hf-id="hf-ml2m" class="cap clip" data-start="19.7" data-duration="2.8" data-track-index="1"><div data-hf-id="hf-r12c" class="cap-pill">Your <em data-hf-id="hf-4zkk">skills, stack and knowledge.</em> Pulled in instantly.</div></div>
-      <div data-hf-id="hf-x3ny" class="cap clip" data-start="22.5" data-duration="2.8" data-track-index="1"><div data-hf-id="hf-e7qu" class="cap-pill">It finishes the thought <em data-hf-id="hf-9w11">for you.</em></div></div>
-      <div data-hf-id="hf-2skt" class="cap clip" data-start="25.3" data-duration="2.75" data-track-index="1"><div data-hf-id="hf-8cbl" class="cap-pill">Hit <em data-hf-id="hf-2y8g">Tab.</em> Done.</div></div>
-      <div data-hf-id="hf-8t75" class="cap clip" data-start="28.2" data-duration="2.4" data-track-index="1"><div data-hf-id="hf-t9ol" class="cap-pill">Here it is. <em data-hf-id="hf-i089">Live.</em></div></div>
-      <div data-hf-id="hf-97d2" class="cap clip" data-start="30.6" data-duration="2.6" data-track-index="1"><div data-hf-id="hf-mklr" class="cap-pill">Type the <em data-hf-id="hf-2bic">big idea.</em></div></div>
-      <div data-hf-id="hf-97yx" class="cap clip" data-start="33.2" data-duration="2.35" data-track-index="1"><div data-hf-id="hf-5ymd" class="cap-pill">Send it with <em data-hf-id="hf-1e59">full context.</em></div></div>
-      <div data-hf-id="hf-q37k" class="cap clip" data-start="35.7" data-duration="2.8" data-track-index="1"><div data-hf-id="hf-kpoh" class="cap-pill">Tag it. <em data-hf-id="hf-12kv">Retrieve</em> it. <em data-hf-id="hf-gfki">Judge</em> it. Write it.</div></div>
-      <div data-hf-id="hf-yzdw" class="cap clip" data-start="38.5" data-duration="3" data-track-index="1"><div data-hf-id="hf-btky" class="cap-pill">Powered by <em data-hf-id="hf-x3lt">Gemini, Tiger Data</em> and <em data-hf-id="hf-j2b5">Snowflake.</em></div></div>
-      <div data-hf-id="hf-00pc" class="cap clip" data-start="41.5" data-duration="3" data-track-index="1"><div data-hf-id="hf-54z0" class="cap-pill">Hand it to <em data-hf-id="hf-2rpw">Claude, Codex,</em> or any <em data-hf-id="hf-3fgl">MCP</em> tool.</div></div>
-      <div data-hf-id="hf-eycz" class="cap clip" data-start="44.5" data-duration="2.3" data-track-index="1"><div data-hf-id="hf-lly7" class="cap-pill">Every accept makes it <em data-hf-id="hf-n5cz">smarter.</em></div></div>
-      <div data-hf-id="hf-a1gl" class="cap clip" data-start="46.95" data-duration="2.75" data-track-index="1"><div data-hf-id="hf-m80o" class="cap-pill">Stop fighting your tools.</div></div>
-      <div data-hf-id="hf-8akr" class="cap clip" data-start="49.7" data-duration="2.8" data-track-index="1"><div data-hf-id="hf-h7ja" class="cap-pill">Go build <em data-hf-id="hf-7jvb">something massive.</em></div></div>
-      <div data-hf-id="hf-c6xq" class="cap clip" data-start="52.5" data-duration="3.4" data-track-index="1"><div data-hf-id="hf-t90c" class="cap-pill">Skill Issue. <em data-hf-id="hf-0jkv">Context clicks.</em></div></div>
+      <div class="cap clip" data-start="0.15" data-duration="2.34" data-track-index="1"><div class="cap-pill">This is <em>Skill Issue.</em></div></div>
+      <div class="cap clip" data-start="3.75" data-duration="3.30" data-track-index="1"><div class="cap-pill">Your next thought, with the <em>right context.</em></div></div>
+      <div class="cap clip" data-start="7.6" data-duration="2.62" data-track-index="1"><div class="cap-pill">Great ideas. <em>Missing context.</em></div></div>
+      <div class="cap clip" data-start="10.3" data-duration="1.72" data-track-index="1"><div class="cap-pill">Your <em>skills</em> get buried.</div></div>
+      <div class="cap clip" data-start="12.1" data-duration="2.37" data-track-index="1"><div class="cap-pill">Your <em>stack</em> gets retyped.</div></div>
+      <div class="cap clip" data-start="14.55" data-duration="2.32" data-track-index="1"><div class="cap-pill">And the <em>details</em> slip away.</div></div>
+      <div class="cap clip" data-start="16.95" data-duration="1.42" data-track-index="1"><div class="cap-pill"><em>Not anymore.</em></div></div>
+      <div class="cap clip" data-start="18.45" data-duration="3.17" data-track-index="1"><div class="cap-pill">The <em>right context,</em> right as you type.</div></div>
+      <div class="cap clip" data-start="21.7" data-duration="3.77" data-track-index="1"><div class="cap-pill">Your <em>skills, stack and knowledge.</em> Pulled in instantly.</div></div>
+      <div class="cap clip" data-start="25.55" data-duration="1.97" data-track-index="1"><div class="cap-pill">It finishes the thought <em>for you.</em></div></div>
+      <div class="cap clip" data-start="27.6" data-duration="2.38" data-track-index="1"><div class="cap-pill">Hit <em>Tab.</em> Done.</div></div>
+      <div class="cap clip" data-start="30.1" data-duration="2.62" data-track-index="1"><div class="cap-pill">Here it is. <em>Live.</em></div></div>
+      <div class="cap clip" data-start="32.8" data-duration="1.67" data-track-index="1"><div class="cap-pill">Type the <em>big idea.</em></div></div>
+      <div class="cap clip" data-start="34.55" data-duration="2.97" data-track-index="1"><div class="cap-pill">Send it with <em>full context.</em></div></div>
+      <div class="cap clip" data-start="37.6" data-duration="3.67" data-track-index="1"><div class="cap-pill">Match. Review. Write. <em>In about a second.</em></div></div>
+      <div class="cap clip" data-start="41.35" data-duration="4.12" data-track-index="1"><div class="cap-pill">Powered by <em>Gemini, Tiger Data</em> and <em>Snowflake.</em></div></div>
+      <div class="cap clip" data-start="45.55" data-duration="4.46" data-track-index="1"><div class="cap-pill">Hand it to <em>Claude, Codex,</em> or any <em>MCP</em> tool.</div></div>
+      <div class="cap clip" data-start="50.7" data-duration="2.22" data-track-index="1"><div class="cap-pill">Stop fighting your tools.</div></div>
+      <div class="cap clip" data-start="53.0" data-duration="2.50" data-track-index="1"><div class="cap-pill">Go build <em>something massive.</em></div></div>
+      <div class="cap clip" data-start="55.9" data-duration="4.02" data-track-index="1"><div class="cap-pill">Skill Issue. <em>Context clicks.</em></div></div>
 
       <div data-hf-id="hf-hmg5" id="flash"></div>
 
-      <audio data-hf-id="hf-ep0w" id="bgm" src="assets/bgm.mp3" data-start="0" data-duration="56.25" data-track-index="2" data-volume="0.9"></audio>
+      <audio data-hf-id="hf-ep0w" id="bgm" src="assets/mix.mp3" data-start="0" data-duration="60" data-track-index="2" data-volume="0.9"></audio>
     </div>
     <script>
       const tl = gsap.timeline({ paused: true });
       const out = "expo.out";
       const B = 60 / 128; // one beat at 128 BPM
-      const END = 56.25;
+      const END = 60;
       tl.set("#flash", { opacity: 0 }, 0);
       const scenes = [
         ["#s1 .cam", 0, 7.5],
-        ["#s2 .cam", 7.5, 15],
-        ["#s3 .cam", 15, 28.125],
-        ["#sd", 28.125, 35.625],
-        ["#s4 .cam", 35.625, 46.875],
-        ["#s5 .cam", 46.875, END],
+        ["#s2 .cam", 7.5, 16.875],
+        ["#s3 .cam", 16.875, 30],
+        ["#sd", 30, 37.5],
+        ["#s4 .cam", 37.5, 50.625],
+        ["#s5 .cam", 50.625, END],
       ];
 
       // split text nodes into word spans; <em> words get the highlight class
@@ -793,19 +810,20 @@
         );
       }
 
-      // captions: words pop in, pill exits quickly
+      // captions: words pop in with the voice, pill exits quickly
       document.querySelectorAll(".cap").forEach((cap) => {
         const start = parseFloat(cap.dataset.start);
         const dur = parseFloat(cap.dataset.duration);
         const pill = cap.querySelector(".cap-pill");
         const words = splitWords(pill);
+        const stagger = Math.min(0.12, (dur - 0.6) / Math.max(1, words.length));
         tl.fromTo(pill, { scale: 0.92, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.18, ease: "back.out(3)" }, start);
-        tl.fromTo(words, { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.22, stagger: 0.06, ease: out }, start);
+        tl.fromTo(words, { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.22, stagger, ease: out }, start);
         tl.fromTo(pill, { opacity: 1, y: 0 }, { opacity: 0, y: 10, duration: 0.12, immediateRender: false }, start + dur - 0.12);
       });
 
       // every scene: punch-in camera + drift + whip exit; white flash on each cut
-      scenes.forEach(([cam, start, end], i) => {
+      scenes.forEach(([cam, start, end]) => {
         if (cam === "#sd") return;
         tl.fromTo(cam, { scale: 1.12 }, { scale: 1, duration: 0.6, ease: out }, start);
         tl.to(cam, { scale: 1.03, duration: end - start - 0.9, ease: "none" }, start + 0.6);
@@ -823,69 +841,70 @@
       tl.fromTo("#s1-logo-wrap", { scale: 1.06 }, { scale: 1, duration: B, ease: "power2.out", repeat: 7 }, 3.75);
       tl.to(".s1-chip", { y: -16, duration: B * 2, stagger: 0.08, yoyo: true, repeat: 5, ease: "sine.inOut" }, 1);
 
-      // Scene 2 (7.5–15)
+      // Scene 2 (7.5–16.875)
       tl.fromTo(".s2-word", { y: 90, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, stagger: 0.18, ease: out }, 7.55);
       tl.fromTo(".s2-chip", { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.3, stagger: 0.04, ease: "back.out(3)" }, 7.7);
       tl.fromTo("#s2-prompt", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: out }, 7.9);
       typeInto("#s2-typed", "“Build an API.”", 8.2, 0.75);
       tl.fromTo("#s2-q", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 }, 9.0);
-      tl.to(".s2-chip", { y: 340, x: (i) => (i % 2 ? 80 : -80), rotation: (i) => (i % 2 ? 40 : -40), opacity: 0, duration: 0.9, stagger: 0.05, ease: "power2.in" }, 9.4);
-      tl.to("#s2-prompt", { x: 10, duration: 0.05, yoyo: true, repeat: 5 }, 9.4);
-      [9.4, 11.25, 13.1].forEach((t, i) => {
+      tl.to(".s2-chip", { y: 340, x: (i) => (i % 2 ? 80 : -80), rotation: (i) => (i % 2 ? 40 : -40), opacity: 0, duration: 0.9, stagger: 0.05, ease: "power2.in" }, 10.3);
+      tl.to("#s2-prompt", { x: 10, duration: 0.05, yoyo: true, repeat: 5 }, 10.3);
+      [10.3, 12.1, 14.55].forEach((t, i) => {
         tl.fromTo(`.pain:nth-child(${i + 1})`, { y: 50, opacity: 0, scale: 1.2 }, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: out }, t);
       });
 
-      // Scene 3 (15–28.125) — the drop
-      tl.fromTo(".s3-word", { y: 120, opacity: 0, scale: 1.1 }, { y: 0, opacity: 1, scale: 1, duration: 0.4, stagger: 0.12, ease: out }, 15.0);
-      tl.fromTo("#s3 .src", { x: -100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, stagger: 0.1, ease: out }, 15.9);
+      // Scene 3 (16.875–30) — the drop
+      tl.fromTo(".s3-word", { y: 120, opacity: 0, scale: 1.1 }, { y: 0, opacity: 1, scale: 1, duration: 0.4, stagger: 0.12, ease: out }, 16.875);
+      tl.fromTo("#s3 .src", { x: -100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, stagger: 0.1, ease: out }, 17.775);
       document.querySelectorAll("#s3 .wire").forEach((w) => {
         const len = w.getTotalLength();
         w.style.strokeDasharray = len;
         w.style.strokeDashoffset = len;
       });
-      tl.fromTo("#s3-hub", { scale: 0, opacity: 0, rotation: -90 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.4, ease: "back.out(2.5)" }, 16.3);
-      tl.fromTo("#s3-hub-label", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 16.5);
-      tl.fromTo("#s3-editor", { x: 120, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: out }, 16.4);
-      tl.to("#s3 .wire", { strokeDashoffset: 0, duration: 0.45, stagger: 0.08, ease: "power2.inOut" }, 16.9);
-      typeInto("#s3-typed", "Build a secure API", 17.3, 1.1);
-      tl.fromTo("#s3 .src", { borderColor: "#262a35" }, { borderColor: "#a78bfa", duration: 0.15, stagger: B, yoyo: true, repeat: 1 }, 19.7);
-      tl.fromTo("#s3-hub", { boxShadow: "0 0 0 0 rgba(167,139,250,0.8)" }, { boxShadow: "0 0 0 46px rgba(167,139,250,0)", duration: B * 2, repeat: 3 }, 19.7);
+      tl.fromTo("#s3-hub", { scale: 0, opacity: 0, rotation: -90 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.4, ease: "back.out(2.5)" }, 18.175);
+      tl.fromTo("#s3-hub-label", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 18.375);
+      tl.fromTo("#s3-editor", { x: 120, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: out }, 18.275);
+      tl.to("#s3 .wire", { strokeDashoffset: 0, duration: 0.45, stagger: 0.08, ease: "power2.inOut" }, 18.775);
+      typeInto("#s3-typed", "Build a secure API", 19.0, 1.1);
+      tl.fromTo("#s3 .src", { borderColor: "#262a35" }, { borderColor: "#a78bfa", duration: 0.15, stagger: B, yoyo: true, repeat: 1 }, 21.7);
+      tl.fromTo("#s3-hub", { boxShadow: "0 0 0 0 rgba(167,139,250,0.8)" }, { boxShadow: "0 0 0 46px rgba(167,139,250,0)", duration: B * 2, repeat: 3 }, 21.7);
       const ghost = splitWords(document.querySelector("#s3-ghost"));
-      tl.fromTo(ghost, { opacity: 0, x: 14 }, { opacity: 1, x: 0, duration: 0.2, stagger: B / 2, ease: out }, 22.5);
-      tl.fromTo("#s3-tab", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(3)" }, 24.4);
-      tl.to("#s3-tab", { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1 }, 25.3);
-      tl.to("#s3-ghost .w", { color: "#5ee3c0", duration: 0.12, stagger: 0.02 }, 25.4);
-      tl.fromTo("#s3-editor", { boxShadow: "0 0 0 rgba(94,227,192,0)" }, { boxShadow: "0 0 120px rgba(94,227,192,0.55)", duration: 0.3 }, 25.4);
-      tl.fromTo("#s3-editor", { scale: 1.04 }, { scale: 1, duration: 0.4, ease: out }, 25.4);
+      tl.fromTo(ghost, { opacity: 0, x: 14 }, { opacity: 1, x: 0, duration: 0.2, stagger: B / 2, ease: out }, 25.0);
+      tl.fromTo("#s3-tab", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(3)" }, 26.9);
+      tl.to("#s3-tab", { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1 }, 27.6);
+      tl.to("#s3-ghost .w", { color: "#5ee3c0", duration: 0.12, stagger: 0.02 }, 27.7);
+      tl.fromTo("#s3-editor", { boxShadow: "0 0 0 rgba(94,227,192,0)" }, { boxShadow: "0 0 120px rgba(94,227,192,0.55)", duration: 0.3 }, 27.7);
+      tl.fromTo("#s3-editor", { scale: 1.04 }, { scale: 1, duration: 0.4, ease: out }, 27.7);
 
-      // Demo (28.125–35.625): frame flies in, slow push toward the composer, flies out
+      // Demo (30–37.5): frame flies in, slow push toward the composer, flies out
       tl.set("#demo-frame", { opacity: 0 }, 0);
-      tl.fromTo("#demo-frame", { opacity: 0, y: 200, scale: 0.85, rotationX: 18 }, { opacity: 1, y: 0, scale: 1, rotationX: 0, duration: 0.6, ease: out }, 28.125);
-      tl.fromTo("#demo-zoom", { scale: 1 }, { scale: 1.18, duration: 6.4, ease: "power1.inOut" }, 28.6);
-      tl.fromTo("#sd-label", { x: -40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, ease: out }, 28.3);
-      tl.fromTo("#sd-live", { opacity: 1 }, { opacity: 0.25, duration: B, yoyo: true, repeat: 13 }, 28.3);
-      tl.fromTo("#demo-frame", { x: 0, opacity: 1 }, { x: -260, opacity: 0, duration: 0.25, ease: "power3.in", immediateRender: false }, 35.375);
+      tl.fromTo("#demo-frame", { opacity: 0, y: 200, scale: 0.85, rotationX: 18 }, { opacity: 1, y: 0, scale: 1, rotationX: 0, duration: 0.6, ease: out }, 30);
+      tl.fromTo("#demo-zoom", { scale: 1 }, { scale: 1.18, duration: 6.4, ease: "power1.inOut" }, 30.475);
+      tl.fromTo("#sd-label", { x: -40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, ease: out }, 30.175);
+      tl.fromTo("#sd-live", { opacity: 1 }, { opacity: 0.25, duration: B, yoyo: true, repeat: 13 }, 30.175);
+      tl.fromTo("#demo-frame", { x: 0, opacity: 1 }, { x: -260, opacity: 0, duration: 0.25, ease: "power3.in", immediateRender: false }, 37.25);
 
-      // Scene 4 (35.625–46.875)
-      tl.fromTo("#s4-title", { y: 90, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: out }, 35.65);
-      tl.fromTo(".step", { y: 80, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.35, stagger: B, ease: out }, 36.1);
-      tl.to(".step .n", { background: "#6d4fe0", duration: 0.15, stagger: B }, 36.25);
-      tl.fromTo("#s4-snow", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: out }, 38.5);
-      tl.fromTo("#s4-handoff", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: out }, 41.5);
-      tl.fromTo(".targets span", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, stagger: B, ease: "back.out(3)" }, 41.9);
-      tl.fromTo("#s4-snow", { scale: 1.05 }, { scale: 1, duration: 0.35, ease: out }, 44.5);
+      // Scene 4 (37.5–50.625)
+      tl.fromTo("#s4-title", { y: 90, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: out }, 37.525);
+      tl.fromTo(".step", { y: 80, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.35, stagger: B, ease: out }, 37.975);
+      tl.to(".step .n", { background: "#6d4fe0", duration: 0.15, stagger: B }, 38.125);
+      tl.fromTo("#s4-stat", { x: 80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "back.out(2)" }, 39.6);
+      tl.fromTo("#s4-stat b", { scale: 1.3 }, { scale: 1, duration: 0.35, ease: out }, 39.6);
+      tl.fromTo("#s4-snow", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: out }, 41.35);
+      tl.fromTo("#s4-handoff", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: out }, 45.55);
+      tl.fromTo(".targets span", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, stagger: B, ease: "back.out(3)" }, 46.6);
 
-      // Scene 5 (46.875–56.25)
-      tl.fromTo("#s5-glow", { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: out }, 46.9);
-      tl.fromTo("#s5-s", { x: -260, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: out }, 46.9);
-      tl.fromTo("#s5-bang", { y: -360, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "bounce.out" }, 47.1);
-      tl.fromTo("#s5-name", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: out }, 47.6);
-      tl.fromTo("#s5-logo", { scale: 1.06 }, { scale: 1, duration: B, ease: "power2.out", repeat: 7 }, 48.75);
-      tl.fromTo("#s5-glow", { scale: 1.08 }, { scale: 1, duration: B, ease: "power2.out", repeat: 7 }, 48.75);
-      tl.fromTo("#s5-logo", { scale: 1.15 }, { scale: 1, duration: 0.6, ease: out }, 52.5);
-      tl.fromTo("#s5-tag", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: out }, 52.5);
-      tl.fromTo("#s5-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: out }, 52.9);
-      tl.fromTo("#s5 .cam", { opacity: 1 }, { opacity: 0, duration: 0.8, immediateRender: false }, 55.4);
+      // Scene 5 (50.625–60)
+      tl.fromTo("#s5-glow", { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: out }, 50.65);
+      tl.fromTo("#s5-s", { x: -260, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: out }, 50.65);
+      tl.fromTo("#s5-bang", { y: -360, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "bounce.out" }, 50.85);
+      tl.fromTo("#s5-name", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: out }, 51.35);
+      tl.fromTo("#s5-logo", { scale: 1.06 }, { scale: 1, duration: B, ease: "power2.out", repeat: 7 }, 52.5);
+      tl.fromTo("#s5-glow", { scale: 1.08 }, { scale: 1, duration: B, ease: "power2.out", repeat: 7 }, 52.5);
+      tl.fromTo("#s5-logo", { scale: 1.15 }, { scale: 1, duration: 0.6, ease: out }, 56.25);
+      tl.fromTo("#s5-tag", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: out }, 56.25);
+      tl.fromTo("#s5-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: out }, 56.65);
+      tl.fromTo("#s5 .cam", { opacity: 1 }, { opacity: 0, duration: 0.6, immediateRender: false }, 59.4);
 
       window.__timelines["main"] = tl;
     </script>
