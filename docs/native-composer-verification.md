@@ -4,7 +4,7 @@ Status: **experimental; actual Codex compatibility is not yet confirmed.** The c
 
 ## Installed build
 
-The user-local input source is installed at `~/Library/Input Methods/Prompt Enhance.app`. Build 5 / version 0.3.2 is ad-hoc signed and passes strict signature verification. Registration and enabling succeeded. System Settings → Keyboard → Text Input lists **Prompt Enhance**, and the input menu is enabled. Registration does not select it as the current keyboard.
+The user-local input source is installed at `~/Library/Input Methods/Prompt Enhance.app`. The current build is **9 / version 0.4.1**, ad-hoc signed and passing strict signature verification. Registration and enabling succeeded. System Settings → Keyboard → Text Input lists **Prompt Enhance**, and the input menu is enabled. Registration does not select it as the current keyboard.
 
 The helper connects directly to the existing loopback API; running the companion frontend is unnecessary for the native workflow.
 
@@ -18,13 +18,25 @@ The helper connects directly to the existing loopback API; running the companion
 - InputMethodKit bridge: an MRC fake owner supplies fresh ephemeral autoreleased client proxies. Queries and a delayed engine snapshot use fresh proxies; invalidation prevents later access.
 - Opt-in live API history test: create one uniquely named record, verify separate base/suffix and paginated listing, then remove that exact test UUID.
 
-The final command was:
+The earlier live-history command was:
 
 ```bash
 PROMPT_ENHANCE_LIVE_TESTS=1 native/macos/test.sh
 ```
 
-All five native test groups passed. A macOS CI workflow runs the offline native tests and bundle build.
+That input-method baseline had five native test groups. The current `native/macos/test.sh` runs **six** groups, including Accessibility, and passes. A macOS CI workflow runs the offline native tests and bundle build.
+
+## Build 9: permission and toolbar fixes
+
+The user supplied a screenshot showing no autocomplete and a stranded toolbar. The helper's sanitized report showed Accessibility denied, so the prior input-method fallback could not read a usable draft. Build 9 keeps completion requests off until permission is granted and replaces unusable history controls with an actionable **Enable Accessibility** bar.
+
+The Accessibility adapter now takes caret geometry only from the authorized, directly focused field. It does not prefer InputMethodKit's placeholder coordinates. The coordinator rejects nonfinite, sentinel and offscreen positions; valid zero-width carets remain supported. Toolbar buttons explicitly accept the first click without taking keyboard focus. Its caption and surface support dragging, and updates preserve the user-selected position.
+
+Setup 1.1.0 queries the running input helper's own permission through a separate, content-free status report, and accepts only a fresh report matching the installed build. The explicit **Allow Accessibility…** button asks the input helper itself to show the macOS prompt. Setup never grants permission or requests permission for itself. **Show helper in Finder** reveals the exact bundle to add if it is absent from macOS settings.
+
+All six groups and the strict signed build pass, including regression checks for invalid geometry, the first-click button contract, retained drag position, denial without draft reads or model requests, and native history save/restore. Actual Codex autocomplete, clock interaction, restore, undo and send remain a manual host check after permission is granted. No Codex UI or draft was inspected during automated verification.
+
+A separate test-owned AppKit fixture used the production palette and deterministic HTTP replies. A real computer-use mouse click reached the history button, completed one history fetch, and opened the actual native menu. Instrumented `menuWillOpen` fired once; `menuDidClose` remained zero until explicit Escape dismissal. Real caption dragging moved the toolbar and subsequent typing preserved its chosen position. The main-window screenshot omitted this separate popup; this verifies mouse dispatch and menu opening, not visual selection or Codex restoration. No production UI class was replaced for the test and no extra Gemini calls were made.
 
 ## Visible native fixture
 

@@ -7,6 +7,7 @@
 @property(nonatomic, copy) NSString *insertedText;
 @property(nonatomic) NSRange insertedRange;
 @property(nonatomic, copy) void (^didInsert)(NSString *, NSRange);
+@property(nonatomic) NSRect nativeCaret;
 @end
 
 @implementation PENativeClientMock
@@ -33,8 +34,9 @@
 - (NSString *)bundleIdentifier { return _bundle; }
 - (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(NSRangePointer)actualRange {
     if (actualRange != NULL) *actualRange = range;
-    return NSZeroRect;
+    return _nativeCaret;
 }
+- (NSRect)caretRect { return _nativeCaret; }
 @end
 
 @interface PEAccessibilityAPIMock : NSObject <PEAccessibilityAPI> {
@@ -56,6 +58,8 @@
 @property(nonatomic) NSUInteger parentCallCount;
 @property(nonatomic) NSUInteger valueSetCount;
 @property(nonatomic) NSUInteger rangeSetCount;
+@property(nonatomic) CGRect bounds;
+@property(nonatomic) AXError boundsError;
 @end
 
 @implementation PEAccessibilityAPIMock
@@ -70,6 +74,7 @@
         _value = @"Draft accessible to the adapter";
         _selectedRange = CFRangeMake(_value.length, 0);
         _settableValue = YES;
+        _bounds = CGRectMake(16, 24, 0, 18);
     }
     return self;
 }
@@ -127,7 +132,8 @@
 - (AXError)copyBoundsForRange:(CFRange)range fromElement:(AXUIElementRef)element rect:(CGRect *)rect {
     (void)range;
     if (!CFEqual(element, self.current)) return kAXErrorInvalidUIElement;
-    *rect = CGRectMake(16, 24, 1, 18);
+    if (_boundsError != kAXErrorSuccess) return _boundsError;
+    *rect = _bounds;
     return kAXErrorSuccess;
 }
 - (pid_t)processIdentifierForElement:(AXUIElementRef)element {
@@ -179,6 +185,30 @@ static void TestSecureFieldIsRejectedWithoutParentTraversal(void) {
     api.secure = YES;
     PEAccessRequire(client.length == NSNotFound, @"secure accessibility fields are never readable");
     PEAccessRequire(api.parentCallCount == 0, @"a secure focused leaf is rejected before a parent walk");
+}
+
+static void TestExternalGeometryUsesAuthorizedAXBoundsInsteadOfNativePlaceholders(void) {
+    PENativeClientMock *native = nil;
+    PEAccessibilityAPIMock *api = nil;
+    PEAccessibilityClient *client = PEAccessClient(&native, &api);
+    native.nativeCaret = NSMakeRect(0, 0, 1, 18);
+    NSRange range = NSMakeRange(api.value.length, 0);
+    NSRect caret = [client firstRectForCharacterRange:range actualRange:NULL];
+    NSScreen *primary = NSScreen.screens.firstObject ?: NSScreen.mainScreen;
+    CGFloat top = primary ? NSMaxY(primary.frame) : 0;
+    NSRect expected = NSMakeRect(16, top - 42, 0, 18);
+    PEAccessRequire(NSEqualRects(caret, expected), @"AX zero-width caret overrides a finite native placeholder");
+    PEAccessRequire(NSEqualRects([client caretRect], expected), @"caret fallback also uses only verified AX geometry");
+
+    api.boundsError = kAXErrorParameterizedAttributeUnsupported;
+    PEAccessRequire(NSEqualRects([client firstRectForCharacterRange:range actualRange:NULL], NSZeroRect), @"missing AX bounds cannot fall back to a detached native clock");
+    PEAccessRequire(NSEqualRects([client caretRect], NSZeroRect), @"unsupported AX geometry stays unavailable");
+
+    api.boundsError = kAXErrorSuccess;
+    api.trusted = NO;
+    NSUInteger priorReads = api.focusedCallCount;
+    PEAccessRequire(NSEqualRects([client firstRectForCharacterRange:range actualRange:NULL], NSZeroRect), @"untrusted helper cannot use native geometry to appear operational");
+    PEAccessRequire(api.focusedCallCount == priorReads, @"geometry checks never inspect the focused field before authorization");
 }
 
 static void TestFocusedChildNeverEscalatesToAParentTextArea(void) {
@@ -254,6 +284,7 @@ int PEAccessibilityClientTests(void) {
         TestUntrustedNeverReadsAccessibility();
         TestReadsFullAccessibilityValueAndUsesExternalPreview();
         TestSecureFieldIsRejectedWithoutParentTraversal();
+        TestExternalGeometryUsesAuthorizedAXBoundsInsteadOfNativePlaceholders();
         TestFocusedChildNeverEscalatesToAParentTextArea();
         TestTabInsertRequiresTheBoundFocusedField();
         TestRestoreRevalidatesAndUsesSettableAXValue();

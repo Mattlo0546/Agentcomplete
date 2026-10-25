@@ -5,7 +5,6 @@ static const NSUInteger PEMaximumSuggestionUTF16Length = 4000;
 
 static BOOL PEAllowedBundle(NSString *bundleIdentifier);
 static BOOL PEReadAXRange(id value, CFRange *range);
-static BOOL PEValidRect(NSRect rect);
 
 @interface PESystemAccessibilityAPI : NSObject <PEAccessibilityAPI>
 @end
@@ -103,6 +102,12 @@ static BOOL PEValidRect(NSRect rect);
 }
 
 + (BOOL)isTrusted { return AXIsProcessTrusted(); }
+
++ (BOOL)requestAccessibilityPermission {
+    if (![NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.promptenhance.inputmethod.PromptEnhance"]) return NO;
+    NSDictionary *options = @{ (__bridge NSString *)kAXTrustedCheckOptionPrompt: @YES };
+    return AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)options);
+}
 
 - (BOOL)usesExternalPreview { return YES; }
 
@@ -214,26 +219,17 @@ static BOOL PEValidRect(NSRect rect);
 
 - (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(NSRangePointer)actualRange {
     if (actualRange != NULL) *actualRange = range;
-    NSRect nativeRect = [self nativeCaretRect];
-    if (PEValidRect(nativeRect)) return nativeRect;
+    // The IME can return a finite placeholder rectangle even when it cannot
+    // describe this editor. Only the authorized, focused AX field can anchor
+    // an external preview; a placeholder must never create a detached clock.
     return [self accessibilityRectForRange:range];
 }
 
 - (NSRect)caretRect {
-    NSRect nativeRect = [self nativeCaretRect];
-    if (PEValidRect(nativeRect)) return nativeRect;
     NSString *value = nil;
     NSRange selection;
     if (![self readFocusedValue:&value selection:&selection bind:YES]) return NSZeroRect;
     return [self accessibilityRectForRange:NSMakeRange(selection.location, 0)];
-}
-
-- (NSRect)nativeCaretRect {
-    if ([self.nativeClient respondsToSelector:@selector(caretRect)]) {
-        NSRect rect = [self.nativeClient caretRect];
-        if (PEValidRect(rect)) return rect;
-    }
-    return NSZeroRect;
 }
 
 - (NSRect)accessibilityRectForRange:(NSRange)range {
@@ -372,8 +368,4 @@ static BOOL PEReadAXRange(id value, CFRange *range) {
     if (value == nil || CFGetTypeID((__bridge CFTypeRef)value) != AXValueGetTypeID()) return NO;
     return AXValueGetType((AXValueRef)(__bridge CFTypeRef)value) == kAXValueCFRangeType
         && AXValueGetValue((AXValueRef)(__bridge CFTypeRef)value, kAXValueCFRangeType, range);
-}
-
-static BOOL PEValidRect(NSRect rect) {
-    return isfinite(rect.origin.x) && isfinite(rect.origin.y) && rect.size.width >= 0 && rect.size.height > 0;
 }

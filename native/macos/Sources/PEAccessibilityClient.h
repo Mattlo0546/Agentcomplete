@@ -20,8 +20,8 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 /// Text-client bridge for a user-authorized Accessibility session. The bridge
-/// is inert until macOS reports Accessibility permission; it never prompts for
-/// that permission or synthesizes keyboard input.
+/// is inert until macOS reports Accessibility permission. Ordinary client
+/// reads never request permission, and the bridge never synthesizes input.
 @interface PEAccessibilityClient : NSObject <PETextClient>
 
 - (instancetype)initWithNativeClient:(id<PETextClient>)nativeClient;
@@ -35,6 +35,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Reads the current system Accessibility authorization without requesting it.
 + (BOOL)isTrusted;
+
+/// May be invoked only for an explicit user setup action, inside the installed
+/// input-helper process. Requests macOS authorization and returns the current
+/// trust state; a displayed prompt does not mean the user has granted access.
+/// Other processes, including Setup and test fixtures, never prompt here.
++ (BOOL)requestAccessibilityPermission;
 
 /// Atomically restore a complete draft only while the focused Codex element and
 /// its full Accessibility value still equal `expectedPrompt`.

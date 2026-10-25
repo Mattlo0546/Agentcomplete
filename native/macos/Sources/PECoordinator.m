@@ -4,10 +4,40 @@
 #import "PEAccessibilityClient.h"
 
 @interface PEPalettePanel : NSPanel
+@property(nonatomic) BOOL userPositioned;
 @end
 @implementation PEPalettePanel
 - (BOOL)canBecomeKeyWindow { return NO; }
 - (BOOL)canBecomeMainWindow { return NO; }
+@end
+
+@interface PEPaletteButton : NSButton
+@end
+@implementation PEPaletteButton
+- (BOOL)acceptsFirstMouse:(NSEvent *)event { return YES; }
+- (BOOL)needsPanelToBecomeKey { return NO; }
+@end
+
+static void PEDragPalette(NSWindow *window, NSEvent *event) {
+    if (![window isKindOfClass:PEPalettePanel.class]) return;
+    ((PEPalettePanel *)window).userPositioned = YES;
+    [window performWindowDragWithEvent:event];
+}
+
+@interface PEPaletteSurface : NSVisualEffectView
+@end
+@implementation PEPaletteSurface
+- (BOOL)acceptsFirstMouse:(NSEvent *)event { return YES; }
+- (BOOL)mouseDownCanMoveWindow { return YES; }
+- (void)mouseDown:(NSEvent *)event { PEDragPalette(self.window, event); }
+@end
+
+@interface PEPaletteCaption : NSTextField
+@end
+@implementation PEPaletteCaption
+- (BOOL)acceptsFirstMouse:(NSEvent *)event { return YES; }
+- (BOOL)mouseDownCanMoveWindow { return YES; }
+- (void)mouseDown:(NSEvent *)event { PEDragPalette(self.window, event); }
 @end
 
 @interface PECoordinator (PreviewMenu)
@@ -25,12 +55,29 @@
 - (void)mouseDown:(NSEvent *)event { [self.coordinator dismiss]; }
 @end
 
-static NSScreen *PEScreenForCaretPoint(NSPoint point) {
-    NSScreen *screen = NSScreen.mainScreen ?: NSScreen.screens.firstObject;
+static BOOL PEValidCaretGeometry(NSRect rect) {
+    return isfinite(rect.origin.x) && isfinite(rect.origin.y)
+        && isfinite(rect.size.width) && isfinite(rect.size.height)
+        && rect.size.width >= 0 && rect.size.width <= 300
+        && rect.size.height > 0 && rect.size.height <= 300;
+}
+
+static NSScreen *PEScreenForCaretRect(NSRect rect) {
+    if (!PEValidCaretGeometry(rect)) return nil;
+    // Empty-width insertion carets are valid, but offscreen sentinel positions
+    // are not. Never turn an unsupported caret into a control at a screen edge.
+    NSRect hitRect = NSInsetRect(rect, -0.5, 0);
     for (NSScreen *candidate in NSScreen.screens) {
-        if (NSPointInRect(point, candidate.frame)) return candidate;
+        if (NSIntersectsRect(hitRect, candidate.frame)) return candidate;
     }
-    return screen;
+    return nil;
+}
+
+static BOOL PEFrameIsOnScreen(NSRect frame) {
+    for (NSScreen *screen in NSScreen.screens) {
+        if (NSIntersectsRect(frame, screen.visibleFrame)) return YES;
+    }
+    return NO;
 }
 
 static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat maximum) {
@@ -48,11 +95,14 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
 @property(nonatomic, strong) PEPreviewTextField *previewText;
 @property(nonatomic, strong) NSTextField *caption;
 @property(nonatomic, strong) NSButton *saveButton;
+@property(nonatomic, strong) NSButton *historyButton;
+@property(nonatomic, strong) NSButton *setupButton;
 @property(nonatomic, strong) NSURLSessionDataTask *autocompleteTask;
 @property(nonatomic, strong) NSURLSessionDataTask *historyTask;
 @property(nonatomic) NSUInteger sessionEpoch;
 @property(nonatomic) NSUInteger requestEpoch;
 @property(nonatomic) BOOL diagnosticFailureWritten;
+@property(nonatomic) BOOL permissionRequired;
 @property(nonatomic, copy) NSString *status;
 @end
 
@@ -94,16 +144,25 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
 - (void)activate {
     self.sessionEpoch++;
     self.diagnosticFailureWritten = NO;
-    BOOL provider = [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.promptenhance.inputmethod.PromptEnhance"];
+    BOOL provider = [self isInputMethodProvider];
     NSString *bundleID = [self.nativeClient bundleIdentifier];
     BOOL scope = [bundleID isEqualToString:@"com.openai.codex"] || [bundleID isEqualToString:@"com.promptenhance.input.fixture"];
     id<PETextClient> client = self.nativeClient;
-    if (provider && scope && [PEAccessibilityClient isTrusted]) client = [[PEAccessibilityClient alloc] initWithNativeClient:self.nativeClient];
+    BOOL trusted = [self isAccessibilityTrusted];
+    self.permissionRequired = provider && [bundleID isEqualToString:@"com.openai.codex"] && !trusted;
+    if (provider && scope && trusted) client = [[PEAccessibilityClient alloc] initWithNativeClient:self.nativeClient];
     self.textClient = client;
-    [self.engine attachClient:client];
+    // Codex's IME draft ranges are unavailable. Until authorization exists,
+    // keep the engine inert and explain the required setup instead of falling
+    // back to a nonfunctional native reader.
+    [self.engine attachClient:self.permissionRequired ? nil : client];
     [self.engine activate];
     [self recordDiagnosticActivation];
 }
+- (BOOL)isInputMethodProvider {
+    return [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.promptenhance.inputmethod.PromptEnhance"];
+}
+- (BOOL)isAccessibilityTrusted { return [PEAccessibilityClient isTrusted]; }
 - (void)deactivate {
     self.sessionEpoch++;
     self.requestEpoch++;
@@ -154,17 +213,21 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
         draftNonempty = documentLengthSupported && documentLength > 0;
         minimumLengthMet = documentLengthSupported && documentLength >= 12;
         caretAtEnd = selectedRangeSupported && documentLengthSupported && selection.location == (NSUInteger)documentLength;
-        NSRect caret = [self.textClient firstRectForCharacterRange:NSMakeRange(0, 0) actualRange:NULL];
-        if (caret.size.height <= 0 && [self.textClient respondsToSelector:@selector(caretRect)]) caret = [self.textClient caretRect];
-        caretRectSupported = isfinite(caret.origin.x) && isfinite(caret.origin.y) && caret.size.height > 0;
+        NSRect caret = selectedRangeSupported ? [self.textClient firstRectForCharacterRange:NSMakeRange(selection.location, 0) actualRange:NULL] : NSZeroRect;
+        if (!PEScreenForCaretRect(caret) && [self.textClient respondsToSelector:@selector(caretRect)]) caret = [self.textClient caretRect];
+        caretRectSupported = PEScreenForCaretRect(caret) != nil;
     }
     BOOL paletteVisible = self.palette.isVisible;
     BOOL positionOnScreen = NO;
     if (paletteVisible) for (NSScreen *screen in NSScreen.screens) if (NSIntersectsRect(self.palette.frame, screen.visibleFrame)) { positionOnScreen = YES; break; }
     NSString *version = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"unknown";
-    [PEDiagnostics writeStatusWithBuildVersion:version clientBundleID:bundleID active:self.engine.active enabled:allowed selectedRangeSupported:selectedRangeSupported documentLengthSupported:documentLengthSupported caretRectSupported:caretRectSupported draftNonempty:draftNonempty minimumLengthMet:minimumLengthMet selectionEmpty:selectionEmpty caretAtEnd:caretAtEnd paletteVisible:paletteVisible positionOnScreen:positionOnScreen safeError:self.engine.safeError];
+    [PEDiagnostics writeStatusWithBuildVersion:version clientBundleID:bundleID active:self.engine.active enabled:allowed selectedRangeSupported:selectedRangeSupported documentLengthSupported:documentLengthSupported caretRectSupported:caretRectSupported draftNonempty:draftNonempty minimumLengthMet:minimumLengthMet selectionEmpty:selectionEmpty caretAtEnd:caretAtEnd paletteVisible:paletteVisible positionOnScreen:positionOnScreen safeError:self.permissionRequired ? @"Enable Accessibility in Prompt Enhance setup." : self.engine.safeError];
 }
 - (BOOL)handleEvent:(NSEvent *)event {
+    if (self.permissionRequired) {
+        if ([self isAccessibilityTrusted]) [self activate];
+        else { [self updatePalette]; return NO; }
+    }
     if (!self.engine.active || !self.engine.enabled) return NO;
     if (event.type == NSEventTypeRightMouseDown && self.engine.suggestion.length) {
         NSPoint point = event.window ? [event.window convertPointToScreen:event.locationInWindow] : event.locationInWindow;
@@ -197,6 +260,10 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
 }
 - (NSMenu *)inputMenu {
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Prompt Enhance"];
+    if (self.permissionRequired) {
+        [self addAction:@"Enable Accessibility…" selector:@selector(openSetup:) menu:menu object:nil];
+        return menu;
+    }
     [self addAction:@"Prompt history…" selector:@selector(showHistory:) menu:menu object:nil];
     [self addAction:@"Save current prompt version" selector:@selector(saveCurrent:) menu:menu object:nil];
     [self addAction:@"Dismiss suggestion" selector:@selector(dismissAction:) menu:menu object:nil];
@@ -219,11 +286,16 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
         styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel backing:NSBackingStoreBuffered defer:NO];
     self.palette.level = NSPopUpMenuWindowLevel;
     self.palette.hidesOnDeactivate = NO;
+    self.palette.movable = YES;
+    self.palette.movableByWindowBackground = YES;
+    self.palette.becomesKeyOnlyIfNeeded = YES;
+    self.palette.worksWhenModal = YES;
+    self.palette.ignoresMouseEvents = NO;
     self.palette.backgroundColor = NSColor.clearColor;
     self.palette.opaque = NO;
     self.palette.hasShadow = YES;
     self.palette.collectionBehavior = NSWindowCollectionBehaviorMoveToActiveSpace | NSWindowCollectionBehaviorFullScreenAuxiliary;
-    NSVisualEffectView *surface = [[NSVisualEffectView alloc] initWithFrame:NSMakeRect(0, 0, 196, 36)];
+    PEPaletteSurface *surface = [[PEPaletteSurface alloc] initWithFrame:NSMakeRect(0, 0, 196, 36)];
     surface.material = NSVisualEffectMaterialPopover;
     surface.blendingMode = NSVisualEffectBlendingModeBehindWindow;
     surface.state = NSVisualEffectStateActive;
@@ -232,18 +304,29 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     surface.layer.masksToBounds = YES;
     self.palette.contentView = surface;
     NSButton *history = [self iconButton:@"clock.arrow.circlepath" label:@"Prompt history" action:@selector(showHistory:) frame:NSMakeRect(160, 2, 34, 32)];
+    self.historyButton = history;
     [surface addSubview:history];
     self.saveButton = [self iconButton:@"bookmark" label:@"Save prompt version" action:@selector(saveCurrent:) frame:NSMakeRect(126, 2, 34, 32)];
     [surface addSubview:self.saveButton];
-    self.caption = [NSTextField labelWithString:@"Prompt Enhance"];
+    self.caption = [PEPaletteCaption labelWithString:@"Prompt Enhance"];
     self.caption.frame = NSMakeRect(12, 10, 112, 17);
     self.caption.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
     self.caption.textColor = NSColor.secondaryLabelColor;
     self.caption.lineBreakMode = NSLineBreakByTruncatingTail;
     [surface addSubview:self.caption];
+    self.caption.toolTip = @"Drag to move Prompt Enhance";
+    self.setupButton = [[PEPaletteButton alloc] initWithFrame:NSMakeRect(204, 4, 92, 32)];
+    self.setupButton.title = @"Set up…";
+    self.setupButton.bezelStyle = NSBezelStyleRounded;
+    self.setupButton.target = self;
+    self.setupButton.action = @selector(openSetup:);
+    self.setupButton.refusesFirstResponder = YES;
+    self.setupButton.hidden = YES;
+    [surface addSubview:self.setupButton];
 }
 - (NSButton *)iconButton:(NSString *)symbol label:(NSString *)label action:(SEL)action frame:(NSRect)frame {
-    NSButton *button = [[NSButton alloc] initWithFrame:frame];
+    NSButton *button = [[PEPaletteButton alloc] initWithFrame:frame];
+    button.refusesFirstResponder = YES;
     button.image = [NSImage imageWithSystemSymbolName:symbol accessibilityDescription:label];
     button.bordered = NO;
     button.imagePosition = NSImageOnly;
@@ -254,18 +337,22 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     return button;
 }
 - (void)updatePalette {
+    if (self.permissionRequired && self.engine.active) {
+        [self showPermissionPalette];
+        return;
+    }
     if (!self.engine.active || !self.engine.enabled) { [self.palette orderOut:nil]; [self.preview orderOut:nil]; return; }
     NSRange selection = [self.textClient selectedRange];
     if (selection.location == NSNotFound) { [self.palette orderOut:nil]; [self.preview orderOut:nil]; return; }
     NSRect caret = [self.textClient firstRectForCharacterRange:NSMakeRange(selection.location, 0) actualRange:NULL];
-    if (caret.size.height <= 0 && [self.textClient respondsToSelector:@selector(caretRect)]) caret = [self.textClient caretRect];
-    if (!isfinite(caret.origin.x) || !isfinite(caret.origin.y) || caret.size.height <= 0) { [self.palette orderOut:nil]; [self.preview orderOut:nil]; return; }
+    if (!PEScreenForCaretRect(caret) && [self.textClient respondsToSelector:@selector(caretRect)]) caret = [self.textClient caretRect];
+    NSScreen *screen = PEScreenForCaretRect(caret);
+    if (!screen) { [self.palette orderOut:nil]; [self.preview orderOut:nil]; return; }
     [self ensurePalette];
+    [self configurePermissionPalette:NO];
     self.caption.stringValue = self.engine.suggestion.length ? @"Tab to accept" : (self.engine.safeError ?: self.status ?: @"Prompt Enhance");
-    self.caption.toolTip = self.caption.stringValue;
+    self.caption.toolTip = [self.caption.stringValue stringByAppendingString:@" · Drag to move"];
     self.saveButton.enabled = self.engine.prompt.length > 0 || [self.engine readCurrentPrompt].length > 0;
-    NSScreen *screen = PEScreenForCaretPoint(caret.origin);
-    if (!screen) { [self.palette orderOut:nil]; return; }
     NSRect visible = screen.visibleFrame;
     if (NSIsEmptyRect(visible)) visible = screen.frame;
     if (NSIsEmptyRect(visible)) { [self.palette orderOut:nil]; return; }
@@ -275,9 +362,37 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     CGFloat y = NSMinY(caret) - paletteSize.height - 6;
     if (y < NSMinY(visible) + inset) y = NSMaxY(caret) + 6;
     y = PEClampPaletteCoordinate(y, NSMinY(visible) + inset, NSMaxY(visible) - paletteSize.height - inset);
-    [self.palette setFrameOrigin:NSMakePoint(x, y)];
+    if (!self.palette.userPositioned || !PEFrameIsOnScreen(self.palette.frame)) {
+        self.palette.userPositioned = NO;
+        [self.palette setFrameOrigin:NSMakePoint(x, y)];
+    }
     [self.palette orderFrontRegardless];
     [self updateExternalPreviewAtCaret:caret screen:screen];
+}
+- (void)configurePermissionPalette:(BOOL)permission {
+    NSRect frame = self.palette.frame;
+    frame.size = permission ? NSMakeSize(304, 40) : NSMakeSize(196, 36);
+    [self.palette setFrame:frame display:NO];
+    self.palette.contentView.frame = NSMakeRect(0, 0, frame.size.width, frame.size.height);
+    self.caption.frame = permission ? NSMakeRect(12, 12, 184, 17) : NSMakeRect(12, 10, 112, 17);
+    self.historyButton.hidden = permission;
+    self.saveButton.hidden = permission;
+    self.setupButton.hidden = !permission;
+}
+- (void)showPermissionPalette {
+    [self.preview orderOut:nil];
+    [self ensurePalette];
+    [self configurePermissionPalette:YES];
+    self.caption.stringValue = @"Enable Accessibility";
+    self.caption.toolTip = @"Allow Prompt Enhance in macOS Accessibility to enable autocomplete and history. Drag this bar to move it.";
+    NSScreen *screen = NSScreen.mainScreen ?: NSScreen.screens.firstObject;
+    if (!screen) { [self.palette orderOut:nil]; return; }
+    NSRect visible = screen.visibleFrame;
+    if (!self.palette.userPositioned || !PEFrameIsOnScreen(self.palette.frame)) {
+        self.palette.userPositioned = NO;
+        [self.palette setFrameOrigin:NSMakePoint(NSMidX(visible) - self.palette.frame.size.width / 2, NSMaxY(visible) - self.palette.frame.size.height - 48)];
+    }
+    [self.palette orderFrontRegardless];
 }
 - (void)updateExternalPreviewAtCaret:(NSRect)caret screen:(NSScreen *)screen {
     BOOL external = [self.textClient respondsToSelector:@selector(usesExternalPreview)] && [self.textClient usesExternalPreview];
@@ -315,7 +430,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     [self.preview orderFrontRegardless];
     NSPoint bar = self.palette.frame.origin;
     bar.y = PEClampPaletteCoordinate(y - 42, NSMinY(visible) + 4, NSMaxY(visible) - 40);
-    [self.palette setFrameOrigin:bar];
+    if (!self.palette.userPositioned) [self.palette setFrameOrigin:bar];
 }
 - (void)showActionsAtPoint:(NSPoint)point {
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Prompt Enhance"];
@@ -334,6 +449,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
 }
 - (void)dismissAction:(id)sender { [self dismiss]; }
 - (void)saveCurrent:(id)sender {
+    if (self.permissionRequired) return;
     NSDictionary *snapshot = [sender isKindOfClass:NSMenuItem.class] ? [sender representedObject] : nil;
     NSString *prompt = snapshot ? snapshot[@"prompt"] : (self.engine.suggestion.length ? self.engine.prompt : [self.engine readCurrentPrompt]);
     NSString *suggestion = snapshot ? snapshot[@"suggestion"] : self.engine.suggestion;
@@ -354,6 +470,7 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     }];
 }
 - (void)showHistory:(id)sender {
+    if (self.permissionRequired) { [self openSetup:sender]; return; }
     if (!self.engine.active || !self.engine.enabled) return;
     self.requestEpoch++;
     [self.autocompleteTask cancel];

@@ -5,11 +5,14 @@
 @interface PECoordinatorFixtureTextView : NSTextView <PETextClient>
 @property(nonatomic) BOOL usesSyntheticCaret;
 @property(nonatomic) NSRect syntheticCaret;
+@property(nonatomic, copy) NSString *clientBundleID;
+@property(nonatomic) NSUInteger draftReadCount;
 @end
 @implementation PECoordinatorFixtureTextView
-- (NSInteger)length { return (NSInteger)self.string.length; }
-- (NSString *)bundleIdentifier { return @"com.promptenhance.input.fixture"; }
+- (NSInteger)length { self.draftReadCount++; return (NSInteger)self.string.length; }
+- (NSString *)bundleIdentifier { return self.clientBundleID ?: @"com.promptenhance.input.fixture"; }
 - (NSAttributedString *)attributedSubstringFromRange:(NSRange)range {
+    self.draftReadCount++;
     NSRange actual = NSMakeRange(NSNotFound, 0);
     return [self attributedSubstringForProposedRange:range actualRange:&actual];
 }
@@ -33,10 +36,23 @@
 - (void)showHistory:(id)sender;
 - (void)restoreVersion:(NSMenuItem *)sender;
 - (void)updatePalette;
+- (BOOL)isInputMethodProvider;
+- (BOOL)isAccessibilityTrusted;
+- (void)openSetup:(id)sender;
+@end
+
+@interface PEPermissionCoordinator : PECoordinator
+@property(nonatomic) BOOL setupOpened;
+@end
+@implementation PEPermissionCoordinator
+- (BOOL)isInputMethodProvider { return YES; }
+- (BOOL)isAccessibilityTrusted { return NO; }
+- (void)openSetup:(id)sender { self.setupOpened = YES; }
 @end
 
 static NSDictionary *PELastSaveBody;
 static NSString *PEHistoryPrompt;
+static NSUInteger PEEnhancementRequestCount;
 
 static NSData *PERequestBody(NSURLRequest *request) {
     if (request.HTTPBody) return request.HTTPBody;
@@ -78,6 +94,7 @@ static NSDictionary *PEVersion(NSString *prompt, NSString *suggestion, NSString 
     NSDictionary *body = bodyData.length ? [NSJSONSerialization JSONObjectWithData:bodyData options:0 error:nil] : nil;
     NSDictionary *payload = nil;
     if ([path isEqualToString:@"/v1/enhance"]) {
+        PEEnhancementRequestCount++;
         NSString *prompt = body[@"prompt"];
         payload = @{
             @"schema_version": @1,
@@ -184,12 +201,65 @@ int PECoordinatorTests(void) {
         PECoordinatorRequire(screen != nil, @"test host has a screen for palette placement");
         PECoordinatorRequire(!window.isKeyWindow, @"palette positioning does not require a key fixture window");
         view.usesSyntheticCaret = YES;
-        view.syntheticCaret = NSMakeRect(NSMinX(screen.visibleFrame) - 500, NSMinY(screen.visibleFrame) - 500, 0, 18);
+        view.syntheticCaret = NSMakeRect(NSMidX(screen.visibleFrame), NSMidY(screen.visibleFrame), 0, 18);
         [coordinator updatePalette];
         NSPanel *palette = [coordinator valueForKey:@"palette"];
-        PECoordinatorRequire(palette.isVisible, @"palette remains visible for an offscreen zero-width caret");
-        PECoordinatorRequire(PEFrameIntersectsVisibleScreen(palette.frame), @"palette origin is clamped into a visible screen");
+        PECoordinatorRequire(palette.isVisible, @"a valid zero-width caret shows the palette");
+        PECoordinatorRequire(PEFrameIntersectsVisibleScreen(palette.frame), @"palette is placed on the caret's screen");
+
+        view.syntheticCaret = NSMakeRect(CGFLOAT_MAX, CGFLOAT_MAX, 0, 18);
+        [coordinator updatePalette];
+        PECoordinatorRequire(!palette.isVisible, @"finite sentinel caret coordinates cannot strand the bar at a screen edge");
+        view.syntheticCaret = NSMakeRect(NSMinX(screen.visibleFrame) - 500, NSMinY(screen.visibleFrame) - 500, 0, 18);
+        [coordinator updatePalette];
+        PECoordinatorRequire(!palette.isVisible, @"unsupported offscreen caret coordinates never display controls");
+        view.syntheticCaret = NSMakeRect(NSMidX(screen.visibleFrame), NSMidY(screen.visibleFrame), 0, NAN);
+        [coordinator updatePalette];
+        PECoordinatorRequire(!palette.isVisible, @"a nonfinite caret height never displays controls");
+        view.syntheticCaret = NSMakeRect(NSMidX(screen.visibleFrame), NSMidY(screen.visibleFrame), 0, 18);
+        [coordinator updatePalette];
+
+        NSButton *history = [coordinator valueForKey:@"historyButton"];
+        NSTextField *caption = [coordinator valueForKey:@"caption"];
+        PECoordinatorRequire([history acceptsFirstMouse:nil] && !history.needsPanelToBecomeKey, @"history is clickable on the first click without making its panel key");
+        PECoordinatorRequire(history.refusesFirstResponder && !palette.canBecomeKeyWindow && !palette.ignoresMouseEvents, @"palette buttons retain the host text field's input focus");
+        PECoordinatorRequire(palette.movable && palette.movableByWindowBackground && [caption mouseDownCanMoveWindow] && [caption acceptsFirstMouse:nil], @"palette caption and background provide a first-click drag target");
+        PECoordinatorRequire([palette.contentView mouseDownCanMoveWindow] && [palette.contentView acceptsFirstMouse:nil], @"palette surface can start a drag without activating the helper");
+        NSPoint pinnedOrigin = NSMakePoint(NSMinX(screen.visibleFrame) + 64, NSMinY(screen.visibleFrame) + 64);
+        [palette setFrameOrigin:pinnedOrigin];
+        [palette setValue:@YES forKey:@"userPositioned"];
+        view.syntheticCaret = NSOffsetRect(view.syntheticCaret, 80, 40);
+        [coordinator updatePalette];
+        PECoordinatorRequire(NSEqualPoints(palette.frame.origin, pinnedOrigin), @"caret updates preserve the position chosen by dragging");
+        presentedMenu = nil;
+        [history performClick:nil];
+        PECoordinatorWait(^BOOL { return presentedMenu != nil; });
+        PECoordinatorRequire(presentedMenu.numberOfItems == 2, @"the visible history button opens an actionable history menu");
+        PECoordinatorRequire(window.firstResponder == view && !palette.isKeyWindow, @"opening history does not replace the fixture's text responder");
         [coordinator close];
+
+        PECoordinatorFixtureTextView *blockedView = [[PECoordinatorFixtureTextView alloc] initWithFrame:NSMakeRect(0, 0, 320, 120)];
+        blockedView.clientBundleID = @"com.openai.codex";
+        blockedView.string = @"This draft must not be read without Accessibility.";
+        blockedView.selectedRange = NSMakeRange(blockedView.string.length, 0);
+        PEPermissionCoordinator *blocked = [[PEPermissionCoordinator alloc] initWithClient:blockedView backend:PECoordinatorBackend() menuPresenter:nil];
+        [blocked activate];
+        NSPanel *permissionPalette = [blocked valueForKey:@"palette"];
+        NSButton *setup = [blocked valueForKey:@"setupButton"];
+        NSTextField *permissionCaption = [blocked valueForKey:@"caption"];
+        PECompletionEngine *blockedEngine = [blocked valueForKey:@"engine"];
+        PECoordinatorRequire(permissionPalette.isVisible && PEFrameIntersectsVisibleScreen(permissionPalette.frame), @"missing permission displays an accessible setup bar without a caret");
+        PECoordinatorRequire([permissionCaption.stringValue containsString:@"Accessibility"] && !setup.hidden && setup.enabled, @"the bar explains missing Accessibility and offers setup");
+        PECoordinatorRequire([[blocked valueForKey:@"historyButton"] isHidden] && [[blocked valueForKey:@"saveButton"] isHidden], @"unavailable history actions are replaced by the setup action");
+        PECoordinatorRequire(!blockedEngine.enabled && blockedView.draftReadCount == 0, @"missing permission never falls back to an unusable native draft reader");
+        NSUInteger requestCount = PEEnhancementRequestCount;
+        NSEvent *key = [NSEvent keyEventWithType:NSEventTypeKeyDown location:NSZeroPoint modifierFlags:0 timestamp:0 windowNumber:0 context:nil characters:@"x" charactersIgnoringModifiers:@"x" isARepeat:NO keyCode:7];
+        PECoordinatorRequire(![blocked handleEvent:key], @"typing remains pass-through while Accessibility is unavailable");
+        PECoordinatorRequire(blockedView.draftReadCount == 0 && PEEnhancementRequestCount == requestCount, @"blocked typing performs no draft reads or model requests");
+        [setup performClick:nil];
+        PECoordinatorRequire(blocked.setupOpened, @"the permission bar's first-click setup action is connected");
+        PECoordinatorRequire([[[blocked inputMenu] itemAtIndex:0].title containsString:@"Accessibility"], @"the input menu gives the same actionable permission state");
+        [blocked close];
         puts("Native coordinator save/history/restore checks passed");
     }
     return 0;

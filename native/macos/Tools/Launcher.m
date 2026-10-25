@@ -3,6 +3,23 @@
 
 static NSString *const PEInputSourceID = @"com.promptenhance.inputmethod.PromptEnhance";
 static NSString *const PEInputSourceBundleID = @"com.promptenhance.inputmethod.PromptEnhance";
+static NSString *const PEQueryAccessibility = @"com.promptenhance.inputmethod.PromptEnhance.queryAccessibility";
+static NSString *const PERequestAccessibility = @"com.promptenhance.inputmethod.PromptEnhance.requestAccessibility";
+static NSString *const PESetupSender = @"com.promptenhance.setup";
+
+static NSNumber *PELatestAccessibilityTrust(NSString *buildVersion) {
+    NSString *path = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Logs/Prompt Enhance/accessibility-status.json"];
+    NSData *data = [NSData dataWithContentsOfFile:path];
+    if (!data.length || data.length > 4096) return nil;
+    id decoded = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    if (![decoded isKindOfClass:NSDictionary.class]) return nil;
+    NSDictionary *report = decoded;
+    NSNumber *updatedAt = report[@"updatedAt"];
+    NSNumber *trusted = report[@"accessibilityTrusted"];
+    if (![report[@"buildVersion"] isEqual:buildVersion] || ![updatedAt isKindOfClass:NSNumber.class] || ![trusted isKindOfClass:NSNumber.class]) return nil;
+    NSTimeInterval age = NSDate.date.timeIntervalSince1970 - updatedAt.doubleValue;
+    return age >= -1 && age <= 5 ? trusted : nil;
+}
 
 @interface PEInputSourceStatus : NSObject
 @property(nonatomic) BOOL sourceExists;
@@ -35,14 +52,6 @@ static NSString *PEBooleanDiagnostic(NSDictionary<NSString *, id> *report, NSStr
     return [value isKindOfClass:NSNumber.class] ? ([value boolValue] ? @"yes" : @"no") : @"unknown";
 }
 
-static NSString *PEAccessibilityDiagnostic(NSDictionary<NSString *, id> *report) {
-    id value = report[@"accessibilityTrusted"];
-    if (![value isKindOfClass:NSNumber.class]) {
-        return @"Grant access to Prompt Enhance, then return to Codex.";
-    }
-    return [value boolValue] ? @"granted" : @"Grant access to Prompt Enhance, then return to Codex.";
-}
-
 static NSString *PESafeRuntimeDiagnosticSummary(void) {
     NSData *data = [NSData dataWithContentsOfURL:PERuntimeStatusURL() options:NSDataReadingMappedIfSafe error:nil];
     if (data.length == 0 || data.length > 16384) {
@@ -58,22 +67,11 @@ static NSString *PESafeRuntimeDiagnosticSummary(void) {
         safeError = @"Input method reported an invalid diagnostic error.";
     }
     NSString *errorText = safeError.length ? safeError : @"none";
-    return [NSString stringWithFormat:
-        @"Input-method report — Accessibility: %@; active: %@; enabled: %@; selected range: %@; document length: %@; caret rect: %@; "
-         "draft nonempty: %@; minimum length: %@; selection empty: %@; caret at end: %@; palette visible: %@; on screen: %@; last error: %@",
-        PEAccessibilityDiagnostic(report),
-        PEBooleanDiagnostic(report, @"active"),
-        PEBooleanDiagnostic(report, @"enabled"),
+    return [NSString stringWithFormat:@"Last Codex check — draft readable: %@; caret available: %@; toolbar visible: %@.\n%@",
         PEBooleanDiagnostic(report, @"selectedRangeSupported"),
-        PEBooleanDiagnostic(report, @"documentLengthSupported"),
         PEBooleanDiagnostic(report, @"caretRectSupported"),
-        PEBooleanDiagnostic(report, @"draftNonempty"),
-        PEBooleanDiagnostic(report, @"minimumLengthMet"),
-        PEBooleanDiagnostic(report, @"selectionEmpty"),
-        PEBooleanDiagnostic(report, @"caretAtEnd"),
         PEBooleanDiagnostic(report, @"paletteVisible"),
-        PEBooleanDiagnostic(report, @"positionOnScreen"),
-        errorText];
+        [errorText isEqualToString:@"none"] ? @"Return to Codex to refresh this check." : errorText];
 }
 
 static BOOL PEBooleanProperty(TISInputSourceRef source, CFStringRef property) {
@@ -194,12 +192,17 @@ static void PEPrintStatus(void) {
 @property(nonatomic, strong) NSWindow *window;
 @property(nonatomic, strong) NSTextField *statusLabel;
 @property(nonatomic, strong) NSButton *restoreButton;
+@property(nonatomic, strong) NSButton *permissionButton;
+@property(nonatomic, strong) NSTimer *permissionTimer;
+@property(nonatomic, copy) NSString *latestMessage;
+@property(nonatomic) OSStatus latestOperationStatus;
 @property(nonatomic) TISInputSourceRef previousInputSource;
 @end
 
 @implementation PESetupController
 
 - (void)dealloc {
+    [_permissionTimer invalidate];
     if (_previousInputSource != NULL) {
         CFRelease(_previousInputSource);
     }
@@ -233,22 +236,65 @@ static void PEPrintStatus(void) {
 }
 
 - (void)refreshStatusWithMessage:(NSString *)message operationStatus:(OSStatus)operationStatus {
+    self.latestMessage = message;
+    self.latestOperationStatus = operationStatus;
     PEInputSourceStatus *status = PEReadStatus(operationStatus);
     PEWriteStatusReport(status);
+    NSNumber *trusted = PELatestAccessibilityTrust(status.installedBundleVersion);
+    NSString *permission = trusted == nil ? @"Checking the installed helper…"
+        : trusted.boolValue ? @"Allowed" : @"Off — click Allow Accessibility, then enable Prompt Enhance in macOS settings.";
+    self.permissionButton.enabled = !trusted.boolValue;
+    self.permissionButton.title = trusted.boolValue ? @"Accessibility allowed" : @"Allow Accessibility…";
     self.statusLabel.stringValue = [NSString stringWithFormat:
-        @"%@\n\nInstalled source: %@\nEnabled: %@   Select-capable: %@   Active now: %@\n"
-         "Source type: %@\nSource category: %@\nInstalled bundle verified: %@ (version %@)\nOSStatus: %d\n\n%@",
+        @"%@\n\nAccessibility: %@\nInput source: %@\nInstalled helper: %@ (build %@)\n\n%@",
         message,
-        status.sourceExists ? @"found" : @"not found",
-        status.enabled ? @"yes" : @"no",
-        status.selectCapable ? @"yes" : @"no",
-        status.currentIsOurs ? @"yes" : @"no",
-        status.sourceType,
-        status.sourceCategory,
-        status.installedBundleIdentifierMatches ? @"yes" : @"no",
+        permission,
+        status.currentIsOurs ? @"Prompt Enhance is selected" : @"Click Activate Prompt Enhance when ready",
+        status.installedBundleIdentifierMatches ? @"Prompt Enhance" : @"Not found — reinstall required",
         status.installedBundleVersion,
-        (int)status.osStatus,
-        PESafeRuntimeDiagnosticSummary()];
+        trusted.boolValue ? PESafeRuntimeDiagnosticSummary() : @"Autocomplete stays off until macOS allows the input helper to read the focused draft."];
+}
+
+- (void)queryAccessibilityStatus:(id)sender {
+    (void)sender;
+    [NSDistributedNotificationCenter.defaultCenter postNotificationName:PEQueryAccessibility object:PESetupSender userInfo:nil deliverImmediately:YES];
+    [self refreshStatusWithMessage:self.latestMessage ?: @"Setup is ready." operationStatus:self.latestOperationStatus];
+}
+
+- (void)startInstalledHelperWithPermissionRequest:(BOOL)request {
+    PEInputSourceStatus *status = PEReadStatus(noErr);
+    if (!status.installedBundleIdentifierMatches) {
+        [self refreshStatusWithMessage:@"The installed Prompt Enhance helper was not found. Reinstall it before continuing." operationStatus:fnfErr];
+        return;
+    }
+    NSWorkspaceOpenConfiguration *configuration = NSWorkspaceOpenConfiguration.configuration;
+    configuration.activates = NO;
+    __weak typeof(self) weakSelf = self;
+    [NSWorkspace.sharedWorkspace openApplicationAtURL:PEInstalledInputMethodURL() configuration:configuration completionHandler:^(NSRunningApplication *application, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            typeof(self) self = weakSelf;
+            if (!self) return;
+            if (error || !application) {
+                [self refreshStatusWithMessage:@"macOS could not start the installed input helper. Try Reconnect Prompt Enhance." operationStatus:fnfErr];
+                return;
+            }
+            [NSDistributedNotificationCenter.defaultCenter postNotificationName:request ? PERequestAccessibility : PEQueryAccessibility object:PESetupSender userInfo:nil deliverImmediately:YES];
+            if (request) {
+                [self openAccessibilitySettings:nil];
+                [self refreshStatusWithMessage:@"Enable Prompt Enhance in Accessibility settings. If it is missing, use + and select the helper shown by Show helper in Finder." operationStatus:noErr];
+            }
+        });
+    }];
+}
+
+- (void)requestAccessibility:(id)sender {
+    (void)sender;
+    [self startInstalledHelperWithPermissionRequest:YES];
+}
+
+- (void)showInstalledHelper:(id)sender {
+    (void)sender;
+    [NSWorkspace.sharedWorkspace activateFileViewerSelectingURLs:@[PEInstalledInputMethodURL()]];
 }
 
 - (void)activatePromptEnhance:(id)sender {
@@ -256,7 +302,7 @@ static void PEPrintStatus(void) {
     [self capturePreviousInputSourceIfExternal];
     PEInputSourceStatus *before = PEReadStatus(noErr);
     if (before.currentIsOurs) {
-        [self refreshStatusWithMessage:@"Prompt Enhance is already active. If Codex has a stale input-method connection, click Reconnect Prompt Enhance; otherwise return to Codex."
+        [self refreshStatusWithMessage:@"The input source is already selected. Check that Accessibility shows Allowed below, then return to Codex."
                    operationStatus:noErr];
         return;
     }
@@ -282,7 +328,7 @@ static void PEPrintStatus(void) {
     }
     CFRelease(source);
     NSString *message = result == noErr && PECurrentSourceIsPromptEnhance()
-        ? @"Prompt Enhance is active. Return to Codex, type and pause for a suggestion, press Tab to accept it, or right-click the ghost text to save history."
+        ? @"The input source is selected. Check that Accessibility shows Allowed below before returning to Codex."
         : @"macOS could not activate Prompt Enhance. The status below shows the public input-source capability result.";
     [self refreshStatusWithMessage:message operationStatus:result];
 }
@@ -324,7 +370,7 @@ static void PEPrintStatus(void) {
         }
         if (source != NULL) CFRelease(source);
         [strongSelf refreshStatusWithMessage:reconnectStatus == noErr && PECurrentSourceIsPromptEnhance()
-                                             ? @"Prompt Enhance reconnected. Return to Codex and try again."
+                                             ? @"Input source reconnected. When Accessibility shows Allowed below, return to Codex and type."
                                              : @"macOS could not reconnect Prompt Enhance. The status below shows the public input-source result."
                               operationStatus:reconnectStatus];
     });
@@ -354,7 +400,7 @@ static void PEPrintStatus(void) {
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     (void)notification;
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-    NSRect frame = NSMakeRect(0, 0, 650, 500);
+    NSRect frame = NSMakeRect(0, 0, 760, 560);
     self.window = [[NSWindow alloc] initWithContentRect:frame
                                               styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable)
                                                 backing:NSBackingStoreBuffered
@@ -375,12 +421,12 @@ static void PEPrintStatus(void) {
         [stack.bottomAnchor constraintLessThanOrEqualToAnchor:self.window.contentView.bottomAnchor constant:-28],
     ]];
 
-    NSTextField *headline = [NSTextField labelWithString:@"Activate Prompt Enhance input" ];
+    NSTextField *headline = [NSTextField labelWithString:@"Set up Prompt Enhance" ];
     headline.font = [NSFont boldSystemFontOfSize:20.0];
     [stack addArrangedSubview:headline];
 
     NSTextField *instructions = [NSTextField wrappingLabelWithString:
-        @"First open Accessibility settings and manually allow Prompt Enhance. Click Activate only when you want macOS to switch to Prompt Enhance. Then return to Codex: type and pause for a suggestion, press Tab to accept it, or right-click ghost text to save it to history."];
+        @"1. Click Allow Accessibility and enable Prompt Enhance in macOS settings.\n2. Click Reconnect Prompt Enhance.\n3. Return to Codex, type a sentence and pause. Tab accepts a suggestion; the clock opens history. Drag the toolbar by its caption to move it."];
     instructions.maximumNumberOfLines = 0;
     [stack addArrangedSubview:instructions];
 
@@ -396,8 +442,14 @@ static void PEPrintStatus(void) {
     [buttons addArrangedSubview:self.restoreButton];
     [stack addArrangedSubview:buttons];
 
-    NSButton *accessibility = [NSButton buttonWithTitle:@"Open Accessibility settings" target:self action:@selector(openAccessibilitySettings:)];
-    [stack addArrangedSubview:accessibility];
+    NSStackView *permissionButtons = [NSStackView stackViewWithViews:@[]];
+    permissionButtons.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    permissionButtons.spacing = 10;
+    self.permissionButton = [NSButton buttonWithTitle:@"Allow Accessibility…" target:self action:@selector(requestAccessibility:)];
+    [permissionButtons addArrangedSubview:self.permissionButton];
+    [permissionButtons addArrangedSubview:[NSButton buttonWithTitle:@"Open Accessibility settings" target:self action:@selector(openAccessibilitySettings:)]];
+    [permissionButtons addArrangedSubview:[NSButton buttonWithTitle:@"Show helper in Finder" target:self action:@selector(showInstalledHelper:)]];
+    [stack addArrangedSubview:permissionButtons];
 
     self.statusLabel = [NSTextField wrappingLabelWithString:@""];
     self.statusLabel.maximumNumberOfLines = 0;
@@ -406,13 +458,15 @@ static void PEPrintStatus(void) {
     [self capturePreviousInputSourceIfExternal];
     PEInputSourceStatus *initialStatus = PEReadStatus(noErr);
     [self refreshStatusWithMessage:initialStatus.currentIsOurs
-                                      ? @"Prompt Enhance is already active. Return to Codex to use it."
+                                      ? @"Prompt Enhance is selected. Check the Accessibility status below before returning to Codex."
                                       : @"Setup is ready. No keyboard input source has been changed."
                    operationStatus:noErr];
 
     [self.window center];
     [self.window makeKeyAndOrderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
+    [self startInstalledHelperWithPermissionRequest:NO];
+    self.permissionTimer = [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(queryAccessibilityStatus:) userInfo:nil repeats:YES];
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
