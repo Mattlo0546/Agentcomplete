@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Toaster } from "@/components/ui/sonner";
 import type { EnhanceRequest, EnhanceResponse, Trace } from "@/lib/api/types";
+import type { PromptVersion } from "@/lib/history/api";
 
 import { RefineView } from "../refine-view";
 
@@ -17,6 +18,9 @@ const json = (data: unknown, status = 200) =>
 
 let enhanceHandler: EnhanceHandler;
 let calls: { path: string; body: unknown }[];
+let versions: PromptVersion[];
+let historySaveFails: boolean;
+let waitForSettings: Promise<void> | null;
 
 const trace = (requestId: string): Trace => ({
   request_id: requestId,
@@ -54,6 +58,9 @@ const autocomplete = (body: EnhanceRequest, text: string): EnhanceResponse => ({
 beforeEach(() => {
   window.localStorage.clear();
   calls = [];
+  versions = [];
+  historySaveFails = false;
+  waitForSettings = null;
   enhanceHandler = (body) => json(autocomplete(body, " and jitter."));
   vi.stubGlobal(
     "fetch",
@@ -61,7 +68,33 @@ beforeEach(() => {
       const path = new URL(input).pathname;
       const body = init?.body ? JSON.parse(String(init.body)) : undefined;
       calls.push({ path, body });
+      if (path === "/v1/prompt-history") {
+        if (init?.method === "POST") {
+          if (historySaveFails) return json({ error: { code: "unavailable", message: "History unavailable" } }, 503);
+          const version = {
+            id: crypto.randomUUID(),
+            ...body,
+            saved_text: body.prompt + (body.suggestion_text ?? ""),
+            created_at: "2026-10-25T01:00:00Z",
+            updated_at: "2026-10-25T01:00:00Z",
+          };
+          versions.unshift(version);
+          return json(version, 201);
+        }
+        return json({ items: versions, total: versions.length });
+      }
+      if (path.startsWith("/v1/prompt-history/")) {
+        const id = path.split("/").pop();
+        if (init?.method === "DELETE") {
+          versions = versions.filter((item) => item.id !== id);
+          return new Response(null, { status: 204 });
+        }
+        const version = versions.find((item) => item.id === id);
+        if (version && init?.method === "PATCH") Object.assign(version, body);
+        return json(version);
+      }
       if (path === "/v1/settings") {
+        if (waitForSettings) await waitForSettings;
         return json({
           trigger_delay_ms: 150,
           autocomplete_enabled: true,
@@ -103,6 +136,72 @@ function setup() {
 }
 
 describe("Refine journeys", () => {
+  it("preserves a queued suggestion when initial settings change the debounce delay", async () => {
+    let releaseSettings!: () => void;
+    waitForSettings = new Promise<void>((resolve) => {
+      releaseSettings = resolve;
+    });
+    const { editor } = setup();
+    fireEvent.change(editor, { target: { value: "Retry", selectionStart: 5, selectionEnd: 5 } });
+    releaseSettings();
+    expect(await screen.findByTestId("ghost-text")).toHaveTextContent("and jitter.");
+    expect(enhanceCalls()).toHaveLength(1);
+  });
+  it("saves an unaccepted suggestion with a context menu, compares and restores history", async () => {
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Retry with backoff");
+    const ghost = await screen.findByTestId("ghost-text");
+    fireEvent.contextMenu(within(ghost).getByText("and jitter."));
+    await user.click(await screen.findByRole("menuitem", { name: "Save as prompt version" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save prompt version" });
+    expect(editor.value).toBe("Retry with backoff");
+    expect(within(dialog).getByLabelText("Version preview")).toHaveTextContent("Retry with backoff and jitter.");
+    await user.type(within(dialog).getByLabelText("Name"), "Jitter variant");
+    await user.type(within(dialog).getByLabelText("Description"), "Bound retries and spread load");
+    await user.click(within(dialog).getByRole("button", { name: "Save version" }));
+    const history = await screen.findByRole("dialog", { name: "Prompt history" });
+    expect(await within(history).findByRole("button", { name: /Jitter variant/ })).toBeInTheDocument();
+    expect(versions[0]).toMatchObject({
+      prompt: "Retry with backoff",
+      suggestion_text: " and jitter.",
+      title: "Jitter variant",
+      description: "Bound retries and spread load",
+    });
+    expect(within(history).getByLabelText("Version comparison").querySelector("ins")).toHaveTextContent("and jitter.");
+    expect(outcomes().some((outcome) => outcome.event === "accepted")).toBe(false);
+    await user.click(within(history).getByRole("button", { name: "Restore version" }));
+    expect(editor.value).toBe("Retry with backoff");
+    await user.click(within(history).getByRole("button", { name: "Restore selected version" }));
+    expect(editor.value).toBe("Retry with backoff and jitter.");
+    await waitFor(() => expect(JSON.parse(localStorage.getItem("pe.refine.draft")!)).toBe(editor.value));
+  });
+
+  it("offers a keyboard save action and keeps the frozen snapshot after a save failure", async () => {
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Add tests");
+    await screen.findByTestId("ghost-text");
+    await user.click(screen.getByRole("button", { name: "Save suggestion as version" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save prompt version" });
+    await user.type(within(dialog).getByLabelText("Name"), "Regression tests");
+    historySaveFails = true;
+    await user.click(within(dialog).getByRole("button", { name: "Save version" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("History unavailable");
+    expect(editor.value).toBe("Add tests");
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("Regression tests");
+    historySaveFails = false;
+    await user.click(within(dialog).getByRole("button", { name: "Save version" }));
+    expect(await screen.findByRole("dialog", { name: "Prompt history" })).toBeInTheDocument();
+    expect(versions[0].saved_text).toBe("Add tests and jitter.");
+  });
+
+  it("sends the shared handoff to Claude when selected", async () => {
+    const { user, editor } = setup();
+    await typeInto(user, editor, "Review the parser");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Send target" }), "Claude");
+    await user.click(screen.getByRole("button", { name: "Send to Claude" }));
+    expect(await screen.findByText("Copied for Claude")).toBeInTheDocument();
+    expect(calls.find((call) => call.path === "/v1/handoff")?.body).toEqual({ prompt: "Review the parser" });
+  });
   it("debounces typing into one request, shows ghost text and accepts it with Tab", async () => {
     const { user, editor } = setup();
     expect(screen.getByText("No suggestion yet")).toBeInTheDocument();

@@ -26,7 +26,9 @@ Layout modes: **wide** (standalone window or wide panel, ≥ 1024 px) and **narr
 
 ## 3. Codex integration
 
-Research (`docs/integration.md`) found **no documented Codex API for a custom side panel or for replacing the composer**. Codex plugins bundle skills, MCP servers and hooks; custom MCP UI renders in ChatGPT, not confirmed in Codex. **Decision D3 (approved):**
+**Scope correction, 2026-10-25:** the owner requires automatic suggestions in the existing Codex composer. The companion-only assumption in the original D3 decision is superseded by that instruction. Current extension documentation includes conversation panels and mentions, but no documented custom live-completion hook. The [macOS input-method workaround](native-composer.md) is experimental and still requires actual Codex compatibility verification.
+
+The implemented companion/MCP flow remains available:
 
 - **Companion panel**: the Next.js app runs as its own window docked beside Codex (narrow layout = docked mode).
 - **Codex plugin** (`.codex-plugin/plugin.json`) ships an MCP server with `get_refined_prompt` / `enhance_prompt` tools and a skill, so Codex can pull the latest refined prompt (`@prompt-enhance`).

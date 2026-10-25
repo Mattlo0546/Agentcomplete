@@ -42,6 +42,7 @@ export type EnhanceState = {
 
 export type EnhanceAction =
   | { type: "hydrate"; prompt: string }
+  | { type: "restore"; prompt: string }
   | { type: "change"; prompt: string; selectionStart: number; selectionEnd: number }
   | { type: "select"; selectionStart: number; selectionEnd: number }
   | { type: "request"; snapshot: Snapshot }
@@ -67,6 +68,16 @@ const invalidated = { pending: null, suggestion: null, error: null } as const;
 
 export function enhanceReducer(state: EnhanceState, action: EnhanceAction): EnhanceState {
   switch (action.type) {
+    case "restore":
+      return {
+        ...state,
+        ...invalidated,
+        prompt: action.prompt,
+        selectionStart: action.prompt.length,
+        selectionEnd: action.prompt.length,
+        revision: state.revision + 1,
+        traceId: null,
+      };
     case "hydrate":
       if (state.prompt !== "" || action.prompt === "") return state;
       return {

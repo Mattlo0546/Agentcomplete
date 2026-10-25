@@ -19,7 +19,10 @@ def _backend_up() -> bool:
         return False
 
 
-live = pytest.mark.skipif(not _backend_up(), reason=f"no Prompt Enhance backend running at {API}")
+live = pytest.mark.skipif(
+    os.environ.get("PROMPT_ENHANCE_LIVE_TESTS") != "1" or not _backend_up(),
+    reason="live backend/model tests require PROMPT_ENHANCE_LIVE_TESTS=1 and a running backend",
+)
 
 
 async def test_backend_down_gives_clear_error(monkeypatch):
@@ -60,7 +63,12 @@ async def test_stdio_lists_tools():
     async with stdio_client(params) as (r, w):
         async with ClientSession(r, w) as s:
             await s.initialize()
-            names = {t.name for t in (await s.list_tools()).tools}
-            assert names == {"get_refined_prompt", "enhance_prompt", "search_knowledge"}
+            tools = (await s.list_tools()).tools
+            names = {t.name for t in tools}
+            assert names == {
+                "get_refined_prompt", "enhance_prompt", "search_knowledge", "list_prompt_versions", "get_prompt_version"
+            }
+            assert all(t.annotations.readOnlyHint for t in tools if t.name != "enhance_prompt")
+            assert not next(t for t in tools if t.name == "enhance_prompt").annotations.readOnlyHint
             res = await s.call_tool("get_refined_prompt", {})
             assert res.isError and "not reachable" in json.dumps([c.model_dump() for c in res.content])

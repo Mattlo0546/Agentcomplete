@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "Prompt Enhance",
-  description: "Refine prompts for Codex with grounded autocomplete and questions.",
+  description: "Refine prompts for Codex and Claude with grounded autocomplete, questions, and version history.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

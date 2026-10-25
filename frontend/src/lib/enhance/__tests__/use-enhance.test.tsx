@@ -360,6 +360,19 @@ describe("previous request context", () => {
     expect(vi.mocked(postEnhance).mock.calls[1][0]).not.toHaveProperty("previous_request_id");
   });
 
+  it("starts a new context chain when restoring a history version", async () => {
+    const { result } = renderHook(() => useEnhance());
+    type(result, "Ship");
+    await advance(200);
+    expect(vi.mocked(postEnhance).mock.calls[0][0]).not.toHaveProperty("previous_request_id");
+
+    act(() => result.current.restore("Saved history"));
+    await advance(200);
+
+    expect(vi.mocked(postEnhance).mock.calls[1][0]).toMatchObject({ prompt: "Saved history" });
+    expect(vi.mocked(postEnhance).mock.calls[1][0]).not.toHaveProperty("previous_request_id");
+  });
+
   it("starts a new context chain after remounting even when the draft is restored", async () => {
     const first = renderHook(() => useEnhance());
     type(first.result, "Ship");

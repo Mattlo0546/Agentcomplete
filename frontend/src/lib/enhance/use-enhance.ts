@@ -247,6 +247,18 @@ export function useEnhance(
     send();
   }, [interrupt, send]);
 
+  const restore = useCallback(
+    (prompt: string) => {
+      if (stateRef.current.suggestion) emit("superseded");
+      interrupt();
+      // A restored history entry is unrelated to the previous draft's server context.
+      previousRequestIdRef.current = null;
+      dispatch({ type: "restore", prompt });
+      if (canSend(stateRef.current)) schedule();
+    },
+    [canSend, dispatch, emit, interrupt, schedule],
+  );
+
   const setComposing = useCallback(
     (composing: boolean) => {
       composingRef.current = composing;
@@ -302,7 +314,18 @@ export function useEnhance(
 
   useEffect(() => interrupt, [interrupt]);
 
-  return { state, change, select, acceptGhost, dismissGhost, declineQuestion, applyOption, retry, setComposing };
+  return {
+    state,
+    change,
+    select,
+    acceptGhost,
+    dismissGhost,
+    declineQuestion,
+    applyOption,
+    retry,
+    restore,
+    setComposing,
+  };
 }
 
 export type EnhanceController = ReturnType<typeof useEnhance>;

@@ -13,6 +13,7 @@ from app.api import (
     knowledge,
     logs,
     outcomes,
+    prompt_history,
     settings,
     stats,
     tags,
@@ -61,7 +62,20 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID"],
     )
     install_error_handlers(app)
-    for module in (enhance, traces, outcomes, knowledge, tags, handoff, logs, stats, settings, health, analytics):
+    for module in (
+        enhance,
+        traces,
+        outcomes,
+        knowledge,
+        tags,
+        handoff,
+        prompt_history,
+        logs,
+        stats,
+        settings,
+        health,
+        analytics,
+    ):
         app.include_router(module.router, prefix="/v1")
     return app
 
