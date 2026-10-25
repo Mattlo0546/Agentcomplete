@@ -1,6 +1,8 @@
 # Autocomplete performance results
 
-## Latest implementation: one-call autocomplete
+> Historical measurements: the runs below predate the optional local EmbeddingGemma 2 route and bounded in-flight suffix adoption. See [the current architecture](architecture.md) for today's routing. These results are not a fresh end-to-end benchmark of that implementation.
+
+## Measured implementation: one-call lexical autocomplete
 
 The current default adds a bounded local snapshot of Tiger knowledge for end-of-prompt autocomplete. Metadata-supported lexical matches nominate up to three candidates for a **fresh Gemini relevance review and suggestion in one call**. Requests without suitable local candidates, including ambiguous shared-topic matches, retain semantic tag extraction and embedding retrieval. Mid-prompt editing also retains the semantic route. The snapshot refreshes in the background, expires after 15 seconds, and invalidates after local knowledge changes; suggestions are discarded if their source changes or expires during generation. Snowflake remains offline, and all sponsor providers are retained.
 
