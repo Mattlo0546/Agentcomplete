@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1280" viewBox="0 0 1200 1280" role="img" aria-labelledby="title desc">
 <title id="title">Skill Issue — technical architecture</title>
-<desc id="desc">The browser and Codex MCP client call one FastAPI worker. The first usable retrieval route wins: complete catalog review (64 items, 80,000 serialized characters), eligible lexical shortlist, optional direct semantic index, then Gemini tags and pgvector. One Gemini call reviews candidates and generates output; Python validates reviews, suffixes, edits, and source freshness. Knowledge ingestion, handoff, and telemetry use Tiger PostgreSQL. Explicit outcome export and classifier training use Snowflake outside suggestion requests. Solid arrows show requests or synchronous data access; dashed arrows show refresh or background persistence.</desc>
+<desc id="desc">The browser and Codex MCP client call one FastAPI worker. The first usable retrieval route wins: complete catalog review (16 items, 80,000 serialized characters), eligible lexical shortlist, then Gemini tags and pgvector. One Gemini call reviews candidates and generates output; Python validates reviews, suffixes, edits, and source freshness. Knowledge ingestion, handoff, and telemetry use Tiger PostgreSQL. Explicit outcome export and classifier training use Snowflake outside suggestion requests. Solid arrows show requests or synchronous data access; dashed arrows show refresh or background persistence.</desc>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="#e6edf3" stroke-width="1.4"/></marker>
 <marker id="muted-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="#727b86" stroke-width="1.4"/></marker></defs>
 <style>text{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:#e6edf3;font-size:16px}.title{font-size:20px;font-weight:600}.meta{font-size:14px;fill:#a0a8b2}.label{font-size:13px;fill:#a0a8b2;letter-spacing:1.2px}.small{font-size:13px;fill:#a0a8b2}</style>
@@ -36,18 +36,18 @@
 <text x="84" y="443" class="label">FIRST USABLE ROUTE WINS</text>
 <path d="M64 460 H434" stroke="#303841" stroke-width="1"/>
 <text x="84" y="488" class="title">1  Complete catalog</text>
-<text x="84" y="514" class="meta">≤64 items / ≤80,000 serialized chars</text>
+<text x="84" y="514" class="meta">≤16 items / ≤80,000 serialized chars</text>
 <text x="84" y="537" class="meta">All bodies · no tag / embedding call</text>
 <path d="M64 554 H434" stroke="#303841" stroke-width="1"/>
 <text x="84" y="583" class="">2  Lexical shortlist</text>
 <text x="84" y="608" class="meta">Eligible end-cursor input · top 3</text>
 <path d="M64 625 H434" stroke="#303841" stroke-width="1"/>
-<text x="84" y="654" class="">3  Direct semantic index</text>
-<text x="84" y="679" class="meta">EmbeddingGemma 2 / ONNX · top 3</text>
-<text x="84" y="702" class="small">Optional local files; Gemini override</text>
+<text x="84" y="654" class="">3  Tags + pgvector</text>
+<text x="84" y="679" class="meta">Gemini tag vectors · ≥0.88 · top 5</text>
+<text x="84" y="702" class="small">Safe reuse or fresh tag retrieval</text>
 <path d="M64 719 H434" stroke="#303841" stroke-width="1"/>
-<text x="84" y="748" class="">4  Tags + pgvector</text>
-<text x="84" y="774" class="meta">Gemini tag vectors · ≥0.88 · top 5</text>
+<text x="84" y="748" class="">Fresh review on every route</text>
+<text x="84" y="774" class="meta">No candidates → draft alone</text>
 <path d="M434 488 H478" fill="none" stroke="#e6edf3" stroke-width="1.35" marker-end="url(#arrow)"/>
 <rect x="478" y="385" width="300" height="155" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
 <text x="498" y="417" class="title">Review + generate</text>
@@ -84,7 +84,7 @@
 <rect x="80" y="866" width="294" height="26" rx="4" fill="#212830" stroke="#212830" stroke-width="1.2"/>
 <text x="227.0" y="884" class="small" text-anchor="middle">Gemini calls: review / fallback</text>
 <path d="M540 915 V889 H446 V766 H434" fill="none" stroke="#727b86" stroke-width="1.35" stroke-dasharray="5 5" marker-end="url(#muted-arrow)"/>
-<text x="468" y="883" class="small">snapshot / index refresh</text>
+<text x="468" y="883" class="small">snapshot refresh</text>
 <path d="M414 790 V902 H500 V915" fill="none" stroke="#e6edf3" stroke-width="1.35" marker-end="url(#arrow)"/>
 <text x="382" y="815" class="small">SQL</text>
 <path d="M688 790 V915" fill="none" stroke="#e6edf3" stroke-width="1.35" marker-end="url(#arrow)" marker-start="url(#arrow)"/>
@@ -103,7 +103,7 @@
 <path d="M42 1092 H412" stroke="#303841" stroke-width="1"/>
 <text x="62" y="1122" class="">gemini-embedding-001</text>
 <text x="62" y="1148" class="meta">Tag embeddings / 768 dimensions</text>
-<text x="62" y="1174" class="meta">Optional direct semantic backend</text>
+<text x="62" y="1174" class="meta">Tags matched through Tiger pgvector</text>
 <text x="62" y="1195" class="small">GENERATION REMAINS REMOTE</text>
 <rect x="478" y="915" width="420" height="290" rx="6" fill="#161b22" stroke="#727b86" stroke-width="1.2"/>
 <text x="498" y="950" class="title">Tiger Data / PostgreSQL</text>
@@ -127,10 +127,10 @@
 <text x="968" y="1184" class="small">Both outcome classes</text>
 <path d="M898 1045 H948" fill="none" stroke="#727b86" stroke-width="1.35" stroke-dasharray="5 5" marker-end="url(#muted-arrow)"/>
 <text x="923" y="1033" class="small" text-anchor="middle">export</text>
-<text x="42" y="1234" class="small">Defaults shown. Semantic-first swaps routes 2 / 3; complete catalog still runs first.</text>
+<text x="42" y="1234" class="small">Defaults shown. Complete catalog, then lexical shortlist, then tags / pgvector.</text>
 <path d="M42 1261 H80" fill="none" stroke="#e6edf3" stroke-width="1.35" marker-end="url(#arrow)"/>
 <text x="90" y="1266" class="small">request / data access</text>
 <path d="M350 1261 H388" fill="none" stroke="#727b86" stroke-width="1.35" stroke-dasharray="5 5" marker-end="url(#muted-arrow)"/>
 <text x="398" y="1266" class="small">refresh / persistence / export</text>
-<text x="1158" y="1266" class="small" text-anchor="end">main 78e7821 · 2026-10-25</text>
+<text x="1158" y="1266" class="small" text-anchor="end">source defaults · 2026-10-25</text>
 </svg>

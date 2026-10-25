@@ -1,5 +1,7 @@
 # Removing the serial tag call: measured alternatives
 
+> Historical experiment: the direct document-vector index has been removed from the runtime. Current routing is complete catalog (up to 16 entries), lexical shortlist, then tags/pgvector.
+
 Measured 2026-10-25. The experimental code is `backend/scripts/probe_semantic_routes.py`; application code was not changed in this experiment. All Gemini calls used public repository sample documents and synthetic prompts. The attempted live-corpus export was rejected before execution by automatic approval review; the replacement experiment never read Tiger. GitHub repository metadata confirmed `Mattlo0546/Agentcomplete` is public.
 
 ## What was measured

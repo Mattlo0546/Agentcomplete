@@ -29,7 +29,6 @@ try {
   for (const route of [
     "catalog",
     "lexical",
-    "semantic",
     "fallback",
     "handoff",
     "analytics",
@@ -49,11 +48,6 @@ try {
     "Complete catalog review",
   );
   assert.match(await page.locator("#detail-facts").innerText(), /80,000/);
-  await page.locator('[data-route="semantic"]').click();
-  assert.equal(
-    await page.locator("#detail-title").innerText(),
-    "Document / query similarity",
-  );
   await page.locator(".component-index").evaluate((el) => {
     el.open = true;
   });
@@ -122,9 +116,7 @@ try {
   await page.waitForFunction(
     () => document.documentElement.scrollWidth <= innerWidth,
   );
-  await page
-    .getByRole("button", { name: "Local semantic", exact: true })
-    .click();
+  await page.locator('[data-route="fallback"]').click();
   await page.locator(".component-index").evaluate((el) => {
     el.open = true;
   });

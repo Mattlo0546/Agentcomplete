@@ -34,7 +34,7 @@ A final [HTTP incremental workload](evidence/latency-fast-path-incremental.json)
 
 Final selected verification: **77 deterministic backend tests, 12 live enhancement tests, 95 frontend tests, 7 MCP tests, and 2 live browser acceptance/decline journeys passed**. Three MCP live checks were skipped by their existing guards. Backend Ruff lint/format, targeted strict mypy on six runtime/benchmark files, frontend TypeScript and ESLint, and benchmark syntax checks passed. The initial broad backend run had a live relevance failure; the corrected rubric passed the subsequent 12-test live enhancement suite. This is not a claim that the entire repository's typecheck or every optional integration test is green.
 
-Restart the backend after pulling. `FAST_AUTOCOMPLETE_ENABLED=false` restores the semantic route for comparison. Run the browser script from `frontend/` with the running backend URL and expected configured delay:
+Restart the backend after pulling. `CATALOG_REVIEW_ENABLED=false` and `FAST_AUTOCOMPLETE_ENABLED=false` select the tag/pgvector route for comparison. Run the browser script from `frontend/` with the running backend URL and expected configured delay:
 
 ```bash
 node scripts/bench-latency.mjs --api-url http://127.0.0.1:8000 --expected-delay-ms 150

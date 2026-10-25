@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
@@ -22,7 +22,7 @@ async def database() -> AsyncIterator[None]:
 
 @pytest.fixture(autouse=True)
 def memory(monkeypatch):
-    settings = SimpleNamespace(catalog_review_enabled=True, direct_semantic_enabled=True)
+    settings = SimpleNamespace(catalog_review_enabled=True)
     monkeypatch.setattr(catalog, "get_settings", lambda: settings)
     monkeypatch.setattr(catalog, "_snapshot", None)
     monkeypatch.setattr(catalog, "_lock", asyncio.Lock())
@@ -76,13 +76,11 @@ async def test_complete_bodies_preserve_late_constraints_unicode_and_every_candi
     install(rows)
     result = await catalog.select_complete()
     assert result is not None
-    result.candidates[-1].evidence_excerpt = "A shorter semantic excerpt must not replace the complete body"
     rendered = contents(result.candidates)
     assert len(rendered) > generate.KNOWLEDGE_BUDGET_CHARS
     for number, source in enumerate(rows):
         assert source["body"] in rendered
         assert f'<knowledge candidate="{number}"' in rendered
-    assert "A shorter semantic excerpt" not in rendered
     assert rendered.count("</knowledge>") == len(rows)
 
 
@@ -102,10 +100,10 @@ async def test_exact_serialized_character_bound_accepts_then_rejects_without_tru
 
 
 async def test_document_count_bound_keeps_all_or_falls_back():
-    install([row(number) for number in range(1, generate.COMPLETE_CATALOG_MAX_DOCUMENTS + 1)])
+    install([row(number) for number in range(1, 17)])
     result = await catalog.select_complete()
-    assert result is not None and len(result.candidates) == generate.COMPLETE_CATALOG_MAX_DOCUMENTS
-    oversized = install([row(number) for number in range(1, generate.COMPLETE_CATALOG_MAX_DOCUMENTS + 2)])
+    assert result is not None and len(result.candidates) == 16
+    oversized = install([row(number) for number in range(1, 18)])
     assert await catalog.select_complete() is None
     with pytest.raises(generate.CatalogReviewTooLarge, match="document"):
         contents([doc.candidate for doc in oversized.documents])
@@ -148,9 +146,9 @@ async def test_empty_catalog_is_complete_without_fabricated_candidates():
     assert "none: do a general enhancement" in contents(result.candidates)
 
 
-@pytest.mark.parametrize("fits", [True, False])
-async def test_refresh_skips_embeddings_only_when_complete_review_fits(monkeypatch, fits):
-    rows = [row(1)] if fits else [row(number) for number in range(1, 66)]
+@pytest.mark.parametrize("count", [16, 17])
+async def test_refresh_preserves_all_sources_across_complete_review_bound(monkeypatch, count):
+    rows = [row(number) for number in range(1, count + 1)]
 
     class Connection:
         async def execute(self, *args, **kwargs):
@@ -161,23 +159,24 @@ async def test_refresh_skips_embeddings_only_when_complete_review_fits(monkeypat
         yield Connection()
 
     monkeypatch.setattr(catalog, "connection", connection)
-    schedule, clear = Mock(), Mock()
-    monkeypatch.setattr(catalog.semantic, "schedule", schedule)
-    monkeypatch.setattr(catalog.semantic, "clear", clear)
-    assert await catalog.refresh() is not None
-    assert schedule.call_count == (0 if fits else 1)
-    assert clear.call_count == (1 if fits else 0)
+    snapshot = await catalog.refresh()
+    assert snapshot is not None and len(snapshot.documents) == count
+    assert catalog._snapshot is snapshot
+    assert (await catalog.select_complete() is not None) == (count <= 16)
 
 
-@pytest.mark.parametrize("fits", [True, False])
-async def test_startup_does_not_prepare_unused_local_index(monkeypatch, fits):
-    source = install([row(1)] if fits else [row(number) for number in range(1, 66)])
-    monkeypatch.setattr(catalog, "refresh", AsyncMock(return_value=source))
-    prepare = AsyncMock(return_value=True)
-    monkeypatch.setattr(catalog.semantic, "prepare", prepare)
-    monkeypatch.setattr(catalog.semantic, "stop", AsyncMock())
+async def test_startup_and_shutdown_manage_snapshot_refresh(monkeypatch):
+    source = install([row(number) for number in range(1, 18)])
+    refresh = AsyncMock(return_value=source)
+    monkeypatch.setattr(catalog, "refresh", refresh)
     try:
         await catalog.start()
-        assert prepare.await_count == (0 if fits else 1)
+        worker = catalog._worker
+        assert worker is not None and not worker.done()
+        await catalog.start()
+        assert catalog._worker is worker
     finally:
         await catalog.stop()
+    assert refresh.await_count == 2
+    assert worker.done()
+    assert catalog._worker is None and catalog._snapshot is None

@@ -2,7 +2,7 @@
 
 No rendering dependencies. Run from any directory: python3 docs/diagrams/render_architecture.py
 Visual convention: solid lines are request/response; dashed lines are maintenance.
-Route ordering and bounds describe the main runtime at commit 78e7821.
+Route ordering and bounds describe the current source defaults.
 """
 
 from html import escape
@@ -39,7 +39,7 @@ def render(t):
     out = [
         f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1280" viewBox="0 0 1200 1280" role="img" aria-labelledby="title desc">
 <title id="title">Skill Issue — technical architecture</title>
-<desc id="desc">The browser and Codex MCP client call one FastAPI worker. The first usable retrieval route wins: complete catalog review (64 items, 80,000 serialized characters), eligible lexical shortlist, optional direct semantic index, then Gemini tags and pgvector. One Gemini call reviews candidates and generates output; Python validates reviews, suffixes, edits, and source freshness. Knowledge ingestion, handoff, and telemetry use Tiger PostgreSQL. Explicit outcome export and classifier training use Snowflake outside suggestion requests. Solid arrows show requests or synchronous data access; dashed arrows show refresh or background persistence.</desc>
+<desc id="desc">The browser and Codex MCP client call one FastAPI worker. The first usable retrieval route wins: complete catalog review (16 items, 80,000 serialized characters), eligible lexical shortlist, then Gemini tags and pgvector. One Gemini call reviews candidates and generates output; Python validates reviews, suffixes, edits, and source freshness. Knowledge ingestion, handoff, and telemetry use Tiger PostgreSQL. Explicit outcome export and classifier training use Snowflake outside suggestion requests. Solid arrows show requests or synchronous data access; dashed arrows show refresh or background persistence.</desc>
 <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="{t["ink"]}" stroke-width="1.4"/></marker>
 <marker id="muted-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse"><path d="M1 1 L7 4 L1 7" fill="none" stroke="{t["edge"]}" stroke-width="1.4"/></marker></defs>
 <style>text{{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;fill:{t["ink"]};font-size:16px}}.title{{font-size:20px;font-weight:600}}.meta{{font-size:14px;fill:{t["muted"]}}}.label{{font-size:13px;fill:{t["muted"]};letter-spacing:1.2px}}.small{{font-size:13px;fill:{t["muted"]}}}</style>
@@ -114,18 +114,18 @@ def render(t):
     text(84, 443, "FIRST USABLE ROUTE WINS", "label")
     rule(64, 460, 434)
     text(84, 488, "1  Complete catalog", "title")
-    text(84, 514, "≤64 items / ≤80,000 serialized chars", "meta")
+    text(84, 514, "≤16 items / ≤80,000 serialized chars", "meta")
     text(84, 537, "All bodies · no tag / embedding call", "meta")
     rule(64, 554, 434)
     text(84, 583, "2  Lexical shortlist")
     text(84, 608, "Eligible end-cursor input · top 3", "meta")
     rule(64, 625, 434)
-    text(84, 654, "3  Direct semantic index")
-    text(84, 679, "EmbeddingGemma 2 / ONNX · top 3", "meta")
-    text(84, 702, "Optional local files; Gemini override", "small")
+    text(84, 654, "3  Tags + pgvector")
+    text(84, 679, "Gemini tag vectors · ≥0.88 · top 5", "meta")
+    text(84, 702, "Safe reuse or fresh tag retrieval", "small")
     rule(64, 719, 434)
-    text(84, 748, "4  Tags + pgvector")
-    text(84, 774, "Gemini tag vectors · ≥0.88 · top 5", "meta")
+    text(84, 748, "Fresh review on every route")
+    text(84, 774, "No candidates → draft alone", "meta")
 
     line("M434 488 H478")
     rect(478, 385, 300, 155, stroke="edge")
@@ -167,7 +167,7 @@ def render(t):
     line("M628 540 V565 H456 V851 H227 V915")
     pill(80, 866, 294, "Gemini calls: review / fallback")
     line("M540 915 V889 H446 V766 H434", dashed=True)
-    text(468, 883, "snapshot / index refresh", "small")
+    text(468, 883, "snapshot refresh", "small")
     line("M414 790 V902 H500 V915")
     text(382, 815, "SQL", "small")
     line("M688 790 V915", both=True)
@@ -187,7 +187,7 @@ def render(t):
     rule(42, 1092, 412)
     text(62, 1122, "gemini-embedding-001")
     text(62, 1148, "Tag embeddings / 768 dimensions", "meta")
-    text(62, 1174, "Optional direct semantic backend", "meta")
+    text(62, 1174, "Tags matched through Tiger pgvector", "meta")
     text(62, 1195, "GENERATION REMAINS REMOTE", "small")
 
     rect(478, 915, 420, 290, stroke="edge")
@@ -217,14 +217,14 @@ def render(t):
     text(
         42,
         1234,
-        "Defaults shown. Semantic-first swaps routes 2 / 3; complete catalog still runs first.",
+        "Defaults shown. Complete catalog, then lexical shortlist, then tags / pgvector.",
         "small",
     )
     line("M42 1261 H80")
     text(90, 1266, "request / data access", "small")
     line("M350 1261 H388", dashed=True)
     text(398, 1266, "refresh / persistence / export", "small")
-    text(1158, 1266, "main 78e7821 · 2026-10-25", "small", "end")
+    text(1158, 1266, "source defaults · 2026-10-25", "small", "end")
     out.append("</svg>")
     return "\n".join(out)
 

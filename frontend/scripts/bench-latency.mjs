@@ -172,9 +172,7 @@ const fixtures =
 const sourcePaths = [
   "backend/app/main.py",
   "backend/app/config.py",
-  "backend/app/llm/local_embeddings.py",
   "backend/app/pipeline/catalog.py",
-  "backend/app/pipeline/semantic.py",
   "backend/app/pipeline/complete.py",
   "backend/app/pipeline/run.py",
   "backend/app/settings_store.py",

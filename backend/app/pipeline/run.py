@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import ValidationError
 
 from app.config import get_settings
-from app.pipeline import catalog, context, semantic
+from app.pipeline import catalog, context
 from app.pipeline.complete import complete, generation_model, use_completion
 from app.pipeline.features import derive_features
 from app.pipeline.generate import WireResponse, allowed_types, build_contents, to_response
@@ -148,30 +148,10 @@ async def run_enhance(req: EnhanceRequest) -> WireResponse:
             lexical_eligible = (
                 cfg.fast_autocomplete_enabled and settings.autocomplete_enabled and req.cursor == utf16_len(req.prompt)
             )
-            # Keep the existing fast path; direct semantics replaces the serial tag
-            # fallback. Semantic-first is an explicit recall/latency tradeoff.
-            if local is None and lexical_eligible and not (cfg.direct_semantic_enabled and cfg.semantic_first_enabled):
+            if local is None and lexical_eligible:
                 stage_started = time.perf_counter()
                 local = await catalog.select(req.prompt)
                 local_timings.append(f"lexical {_ms(stage_started)} ms")
-            if local is None and cfg.direct_semantic_enabled:
-                stage_started = time.perf_counter()
-                snapshot = await catalog.get_snapshot()
-                local_timings.append(f"snapshot {_ms(stage_started)} ms")
-                if snapshot is not None:
-                    stage_started = time.perf_counter()
-                    local = await semantic.select(req.prompt, snapshot)
-                    local_timings.append(f"semantic {_ms(stage_started)} ms")
-                    retrieval_model = (
-                        "google/embeddinggemma-2 · local semantic"
-                        if cfg.semantic_embed_backend == "local"
-                        else f"{cfg.embed_model} · direct semantic"
-                    )
-            if local is None and lexical_eligible and cfg.direct_semantic_enabled and cfg.semantic_first_enabled:
-                stage_started = time.perf_counter()
-                local = await catalog.select(req.prompt)
-                local_timings.append(f"lexical {_ms(stage_started)} ms")
-                retrieval_model = "tiger-lexical"
             if local is not None:
                 retrieval = local
                 tags_step = _step("tags", "local", None, "skipped", "mode selection in generation; no tag inference")

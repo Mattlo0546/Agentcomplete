@@ -1,10 +1,12 @@
 # Latency results and local semantic retrieval
 
+> Historical experiment: the direct document-vector index has been removed from the runtime. Current routing is complete catalog (up to 16 entries), lexical shortlist, then tags/pgvector.
+
 The 500 ms target is not met. The current Gemini endpoint took a median 599 ms to produce its first output token in ten provider probes, before completing or validating a suggestion. Local retrieval removes an avoidable dependency, but cannot erase that generation time. These measurements were collected on 25 October 2026 on the development machine; they are not a production latency guarantee.
 
 ## Changes available for testing
 
-The current default reviews the complete knowledge catalog, including full source bodies, when it fits within 64 items and 80,000 serialized characters. This addresses the reported shallow suggestions: keyword and vector shortlists missed broadly applicable workflow guidance in the current 34-document catalog. Gemini now receives that guidance directly and can add substantive source-grounded steps to complete briefs while preserving explicit constraints such as Python. This correctness change has deterministic test coverage, but its live suggestion quality and latency have not yet been validated.
+At the time of this evaluation, the default reviewed the complete knowledge catalog, including full source bodies, within 64 items and 80,000 serialized characters. The current item limit is 16; the historical results below retain their original settings. This addresses the reported shallow suggestions: keyword and vector shortlists missed broadly applicable workflow guidance in the current 34-document catalog. Gemini now receives that guidance directly and can add substantive source-grounded steps to complete briefs while preserving explicit constraints such as Python. This correctness change has deterministic test coverage, but its live suggestion quality and latency have not yet been validated.
 
 For catalogs outside those bounds, the route keeps the existing lexical shortlist and uses local Google EmbeddingGemma 2 when that shortlist cannot nominate candidates. The fallback then makes one fresh Gemini call to review every candidate and generate the suggestion. The former tag generation, remote query embedding and vector query remain available when the local index cannot safely answer.
 
@@ -27,7 +29,7 @@ The lexical-first run used 45 lexical selections and four semantic queries. Its 
 
 Semantic-first is available with `CATALOG_REVIEW_ENABLED=false` and `SEMANTIC_FIRST_ENABLED=true`, but is not the default: its browser experiment regressed median visible latency from 987 to 1,288 ms. Its first retrieval took 2,080 ms; the aggregate trace could not distinguish snapshot refresh from local encoder cost. Added stage timings now separate those paths. No unproven warmup workaround was introduced.
 
-Reproduce the two retrieval runs with [the fixture probe](../backend/scripts/probe_production_semantics.py). Evidence: [lexical-first routing](evidence/semantic-production-local-fallback.json), [semantic first](evidence/semantic-production-local-final.json), and [browser comparison](evidence/latency-browser-challenge-comparison.json).
+Reproduce the two retrieval runs with [the fixture probe](https://github.com/Mattlo0546/Agentcomplete/blob/9388e43/backend/scripts/probe_production_semantics.py). Evidence: [lexical-first routing](evidence/semantic-production-local-fallback.json), [semantic first](evidence/semantic-production-local-final.json), and [browser comparison](evidence/latency-browser-challenge-comparison.json).
 
 ## Run it locally
 

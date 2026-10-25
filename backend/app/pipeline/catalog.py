@@ -1,7 +1,7 @@
 """A bounded, versioned Tiger snapshot for complete review or candidate selection.
 
 This only nominates candidates: Gemini still reviews every candidate against the current draft.
-No-match and oversized corpora use the semantic pipeline. Lexical scores are never cosine scores.
+No-match and oversized corpora use the tag/pgvector pipeline. Lexical scores are never cosine scores.
 """
 
 import asyncio
@@ -18,7 +18,6 @@ from uuid import UUID
 
 from app.config import get_settings
 from app.db.pool import connection
-from app.pipeline import semantic
 from app.pipeline.generate import CatalogReviewTooLarge, complete_knowledge_context
 from app.pipeline.retrieve import (
     MAX_CANDIDATES,
@@ -216,12 +215,6 @@ async def refresh(*, force: bool = False) -> Snapshot | None:
         # A committed mutation during the read must never republish the old knowledge.
         if current(snapshot):
             _snapshot = snapshot
-            if _complete_review_fits(snapshot):
-                # Full review needs no document embeddings. Invalidate any older
-                # preparation too, including a previous oversized-corpus build.
-                semantic.clear()
-            elif get_settings().direct_semantic_enabled:
-                semantic.schedule(snapshot)
             return snapshot
         return None
 
@@ -248,7 +241,6 @@ async def select_complete() -> Retrieval | None:
             document.candidate,
             similarity=0.0,
             matched_tags=list(document.candidate.matched_tags),
-            evidence_excerpt=None,
         )
         for document in snapshot.documents
     ]
@@ -258,7 +250,7 @@ async def select_complete() -> Retrieval | None:
 
 
 async def select(prompt: str) -> Retrieval | None:
-    """None means semantic fallback; an empty Retrieval means the corpus itself is empty."""
+    """None means tag/pgvector fallback; an empty Retrieval means the corpus itself is empty."""
     snapshot = await get_snapshot()
     if snapshot is None:
         return None
@@ -269,7 +261,7 @@ async def select(prompt: str) -> Retrieval | None:
         query.update(word for word in snapshot.idf if word.startswith(words[-1]))
     ranked = []
     for document in snapshot.documents:
-        # Incidental body overlap must not suppress semantic retrieval of an unknown paraphrase.
+        # Incidental body overlap must not suppress tag retrieval of an unknown paraphrase.
         # Body terms still rank candidates supported by their title, summary or tags.
         if not document.metadata_tokens & query:
             continue
@@ -288,7 +280,7 @@ async def select(prompt: str) -> Retrieval | None:
             document.metadata_tokens & query == leading_evidence for _, document in ranked[: limit + 1]
         ):
             # A shared platform/topic alone cannot choose which of several documents to omit.
-            # Incidental body matches may rank them, but semantic retrieval must resolve the ambiguity.
+            # Incidental body matches may rank them, but tag retrieval must resolve the ambiguity.
             return None
     candidates = []
     for _, document in ranked[:limit]:
@@ -309,16 +301,7 @@ async def select(prompt: str) -> Retrieval | None:
 
 async def start() -> None:
     global _worker
-    snapshot = await refresh()
-    if snapshot is not None and get_settings().direct_semantic_enabled and not _complete_review_fits(snapshot):
-        # Prepare once before accepting traffic; refresh work is asynchronous thereafter.
-        await semantic.prepare(snapshot)
-        if not current(snapshot):
-            # A cold local model/index can take longer than the source TTL. Re-read Tiger
-            # after building; content-keyed vectors are reusable, source freshness is not.
-            snapshot = await refresh(force=True)
-            if snapshot is not None and not _complete_review_fits(snapshot):
-                await semantic.prepare(snapshot)
+    await refresh()
     if _worker is None or _worker.done():
         _worker = asyncio.create_task(_maintain())
 
@@ -341,4 +324,3 @@ async def stop() -> None:
             await _worker
         _worker = None
     _snapshot = None
-    await semantic.stop()

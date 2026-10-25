@@ -39,16 +39,16 @@ export const components = [
     id: "retrieval",
     title: "Context selection",
     short: "Retrieval",
-    subtitle: "CATALOG → LEXICAL → SEMANTIC",
+    subtitle: "CATALOG → LEXICAL → TAGS",
     position: [0, 0, 2],
     color: 0x7964b7,
     model: "chip",
     kicker: "CANDIDATE NOMINATION",
-    body: "First offer the complete fresh catalog when it fits 64 items and 80,000 serialized characters. Otherwise try eligible lexical matching, a direct semantic index, then Gemini tags and pgvector. Every selected candidate receives fresh Gemini review. Semantic-first only swaps lexical and semantic attempts.",
+    body: "First offer the complete fresh catalog when it fits 16 items and 80,000 serialized characters. Otherwise try eligible lexical matching, then Gemini tags and pgvector. Every selected candidate receives fresh Gemini review.",
     facts: [
       ["Default", "Complete catalog review"],
-      ["Review bound", "64 items / 80,000 chars"],
-      ["Fallback", "Lexical → semantic → tags"],
+      ["Review bound", "16 items / 80,000 chars"],
+      ["Fallback", "Lexical → tags"],
     ],
     source: "backend/app/pipeline/run.py",
   },
@@ -61,7 +61,7 @@ export const components = [
     color: 0x477bd6,
     model: "gemini",
     kicker: "FRESH INFERENCE",
-    body: "One structured call reviews every candidate, then generates a suffix, a question with anchored edits, or none. Review coverage and keep scores are checked in Python. Local embeddings do not make generation offline.",
+    body: "One structured call reviews every candidate, then generates a suffix, a question with anchored edits, or none. Review coverage and keep scores are checked in Python. Generation uses the remote Gemini API.",
     facts: [
       ["Default model", "gemini-3.5-flash-lite"],
       ["Reviews", "Every candidate"],
@@ -112,7 +112,7 @@ export const components = [
     color: 0x3f74ac,
     model: "database",
     kicker: "SOURCE OF TRUTH",
-    body: "Tiger stores knowledge, tag vectors, settings, handoffs, outcomes, and metadata traces. The API builds a bounded local snapshot and prepares a document index only when complete review cannot serve. The document index is process-local; tag vectors use pgvector.",
+    body: "Tiger stores knowledge, tag vectors, settings, handoffs, outcomes, and metadata traces. The API builds a bounded snapshot for complete review or lexical matching. Tag-vector similarity search runs in pgvector.",
     facts: [
       ["Snapshot refresh", "10 seconds"],
       ["Source expiry", "15 seconds"],
@@ -144,7 +144,7 @@ export const routes = {
   overview: {
     title: "Complete catalog first. Fresh review on every route.",
     kicker: "HOW IT FITS TOGETHER",
-    copy: "Default order: complete bounded catalog, eligible lexical shortlist, direct semantic index, then Gemini tags and Tiger pgvector. The first usable result goes to fresh review and generation. Knowledge ingestion, handoff, and telemetry share the API; Snowflake training runs explicitly outside suggestion requests.",
+    copy: "Default order: complete bounded catalog, eligible lexical shortlist, then Gemini tags and Tiger pgvector. The first usable result goes to fresh review and generation. Knowledge ingestion, handoff, and telemetry share the API; Snowflake training runs explicitly outside suggestion requests.",
     nodes: components.map((c) => c.id),
     edges: [...requestEdges, "snapshot", "trace", "export", "mcp"],
     facts: [
@@ -156,7 +156,7 @@ export const routes = {
   catalog: {
     title: "Review every source without a retrieval shortlist.",
     kicker: "DEFAULT FIRST ROUTE · COMPLETE BOUNDED CATALOG",
-    copy: "A fresh Tiger snapshot supplies every body when the serialized knowledge context fits 64 items and 80,000 characters. No query-tag inference or embedding is needed. Gemini reviews every item in the same call that generates the suggestion. An oversized catalog falls through as a whole; fitting catalogs skip semantic-index preparation.",
+    copy: "A fresh Tiger snapshot supplies every body when the serialized knowledge context fits 16 items and 80,000 characters. No query-tag inference or embedding is needed. Gemini reviews every item in the same call that generates the suggestion. An oversized catalog falls through as a whole.",
     nodes: [...requestNodes, "tiger"],
     edges: [...requestEdges, "snapshot"],
     selected: "retrieval",
@@ -164,17 +164,9 @@ export const routes = {
   lexical: {
     title: "Local shortlist. One remote call.",
     kicker: "SECOND ROUTE BY DEFAULT · ELIGIBLE END-CURSOR REQUESTS",
-    copy: "When complete review cannot serve, eligible end-cursor requests can use confident title/summary/tag matches to nominate up to three documents. Ambiguous matches fall through to direct semantic retrieval. No tag inference or embedding request is needed; Gemini still reviews every candidate before generating.",
+    copy: "When complete review cannot serve, eligible end-cursor requests can use confident title/summary/tag matches to nominate up to three documents. Ambiguous matches fall through to tags and pgvector. No tag inference or embedding request is needed; Gemini still reviews every candidate before generating.",
     nodes: requestNodes,
     edges: requestEdges,
-    selected: "retrieval",
-  },
-  semantic: {
-    title: "Find meaning beyond matching words.",
-    kicker: "THIRD ROUTE BY DEFAULT · OPTIONAL LOCAL ENCODER",
-    copy: "After complete review and lexical selection cannot serve, EmbeddingGemma 2 embeds the current query locally on CPU. Precomputed document vectors rank up to three candidates with their best source chunks. Optional runtime/model files are required; missing, stale, busy, or oversized cases fall through. Semantic-first moves this ahead of lexical; a Gemini embedding backend is also configurable.",
-    nodes: [...requestNodes, "tiger"],
-    edges: [...requestEdges, "snapshot"],
     selected: "retrieval",
   },
   fallback: {

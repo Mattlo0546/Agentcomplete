@@ -24,7 +24,6 @@ async def database() -> AsyncIterator[None]:
 @pytest.fixture(autouse=True)
 def reset_memory(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(run.get_settings(), "fast_autocomplete_enabled", False)
-    monkeypatch.setattr(run.get_settings(), "direct_semantic_enabled", False)
     monkeypatch.setattr(run.get_settings(), "catalog_review_enabled", False)
     context._contexts.clear()
     tags._cache.clear()

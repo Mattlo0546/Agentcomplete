@@ -32,9 +32,8 @@ async def database() -> AsyncIterator[None]:
 
 @pytest.fixture(autouse=True)
 def clear_caches(monkeypatch: pytest.MonkeyPatch) -> None:
-    # These tests retain coverage of the semantic fallback; fast routing has its own suite.
+    # These tests retain coverage of the tag/pgvector fallback; fast routing has its own suite.
     monkeypatch.setattr(run.get_settings(), "fast_autocomplete_enabled", False)
-    monkeypatch.setattr(run.get_settings(), "direct_semantic_enabled", False)
     monkeypatch.setattr(run.get_settings(), "catalog_review_enabled", False)
     tags._cache.clear()
     retrieve_module.invalidate_cache()
