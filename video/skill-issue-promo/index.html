@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Skill Issue — Product Video</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --bg: #0a0b0f;
+        --panel: #14161d;
+        --line: #262a35;
+        --purple: #a78bfa;
+        --green: #5ee3c0;
+        --muted: #8b90a0;
+        --light: #f4f4f6;
+        --ink: #0a0b0f;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: white;
+        font-family: sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      .brand {
+        position: absolute;
+        left: 90px;
+        top: 60px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+      .brand svg {
+        width: 34px;
+        height: 26px;
+      }
+      .kicker {
+        position: absolute;
+        right: 90px;
+        top: 64px;
+        font-size: 18px;
+        letter-spacing: 0.18em;
+        color: var(--muted);
+      }
+      h1 {
+        margin: 0;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.02;
+      }
+      .line {
+        display: block;
+      }
+      .chip {
+        position: absolute;
+        width: 84px;
+        height: 84px;
+        border-radius: 20px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 28px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+      }
+
+      /* Scene 1 — title */
+      #s1-title {
+        position: absolute;
+        left: 120px;
+        top: 330px;
+        font-size: 210px;
+      }
+      #s1-sub {
+        position: absolute;
+        left: 128px;
+        top: 790px;
+        font-size: 46px;
+        color: #c9ccd6;
+        line-height: 1.35;
+      }
+      #s1-logo-wrap {
+        position: absolute;
+        left: 1130px;
+        top: 300px;
+        width: 480px;
+        height: 480px;
+        border-radius: 90px;
+        background: linear-gradient(160deg, #1b1d26, #101118);
+        border: 2px solid #2e3240;
+        box-shadow: 0 40px 120px rgba(167, 139, 250, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #s1-logo-wrap svg {
+        width: 340px;
+      }
+
+      /* Scene 2 — problem (light) */
+      #s2 {
+        background: var(--light);
+        color: var(--ink);
+      }
+      #s2 .kicker {
+        color: #7a7f8c;
+      }
+      #s2 .chip {
+        background: white;
+        border-color: #e1e3ea;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      }
+      #s2-title {
+        position: absolute;
+        left: 120px;
+        top: 230px;
+        font-size: 120px;
+      }
+      #s2-prompt {
+        position: absolute;
+        left: 1080px;
+        top: 380px;
+        width: 720px;
+        height: 300px;
+        background: white;
+        border-radius: 28px;
+        box-shadow: 0 30px 80px rgba(20, 20, 40, 0.14);
+        padding: 44px 52px;
+        box-sizing: border-box;
+      }
+      .prompt-label {
+        font-size: 18px;
+        letter-spacing: 0.16em;
+        color: #8a8f9c;
+      }
+      #s2-typed {
+        margin-top: 34px;
+        font-size: 64px;
+        font-weight: 700;
+        height: 80px;
+        white-space: nowrap;
+      }
+      #s2-q {
+        margin-top: 34px;
+        font-size: 26px;
+        color: #9095a2;
+      }
+      .pains {
+        position: absolute;
+        left: 120px;
+        right: 120px;
+        top: 820px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .pain {
+        width: 520px;
+        font-size: 46px;
+        font-weight: 700;
+      }
+      .pain small {
+        display: block;
+        font-size: 26px;
+        font-weight: 500;
+        color: #7a7f8c;
+        margin-top: 10px;
+      }
+
+      /* Scene 3 — solution */
+      #s3-title {
+        position: absolute;
+        left: 120px;
+        top: 170px;
+        font-size: 104px;
+      }
+      .src {
+        position: absolute;
+        left: 120px;
+        width: 420px;
+        height: 150px;
+        padding: 22px 30px;
+        box-sizing: border-box;
+      }
+      .src b {
+        font-size: 26px;
+      }
+      .src div {
+        margin-top: 16px;
+        display: flex;
+        gap: 22px;
+        font-family: monospace;
+        font-size: 30px;
+        color: var(--purple);
+      }
+      #s3-hub {
+        position: absolute;
+        left: 660px;
+        top: 650px;
+        width: 120px;
+        height: 120px;
+        border-radius: 30px;
+        background: #e9e3ff;
+        color: #4c2fb5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 52px;
+        font-weight: 800;
+      }
+      #s3-hub-label {
+        position: absolute;
+        left: 620px;
+        top: 790px;
+        width: 200px;
+        text-align: center;
+        font-size: 18px;
+        letter-spacing: 0.14em;
+        color: var(--muted);
+      }
+      #s3-wires {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+      }
+      #s3-editor {
+        position: absolute;
+        left: 900px;
+        top: 450px;
+        width: 900px;
+        height: 450px;
+        overflow: hidden;
+      }
+      .ed-bar {
+        height: 64px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        padding: 0 28px;
+        gap: 12px;
+      }
+      .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+      }
+      .ed-body {
+        padding: 44px 48px;
+      }
+      #s3-typed {
+        font-size: 50px;
+        font-weight: 700;
+        height: 64px;
+        white-space: nowrap;
+      }
+      #s3-ghost {
+        margin-top: 18px;
+        font-size: 42px;
+        line-height: 1.35;
+        color: rgba(94, 227, 192, 0.45);
+        width: 780px;
+      }
+      #s3-tab {
+        position: absolute;
+        right: 40px;
+        bottom: 36px;
+        background: white;
+        color: var(--ink);
+        font-weight: 800;
+        font-size: 24px;
+        padding: 10px 20px;
+        border-radius: 10px;
+      }
+      #s3-steps {
+        position: absolute;
+        left: 960px;
+        top: 950px;
+        display: flex;
+        gap: 60px;
+        font-size: 28px;
+        color: var(--muted);
+      }
+      #s3-steps span b {
+        color: var(--green);
+        margin-right: 10px;
+      }
+
+      /* Scene 4 — architecture (light) */
+      #s4 {
+        background: var(--light);
+        color: var(--ink);
+      }
+      #s4 .kicker {
+        color: #7a7f8c;
+      }
+      #s4-title {
+        position: absolute;
+        left: 120px;
+        top: 170px;
+        font-size: 100px;
+      }
+      .steps {
+        position: absolute;
+        left: 120px;
+        top: 380px;
+        display: flex;
+        gap: 34px;
+      }
+      .step {
+        width: 304px;
+        height: 300px;
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 16px 40px rgba(20, 20, 40, 0.08);
+        padding: 30px;
+        box-sizing: border-box;
+        position: relative;
+      }
+      .step .n {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 22px;
+      }
+      .step h3 {
+        margin: 26px 0 6px;
+        font-size: 38px;
+      }
+      .step p {
+        margin: 0;
+        font-size: 22px;
+        color: #7a7f8c;
+      }
+      .step .tech {
+        position: absolute;
+        left: 30px;
+        bottom: 30px;
+        font-size: 20px;
+        font-weight: 700;
+        color: #5b3fd0;
+        background: #efeaff;
+        padding: 8px 14px;
+        border-radius: 10px;
+      }
+      #s4-handoff {
+        position: absolute;
+        left: 120px;
+        top: 760px;
+        width: 860px;
+        height: 200px;
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 16px 40px rgba(20, 20, 40, 0.08);
+        padding: 30px 36px;
+        box-sizing: border-box;
+      }
+      #s4-handoff h3 {
+        margin: 0;
+        font-size: 36px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      #s4-handoff h3 i {
+        font-style: normal;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #8b6ff0;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+      }
+      .targets {
+        margin-top: 30px;
+        display: flex;
+        gap: 26px;
+        font-size: 34px;
+        font-weight: 800;
+      }
+      .targets span {
+        padding: 12px 26px;
+        border-radius: 14px;
+        background: #f2f3f7;
+      }
+      #s4-snow {
+        position: absolute;
+        left: 1040px;
+        top: 760px;
+        width: 760px;
+        height: 200px;
+        background: #e6f3fc;
+        border-radius: 24px;
+        padding: 36px 40px;
+        box-sizing: border-box;
+      }
+      #s4-snow h3 {
+        margin: 0;
+        font-size: 40px;
+      }
+      #s4-snow p {
+        margin: 14px 0 0;
+        font-size: 26px;
+        color: #4b7a99;
+      }
+
+      /* Scene 5 — outro */
+      #s5-logo {
+        position: absolute;
+        left: 710px;
+        top: 170px;
+        width: 500px;
+      }
+      #s5-name {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 610px;
+        text-align: center;
+        font-size: 150px;
+      }
+      #s5-tag {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 800px;
+        text-align: center;
+        font-size: 52px;
+        color: #c9ccd6;
+      }
+      #s5-sub {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 920px;
+        text-align: center;
+        font-size: 24px;
+        letter-spacing: 0.24em;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="1920"
+      data-height="1080"
+      data-duration="76"
+    >
+      <!-- Scene 1: Title -->
+      <section id="s1" class="clip" data-start="0" data-duration="11" data-track-index="0">
+        <div class="kicker">CONTEXT, COMPLETED</div>
+        <div class="chip s1-chip" style="left: 1000px; top: 170px; color: #a78bfa">&lt;/&gt;</div>
+        <div class="chip s1-chip" style="left: 1300px; top: 120px; color: #5ee3c0">{ }</div>
+        <div class="chip s1-chip" style="left: 1700px; top: 230px; color: #5ee3c0">DB</div>
+        <div class="chip s1-chip" style="left: 940px; top: 520px; color: #f4c95d">&gt;_</div>
+        <div class="chip s1-chip" style="left: 1690px; top: 520px; color: #60a5fa">TS</div>
+        <div class="chip s1-chip" style="left: 1020px; top: 840px; color: #a78bfa">⑂</div>
+        <div class="chip s1-chip" style="left: 1400px; top: 870px; color: #5ee3c0">⚡</div>
+        <div class="chip s1-chip" style="left: 1700px; top: 830px; color: #f472b6">▤</div>
+        <div id="s1-logo-wrap">
+          <svg viewBox="90 50 670 500">
+            <polygon fill="#a78bfa" points="243,53 494,53 494,162 292,162 233,221 292,281 568,281 568,400 421,548 198,548 198,439 370,439 428,380 370,321 94,321 94,202" />
+            <polygon fill="#5ee3c0" points="642,58 753,58 707,353 625,353" />
+            <rect fill="#5ee3c0" x="612" y="421" width="104" height="104" rx="24" />
+          </svg>
+        </div>
+        <h1 id="s1-title"><span class="line s1-word">Skill</span><span class="line s1-word">Issue</span></h1>
+        <div id="s1-sub"><span class="line s1-sub">Your next thought.</span><span class="line s1-sub">With the right context.</span></div>
+      </section>
+
+      <!-- Scene 2: Problem -->
+      <section id="s2" class="clip" data-start="11" data-duration="15" data-track-index="0">
+        <div class="brand">SKILL ISSUE</div>
+        <div class="kicker">THE PROBLEM</div>
+        <div class="chip s2-chip" style="left: 1020px; top: 200px; color: #3b82f6">▤</div>
+        <div class="chip s2-chip" style="left: 1240px; top: 140px; color: #3b82f6">&lt;/&gt;</div>
+        <div class="chip s2-chip" style="left: 1440px; top: 180px; color: #f59e0b">⑂</div>
+        <div class="chip s2-chip" style="left: 1640px; top: 130px; color: #06b6d4">⚛</div>
+        <div class="chip s2-chip" style="left: 1780px; top: 260px; color: #10b981">DB</div>
+        <div class="chip s2-chip" style="left: 960px; top: 700px; color: #10b981">✓</div>
+        <div class="chip s2-chip" style="left: 1800px; top: 560px; color: #2563eb">TS</div>
+        <h1 id="s2-title"><span class="line s2-word">Great ideas.</span><span class="line s2-word">Missing context.</span></h1>
+        <div id="s2-prompt">
+          <div class="prompt-label">&gt;_ YOUR PROMPT</div>
+          <div id="s2-typed"></div>
+          <div id="s2-q">Which stack? Which rules? Which details?</div>
+        </div>
+        <div class="pains">
+          <div class="pain">Skills get buried<small>Your best practices live in a doc nobody opens.</small></div>
+          <div class="pain">Stacks get retyped<small>FastAPI, Postgres, TS, every prompt.</small></div>
+          <div class="pain">Details slip away<small>Auth, retries, tests: forgotten.</small></div>
+        </div>
+      </section>
+
+      <!-- Scene 3: Solution -->
+      <section id="s3" class="clip" data-start="26" data-duration="20" data-track-index="0">
+        <div class="brand">SKILL ISSUE</div>
+        <div class="kicker">THE SOLUTION</div>
+        <h1 id="s3-title"><span class="line s3-word">The right context.</span><span class="line s3-word">Right as you type.</span></h1>
+        <svg id="s3-wires" viewBox="0 0 1920 1080">
+          <path class="wire" d="M540 535 C 610 535, 600 710, 660 710" stroke="#a78bfa" stroke-width="3" fill="none" />
+          <path class="wire" d="M540 710 L 660 710" stroke="#7dd3fc" stroke-width="3" fill="none" />
+          <path class="wire" d="M540 885 C 610 885, 600 710, 660 710" stroke="#5ee3c0" stroke-width="3" fill="none" />
+          <path class="wire" d="M780 710 L 900 710" stroke="#5ee3c0" stroke-width="3" fill="none" />
+        </svg>
+        <div class="card src" style="top: 460px"><b>Skills</b><div><span>&lt;/&gt;</span><span>⑂</span><span>✓</span></div></div>
+        <div class="card src" style="top: 635px"><b>Tech stack</b><div><span>⚛</span><span>⚡</span><span>PG</span></div></div>
+        <div class="card src" style="top: 810px"><b>Knowledge</b><div><span>▤</span><span>⑂</span><span>☰</span></div></div>
+        <div id="s3-hub">⌕</div>
+        <div id="s3-hub-label">SMART RETRIEVAL</div>
+        <div id="s3-editor" class="card">
+          <div class="ed-bar">
+            <div class="dot" style="background: #f87171"></div>
+            <div class="dot" style="background: #fbbf24"></div>
+            <div class="dot" style="background: #4ade80"></div>
+            <span style="margin-left: 300px; font-size: 18px; letter-spacing: 0.16em; color: #8b90a0">PROMPT</span>
+          </div>
+          <div class="ed-body">
+            <div id="s3-typed"></div>
+            <div id="s3-ghost">with FastAPI + Postgres, retries, auth and tests.</div>
+          </div>
+          <div id="s3-tab">Tab ↵</div>
+        </div>
+        <div id="s3-steps">
+          <span class="s3-step"><b>1</b>Tag</span>
+          <span class="s3-step"><b>2</b>Filter</span>
+          <span class="s3-step"><b>3</b>Complete</span>
+        </div>
+      </section>
+
+      <!-- Scene 4: Architecture -->
+      <section id="s4" class="clip" data-start="46" data-duration="19" data-track-index="0">
+        <div class="brand">SKILL ISSUE</div>
+        <div class="kicker">THE ARCHITECTURE</div>
+        <h1 id="s4-title">From thought to context.</h1>
+        <div class="steps">
+          <div class="step"><div class="n">1</div><h3>Type</h3><p>Companion panel</p><div class="tech">Next · React · TS</div></div>
+          <div class="step"><div class="n">2</div><h3>Route</h3><p>FastAPI</p><div class="tech">Pydantic · Uvicorn</div></div>
+          <div class="step"><div class="n">3</div><h3>Tag + embed</h3><p>Google Gemini</p><div class="tech">Gemini</div></div>
+          <div class="step"><div class="n">4</div><h3>Retrieve</h3><p>Tiger Data</p><div class="tech">Postgres · pgvector</div></div>
+          <div class="step"><div class="n">5</div><h3>Judge + write</h3><p>Google Gemini</p><div class="tech">Gemini</div></div>
+        </div>
+        <div id="s4-handoff">
+          <h3><i>6</i>Accept + hand off</h3>
+          <div class="targets"><span>MCP</span><span>Codex</span><span>Claude</span></div>
+        </div>
+        <div id="s4-snow">
+          <h3>❄ Snowflake</h3>
+          <p>Outcomes → acceptance classifier. Every accept makes it smarter.</p>
+        </div>
+      </section>
+
+      <!-- Scene 5: Outro -->
+      <section id="s5" class="clip" data-start="65" data-duration="11" data-track-index="0">
+        <svg id="s5-logo" viewBox="90 50 670 500">
+          <polygon id="s5-s" fill="#a78bfa" points="243,53 494,53 494,162 292,162 233,221 292,281 568,281 568,400 421,548 198,548 198,439 370,439 428,380 370,321 94,321 94,202" />
+          <g id="s5-bang">
+            <polygon fill="#5ee3c0" points="642,58 753,58 707,353 625,353" />
+            <rect fill="#5ee3c0" x="612" y="421" width="104" height="104" rx="24" />
+          </g>
+        </svg>
+        <h1 id="s5-name">skill issue</h1>
+        <div id="s5-tag">Context clicks.</div>
+        <div id="s5-sub">SKILLS / STACK / KNOWLEDGE</div>
+      </section>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const out = "power3.out";
+
+      // typewriter helper: seek-safe via onUpdate driven by a proxy tween
+      function typeInto(sel, text, at, dur, caret) {
+        const el = document.querySelector(sel);
+        const p = { n: 0 };
+        tl.to(
+          p,
+          {
+            n: text.length,
+            duration: dur,
+            ease: "none",
+            onUpdate: () => {
+              el.textContent = text.slice(0, Math.round(p.n)) + (caret ? "|" : "");
+            },
+          },
+          at,
+        );
+      }
+
+      // Scene 1 (0–11)
+      tl.fromTo("#s1-logo-wrap", { scale: 0.6, opacity: 0, rotation: -8 }, { scale: 1, opacity: 1, rotation: 0, duration: 1.2, ease: "back.out(1.6)" }, 0.3);
+      tl.fromTo(".s1-chip", { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.6, stagger: 0.12, ease: "back.out(2)" }, 0.9);
+      tl.fromTo(".s1-word", { y: 120, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, stagger: 0.18, ease: out }, 1.2);
+      tl.fromTo(".s1-sub", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, stagger: 0.35, ease: out }, 2.6);
+      tl.to(".s1-chip", { y: -18, duration: 2.5, stagger: 0.2, yoyo: true, repeat: 3, ease: "sine.inOut" }, 2);
+      tl.to("#s1-logo-wrap", { y: -12, duration: 3, yoyo: true, repeat: 2, ease: "sine.inOut" }, 2);
+      tl.to("#s1 > *", { opacity: 0, duration: 0.5 }, 10.4);
+
+      // Scene 2 (11–26)
+      tl.fromTo(".s2-word", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, stagger: 0.25, ease: out }, 11.4);
+      tl.fromTo("#s2-prompt", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: out }, 12.4);
+      typeInto("#s2-typed", "“Build an API.”", 13.2, 1.4, true);
+      tl.fromTo("#s2-q", { opacity: 0 }, { opacity: 1, duration: 0.6 }, 15);
+      tl.fromTo(".s2-chip", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.5, stagger: 0.1, ease: "back.out(2)" }, 13);
+      tl.to(".s2-chip", { y: 260, x: (i) => (i % 2 ? 60 : -60), rotation: (i) => (i % 2 ? 25 : -25), opacity: 0.15, duration: 2.2, stagger: 0.12, ease: "power2.in" }, 16.2);
+      tl.fromTo(".pain", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, stagger: 1.4, ease: out }, 17.2);
+      tl.to("#s2 > *", { opacity: 0, duration: 0.5 }, 25.4);
+
+      // Scene 3 (26–46)
+      tl.fromTo(".s3-word", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, stagger: 0.25, ease: out }, 26.4);
+      tl.fromTo("#s3 .src", { x: -60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.7, stagger: 0.25, ease: out }, 27.8);
+      document.querySelectorAll("#s3 .wire").forEach((w) => {
+        const len = w.getTotalLength();
+        w.style.strokeDasharray = len;
+        w.style.strokeDashoffset = len;
+      });
+      tl.fromTo("#s3-hub", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(2)" }, 29);
+      tl.fromTo("#s3-hub-label", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 29.3);
+      tl.fromTo("#s3-editor", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: out }, 29.4);
+      tl.to("#s3 .wire", { strokeDashoffset: 0, duration: 1, stagger: 0.15, ease: "power2.inOut" }, 30.2);
+      typeInto("#s3-typed", "Build a secure API", 31, 2, true);
+      tl.fromTo("#s3-hub", { boxShadow: "0 0 0 0 rgba(167,139,250,0.7)" }, { boxShadow: "0 0 0 40px rgba(167,139,250,0)", duration: 1, repeat: 1 }, 33);
+      tl.fromTo("#s3-ghost", { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: 0.6, ease: out }, 34.4);
+      tl.fromTo("#s3-tab", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 35.4);
+      tl.to("#s3-tab", { scale: 0.88, duration: 0.12, yoyo: true, repeat: 1 }, 37.4);
+      tl.to("#s3-ghost", { color: "#5ee3c0", duration: 0.3 }, 37.6);
+      tl.set("#s3-typed", { textContent: "Build a secure API" }, 37.6);
+      tl.fromTo(".s3-step", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.7, ease: out }, 39);
+      tl.to("#s3-editor", { boxShadow: "0 0 80px rgba(94,227,192,0.35)", duration: 0.8 }, 37.7);
+      tl.to("#s3 > *", { opacity: 0, duration: 0.5 }, 45.4);
+
+      // Scene 4 (46–65)
+      tl.fromTo("#s4-title", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: out }, 46.4);
+      tl.fromTo(".step", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, stagger: 1.3, ease: out }, 47.6);
+      tl.to(".step .n", { background: "#8b6ff0", duration: 0.3, stagger: 1.3 }, 48);
+      tl.fromTo("#s4-handoff", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: out }, 54.6);
+      tl.fromTo(".targets span", { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, stagger: 0.4, ease: "back.out(2)" }, 55.4);
+      tl.fromTo("#s4-snow", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: out }, 57.6);
+      tl.to("#s4 > *", { opacity: 0, duration: 0.5 }, 64.4);
+
+      // Scene 5 (65–76)
+      tl.fromTo("#s5-s", { x: -200, opacity: 0 }, { x: 0, opacity: 1, duration: 1, ease: "expo.out" }, 65.3);
+      tl.fromTo("#s5-bang", { y: -300, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, ease: "bounce.out" }, 65.9);
+      tl.fromTo("#s5-name", { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, ease: out }, 67);
+      tl.fromTo("#s5-tag", { opacity: 0 }, { opacity: 1, duration: 0.8 }, 68.2);
+      tl.fromTo("#s5-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 1.2, ease: out }, 69);
+      tl.to("#s5 > *", { opacity: 0, duration: 0.8 }, 75);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
