@@ -99,6 +99,11 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
 @property(nonatomic, strong) NSButton *setupButton;
 @property(nonatomic, strong) NSURLSessionDataTask *autocompleteTask;
 @property(nonatomic, strong) NSURLSessionDataTask *historyTask;
+@property(nonatomic, strong) NSTimer *draftWatchTimer;
+@property(nonatomic, copy) NSString *watchedDraft;
+@property(nonatomic, copy) NSString *pendingDraft;
+@property(nonatomic) BOOL hasWatchedDraft;
+@property(nonatomic) NSUInteger pendingDraftObservations;
 @property(nonatomic) NSUInteger sessionEpoch;
 @property(nonatomic) NSUInteger requestEpoch;
 @property(nonatomic) BOOL diagnosticFailureWritten;
@@ -158,12 +163,14 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     [self.engine attachClient:self.permissionRequired ? nil : client];
     [self.engine activate];
     [self recordDiagnosticActivation];
+    [self startDraftWatcherIfNeeded];
 }
 - (BOOL)isInputMethodProvider {
     return [NSBundle.mainBundle.bundleIdentifier isEqualToString:@"com.promptenhance.inputmethod.PromptEnhance"];
 }
 - (BOOL)isAccessibilityTrusted { return [PEAccessibilityClient isTrusted]; }
 - (void)deactivate {
+    [self stopDraftWatcher];
     self.sessionEpoch++;
     self.requestEpoch++;
     [self.autocompleteTask cancel];
@@ -186,6 +193,107 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     [self.engine dismissSuggestion];
     self.status = nil;
     [self updatePalette];
+}
+
+// InputMethodKit may not deliver a usable key event for Chromium's composer.
+// In the Accessibility-backed session, watch only the already-authorized,
+// focused draft. A new value must remain unchanged for a second observation
+// before it enters the engine's existing debounce/request path.
+- (BOOL)usesExternalPreviewSession {
+    return self.textClient != nil
+        && [self.textClient respondsToSelector:@selector(usesExternalPreview)]
+        && [self.textClient usesExternalPreview];
+}
+
+- (void)startDraftWatcherIfNeeded {
+    [self stopDraftWatcher];
+    if (!self.engine.active || self.permissionRequired || ![self usesExternalPreviewSession]) return;
+    NSString *initialDraft = [self.engine readCurrentPrompt];
+    self.watchedDraft = initialDraft;
+    self.hasWatchedDraft = initialDraft != nil;
+    self.pendingDraft = initialDraft;
+    self.pendingDraftObservations = initialDraft != nil ? 1 : 0;
+    __weak typeof(self) weakSelf = self;
+    self.draftWatchTimer = [NSTimer scheduledTimerWithTimeInterval:0.2 repeats:YES block:^(NSTimer *timer) {
+        (void)timer;
+        [weakSelf pollAccessibilityDraft];
+    }];
+}
+
+- (void)stopDraftWatcher {
+    [self.draftWatchTimer invalidate];
+    self.draftWatchTimer = nil;
+    self.watchedDraft = nil;
+    self.pendingDraft = nil;
+    self.hasWatchedDraft = NO;
+    self.pendingDraftObservations = 0;
+}
+
+- (void)resetDraftWatcherBaseline {
+    if (!self.draftWatchTimer || ![self usesExternalPreviewSession]) return;
+    NSString *draft = [self.engine readCurrentPrompt];
+    self.watchedDraft = draft;
+    self.hasWatchedDraft = draft != nil;
+    self.pendingDraft = nil;
+    self.pendingDraftObservations = 0;
+}
+
+- (void)pollAccessibilityDraft {
+    if (!self.engine.active || self.permissionRequired || ![self usesExternalPreviewSession]) {
+        [self stopDraftWatcher];
+        return;
+    }
+    NSString *draft = [self.engine readCurrentPrompt];
+    if (draft == nil) {
+        if (self.hasWatchedDraft || self.pendingDraft != nil) {
+            [self.autocompleteTask cancel];
+            self.requestEpoch++;
+            [self.engine dismissSuggestion];
+            self.status = nil;
+            self.pendingDraft = nil;
+            self.pendingDraftObservations = 0;
+            self.hasWatchedDraft = NO;
+            [self.palette orderOut:nil];
+            [self.preview orderOut:nil];
+        }
+        return;
+    }
+    if (!self.hasWatchedDraft) {
+        BOOL unchanged = [draft isEqualToString:self.watchedDraft];
+        self.watchedDraft = draft;
+        self.hasWatchedDraft = YES;
+        // Chromium can expose the field only after this input-method session
+        // starts. Treat its first usable draft as a change candidate rather
+        // than silently adopting it forever as a baseline.
+        self.pendingDraft = unchanged ? nil : draft;
+        self.pendingDraftObservations = unchanged ? 0 : 1;
+        [self recordDiagnosticActivation];
+        [self updatePalette];
+        return;
+    }
+    if ([draft isEqualToString:self.pendingDraft]) {
+        self.pendingDraftObservations++;
+    } else if ([draft isEqualToString:self.watchedDraft]) {
+        self.pendingDraft = nil;
+        self.pendingDraftObservations = 0;
+        return;
+    } else {
+        self.pendingDraft = draft;
+        self.pendingDraftObservations = 1;
+        return;
+    }
+    if (self.pendingDraftObservations < 2) return;
+
+    self.watchedDraft = draft;
+    self.pendingDraft = nil;
+    self.pendingDraftObservations = 0;
+    [self.autocompleteTask cancel];
+    [self.historyTask cancel];
+    self.requestEpoch++;
+    self.status = nil;
+    [self.engine textWillChange];
+    [self.engine scheduleSuggestion];
+    [self recordDiagnosticActivation];
 }
 - (void)recordDiagnosticActivation { [self recordDiagnostic:YES]; }
 - (void)recordDiagnosticFailureIfNeeded {
@@ -240,10 +348,16 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
         }
     }
     BOOL plainKey = !(event.modifierFlags & (NSEventModifierFlagCommand | NSEventModifierFlagControl | NSEventModifierFlagOption | NSEventModifierFlagShift));
-    if (event.type == NSEventTypeKeyDown && plainKey && event.keyCode == 48 && [self.engine acceptSuggestion]) return YES;
-    if (event.type == NSEventTypeKeyDown && plainKey && event.keyCode == 53 && self.engine.suggestion.length) {
-        [self dismiss];
+    if (event.type == NSEventTypeKeyDown && plainKey && event.keyCode == 48 && [self.engine acceptSuggestion]) {
+        [self resetDraftWatcherBaseline];
         return YES;
+    }
+    if (event.type == NSEventTypeKeyDown && plainKey && event.keyCode == 53) {
+        BOOL hadSuggestion = self.engine.suggestion.length > 0;
+        [self.historyTask cancel];
+        [self dismiss];
+        [self resetDraftWatcherBaseline];
+        return hadSuggestion;
     }
     [self.autocompleteTask cancel];
     [self.historyTask cancel];
@@ -537,10 +651,12 @@ static CGFloat PEClampPaletteCoordinate(CGFloat value, CGFloat minimum, CGFloat 
     PEPromptVersion *version = context[@"version"];
     if (!version || [context[@"epoch"] unsignedIntegerValue] != self.sessionEpoch || !self.engine.active) return;
     BOOL restored = [self.engine restorePrompt:version.savedText expectedPrompt:context[@"expected"]];
+    if (restored) [self resetDraftWatcherBaseline];
     self.status = restored ? @"Version restored" : @"Draft changed; try again";
     [self updatePalette];
 }
 - (void)dealloc {
+    [_draftWatchTimer invalidate];
     _engine.stateDidChange = nil;
     [_autocompleteTask cancel];
     [_historyTask cancel];

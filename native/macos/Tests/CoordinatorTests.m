@@ -8,6 +8,18 @@
 @property(nonatomic, copy) NSString *clientBundleID;
 @property(nonatomic) NSUInteger draftReadCount;
 @end
+
+@interface PEExternalCoordinatorFixtureTextView : PECoordinatorFixtureTextView
+@end
+@implementation PEExternalCoordinatorFixtureTextView
+- (BOOL)usesExternalPreview { return YES; }
+- (BOOL)replaceEntireDraft:(NSString *)prompt expectedPrompt:(NSString *)expectedPrompt {
+    if (![self.string isEqualToString:expectedPrompt] || self.selectedRange.length != 0 || self.selectedRange.location != self.string.length) return NO;
+    self.string = prompt;
+    self.selectedRange = NSMakeRange(prompt.length, 0);
+    return YES;
+}
+@end
 @implementation PECoordinatorFixtureTextView
 - (NSInteger)length { self.draftReadCount++; return (NSInteger)self.string.length; }
 - (NSString *)bundleIdentifier { return self.clientBundleID ?: @"com.promptenhance.input.fixture"; }
@@ -55,6 +67,7 @@
 static NSDictionary *PELastSaveBody;
 static NSString *PEHistoryPrompt;
 static NSUInteger PEEnhancementRequestCount;
+static NSTimeInterval PEEnhancementResponseDelay;
 
 static NSData *PERequestBody(NSURLRequest *request) {
     if (request.HTTPBody) return request.HTTPBody;
@@ -116,9 +129,16 @@ static NSDictionary *PEVersion(NSString *prompt, NSString *suggestion, NSString 
     }
     NSHTTPURLResponse *response = [[NSHTTPURLResponse alloc] initWithURL:request.URL statusCode:payload ? 200 : 404 HTTPVersion:@"HTTP/1.1" headerFields:@{ @"Content-Type": @"application/json" }];
     NSData *data = [NSJSONSerialization dataWithJSONObject:payload ?: @{} options:0 error:nil];
-    [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
-    [self.client URLProtocol:self didLoadData:data];
-    [self.client URLProtocolDidFinishLoading:self];
+    void (^deliver)(void) = ^{
+        [self.client URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
+        [self.client URLProtocol:self didLoadData:data];
+        [self.client URLProtocolDidFinishLoading:self];
+    };
+    if ([path isEqualToString:@"/v1/enhance"] && PEEnhancementResponseDelay > 0) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(PEEnhancementResponseDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), deliver);
+    } else {
+        deliver();
+    }
 }
 - (void)stopLoading {}
 @end
@@ -135,6 +155,13 @@ static void PECoordinatorWait(BOOL (^condition)(void)) {
     PECoordinatorRequire(condition(), @"asynchronous coordinator operation timed out");
 }
 
+static void PECoordinatorRunFor(NSTimeInterval interval) {
+    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:interval];
+    while (deadline.timeIntervalSinceNow > 0) {
+        [NSRunLoop.currentRunLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
+    }
+}
+
 static PEBackendClient *PECoordinatorBackend(void) {
     NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration ephemeralSessionConfiguration];
     configuration.protocolClasses = @[PECoordinatorProtocol.class];
@@ -149,6 +176,85 @@ static BOOL PEFrameIntersectsVisibleScreen(NSRect frame) {
         if (NSIntersectsRect(frame, screen.visibleFrame)) return YES;
     }
     return NO;
+}
+
+static void TestAccessibilityDraftWatcher(void) {
+    PEEnhancementResponseDelay = 0;
+    NSScreen *screen = NSScreen.mainScreen ?: NSScreen.screens.firstObject;
+    PECoordinatorRequire(screen != nil, @"test host has a screen for the accessibility watcher");
+
+    // Codex can publish the AX draft after the input-method session has
+    // activated. No InputMethodKit event is delivered for this transition.
+    PEExternalCoordinatorFixtureTextView *bootstrapView = [[PEExternalCoordinatorFixtureTextView alloc] initWithFrame:NSMakeRect(0, 0, 320, 120)];
+    bootstrapView.clientBundleID = @"com.openai.codex";
+    bootstrapView.usesSyntheticCaret = YES;
+    bootstrapView.syntheticCaret = NSMakeRect(NSMidX(screen.visibleFrame), NSMidY(screen.visibleFrame), 0, 18);
+    bootstrapView.string = @"The late Accessibility draft is now readable.";
+    bootstrapView.selectedRange = NSMakeRange(NSNotFound, 0);
+    PECoordinator *bootstrap = [[PECoordinator alloc] initWithClient:bootstrapView backend:PECoordinatorBackend() menuPresenter:nil];
+    [bootstrap activate];
+    PECompletionEngine *bootstrapEngine = [bootstrap valueForKey:@"engine"];
+    bootstrapEngine.debounceInterval = 0.01;
+    NSUInteger bootstrapRequests = PEEnhancementRequestCount;
+    bootstrapView.selectedRange = NSMakeRange(bootstrapView.string.length, 0);
+    PECoordinatorWait(^BOOL { return PEEnhancementRequestCount == bootstrapRequests + 1 && bootstrapEngine.suggestion.length > 0; });
+    NSPanel *bootstrapPalette = [bootstrap valueForKey:@"palette"];
+    PECoordinatorRequire(bootstrapPalette.isVisible, @"the first readable Accessibility draft updates the toolbar without a key event");
+    [bootstrap close];
+
+    PEExternalCoordinatorFixtureTextView *view = [[PEExternalCoordinatorFixtureTextView alloc] initWithFrame:NSMakeRect(0, 0, 320, 120)];
+    view.clientBundleID = @"com.openai.codex";
+    view.usesSyntheticCaret = YES;
+    view.syntheticCaret = NSMakeRect(NSMidX(screen.visibleFrame), NSMidY(screen.visibleFrame), 0, 18);
+    view.string = @"Initial Accessibility draft.";
+    view.selectedRange = NSMakeRange(view.string.length, 0);
+    PECoordinator *coordinator = [[PECoordinator alloc] initWithClient:view backend:PECoordinatorBackend() menuPresenter:nil];
+    [coordinator activate];
+    PECompletionEngine *engine = [coordinator valueForKey:@"engine"];
+    engine.debounceInterval = 0.01;
+    PECoordinatorWait(^BOOL { return engine.suggestion.length > 0; });
+    PECoordinatorRequire([engine.prompt isEqualToString:view.string], @"the first usable Accessibility draft can produce an automatic preview");
+    [coordinator dismiss];
+    NSUInteger requestsBeforeTyping = PEEnhancementRequestCount;
+
+    // This simulates Chromium editing the AX value without delivering a usable
+    // InputMethodKit key callback to the helper.
+    view.string = @"Changed through the Accessibility text path.";
+    view.selectedRange = NSMakeRange(view.string.length, 0);
+    PECoordinatorWait(^BOOL { return PEEnhancementRequestCount == requestsBeforeTyping + 1 && engine.suggestion.length > 0; });
+    PECoordinatorRequire(!view.hasMarkedText, @"the accessibility watcher keeps the external preview out of the host draft");
+    PECoordinatorRequire([engine.prompt isEqualToString:view.string], @"the watcher submits the observed full draft without a handleEvent callback");
+
+    // A response for an older snapshot must not survive a later observed AX
+    // change, even when the host supplied no key event for either change.
+    [coordinator dismiss];
+    PEEnhancementResponseDelay = 0.6;
+    NSUInteger requestsBeforeStaleChange = PEEnhancementRequestCount;
+    view.string = @"First delayed Accessibility draft.";
+    view.selectedRange = NSMakeRange(view.string.length, 0);
+    PECoordinatorWait(^BOOL { return PEEnhancementRequestCount == requestsBeforeStaleChange + 1; });
+    view.string = @"Second Accessibility draft wins.";
+    view.selectedRange = NSMakeRange(view.string.length, 0);
+    PECoordinatorWait(^BOOL { return PEEnhancementRequestCount == requestsBeforeStaleChange + 2 && [engine.prompt isEqualToString:view.string] && engine.suggestion.length > 0; });
+    PECoordinatorRequire([engine.prompt isEqualToString:@"Second Accessibility draft wins."], @"a stale delayed response is ignored after the watcher sees a newer draft");
+    PEEnhancementResponseDelay = 0;
+
+    view.selectedRange = NSMakeRange(0, 0);
+    PECoordinatorRunFor(0.35);
+    NSPanel *preview = [coordinator valueForKey:@"preview"];
+    NSPanel *palette = [coordinator valueForKey:@"palette"];
+    PECoordinatorRequire(!engine.suggestion.length && !preview.isVisible && !palette.isVisible, @"an invalid focused selection cancels and hides the accessibility preview");
+    view.selectedRange = NSMakeRange(view.string.length, 0);
+    NSUInteger requestsAfterInvalidFocus = PEEnhancementRequestCount;
+    PECoordinatorRunFor(0.35);
+    PECoordinatorRequire(PEEnhancementRequestCount == requestsAfterInvalidFocus, @"refocusing an unchanged draft establishes a baseline instead of resending it");
+
+    [coordinator close];
+    NSUInteger readsAfterClose = view.draftReadCount;
+    view.string = @"No watcher should read this after close.";
+    view.selectedRange = NSMakeRange(view.string.length, 0);
+    PECoordinatorRunFor(0.35);
+    PECoordinatorRequire(view.draftReadCount == readsAfterClose, @"closing the coordinator invalidates the accessibility draft watcher");
 }
 
 int PECoordinatorTests(void) {
@@ -239,6 +345,8 @@ int PECoordinatorTests(void) {
         PECoordinatorRequire(presentedMenu.numberOfItems == 2, @"the visible history button opens an actionable history menu");
         PECoordinatorRequire(window.firstResponder == view && !palette.isKeyWindow, @"opening history does not replace the fixture's text responder");
         [coordinator close];
+
+        TestAccessibilityDraftWatcher();
 
         PECoordinatorFixtureTextView *blockedView = [[PECoordinatorFixtureTextView alloc] initWithFrame:NSMakeRect(0, 0, 320, 120)];
         blockedView.clientBundleID = @"com.openai.codex";

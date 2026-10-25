@@ -4,6 +4,8 @@ Status: **experimental; native AppKit tests and Codex host compatibility are sep
 
 `native/macos/` supplies a separate macOS **input method**, using Apple's public InputMethodKit API for key delivery. Codex does not expose its complete draft through that protocol. With explicit Accessibility permission for the installed Prompt Enhance input-method app, the helper instead reads the focused Codex text area through macOS's supported Accessibility API and displays a gray suggestion overlay at the caret. The draft changes only on explicit acceptance or restoration. It does not replace the editor, patch the Codex application, attach a debugger, inspect screens, synthesize keys, or use the clipboard.
 
+The helper requests Electron's documented [`AXManualAccessibility` opt-in](https://www.electronjs.org/docs/latest/tutorial/accessibility) for the trusted, frontmost Codex process. It observes focused draft changes even when the editor does not deliver an input-method key callback. Full text always comes from the exact focused Accessibility text area; a missing AX caret range can use a stable input-method caret only after rechecking the same focused element and full value.
+
 This is a workaround outside the Codex plugin API. OpenAI's current [MCP extensions](https://developers.openai.com/plugins/build/extensions) provide mentions, panels and message insertion, but no documented live-draft or custom ghost-text hooks. Apple's [InputMethodKit](https://developer.apple.com/documentation/inputmethodkit) provides per-client input sessions and marked text; the installed macOS SDK documents the text and range contracts used here.
 
 ## Build and install
@@ -34,7 +36,7 @@ Choose **Prompt Enhance** in the macOS input menu if needed. If it is absent, op
 ## Use in the textbox
 
 1. Select the Prompt Enhance input source and focus Codex's message box.
-2. Type at least 12 UTF-16 units, with the caret at the end of the draft. After a 900 ms pause, the helper requests a completion from the existing backend.
+2. Type at least 12 UTF-16 units, with the caret at the end of the draft, and pause for a few seconds. Stable changes trigger the existing debounce and completion request even when Codex omits an input-method key event.
 3. **Tab** explicitly accepts a shown suffix. **Escape**, continued typing, clicking away, changing input sessions, and Enter discard it. Enter keeps its normal Codex behavior with the original draft.
 4. The small native candidate bar beside the caret has a bookmark and a history clock. The bookmark saves the current base and any unaccepted suffix separately. Two-finger right-clicking the gray suggestion overlay offers the same save action.
 5. Open the clock, choose a version, inspect its preview, and select **Replace current draft with this version**. It restores directly through the text client and never sends the prompt. Older/newer menu pages keep every saved version reachable.

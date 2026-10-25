@@ -8,6 +8,10 @@
 @property(nonatomic) NSRange insertedRange;
 @property(nonatomic, copy) void (^didInsert)(NSString *, NSRange);
 @property(nonatomic) NSRect nativeCaret;
+@property(nonatomic) NSRange selection;
+@property(nonatomic) NSRange changedSelection;
+@property(nonatomic) BOOL changesSelectionAfterFirstRead;
+@property(nonatomic) NSUInteger selectionReadCount;
 @end
 
 @implementation PENativeClientMock
@@ -16,10 +20,17 @@
         _bundle = @"com.openai.codex";
         _marked = NSMakeRange(NSNotFound, 0);
         _insertedRange = NSMakeRange(NSNotFound, 0);
+        _selection = NSMakeRange(NSNotFound, 0);
+        _changedSelection = NSMakeRange(NSNotFound, 0);
     }
     return self;
 }
-- (NSRange)selectedRange { return NSMakeRange(NSNotFound, 0); }
+- (NSRange)selectedRange {
+    NSRange result = _selection;
+    _selectionReadCount++;
+    if (_changesSelectionAfterFirstRead && _selectionReadCount == 1) _selection = _changedSelection;
+    return result;
+}
 - (NSRange)markedRange { return _marked; }
 - (NSAttributedString *)attributedSubstringFromRange:(NSRange)range { (void)range; return nil; }
 - (NSInteger)length { return NSNotFound; }
@@ -60,6 +71,13 @@
 @property(nonatomic) NSUInteger rangeSetCount;
 @property(nonatomic) CGRect bounds;
 @property(nonatomic) AXError boundsError;
+@property(nonatomic) BOOL selectedRangeAvailable;
+@property(nonatomic) BOOL changesFocusOnSecondRead;
+@property(nonatomic) BOOL changesValueOnSecondRead;
+@property(nonatomic) BOOL lacksFocusedElement;
+@property(nonatomic) NSUInteger manualAccessibilityEnableCount;
+@property(nonatomic) pid_t lastManualAccessibilityPID;
+@property(nonatomic) AXError manualAccessibilityError;
 @end
 
 @implementation PEAccessibilityAPIMock
@@ -73,6 +91,7 @@
         _frontPID = 701;
         _value = @"Draft accessible to the adapter";
         _selectedRange = CFRangeMake(_value.length, 0);
+        _selectedRangeAvailable = YES;
         _settableValue = YES;
         _bounds = CGRectMake(16, 24, 0, 18);
     }
@@ -87,6 +106,12 @@
 - (BOOL)isTrusted { return _trusted; }
 - (AXUIElementRef)copyFocusedElement {
     _focusedCallCount++;
+    if (_lacksFocusedElement) return NULL;
+    if (_focusedCallCount == 2 && _changesFocusOnSecondRead) {
+        _useAlternate = YES;
+        _frontPID = 702;
+    }
+    if (_focusedCallCount == 2 && _changesValueOnSecondRead) _value = @"A changed draft";
     return (AXUIElementRef)CFRetain(self.current);
 }
 - (AXUIElementRef)copyParentOfElement:(AXUIElementRef)element {
@@ -103,10 +128,16 @@
     if (CFEqual(attribute, kAXSubroleAttribute)) return _secure ? [@"AXSecureTextField" copy] : nil;
     if (CFEqual(attribute, kAXValueAttribute)) return [_value copy];
     if (CFEqual(attribute, kAXSelectedTextRangeAttribute)) {
+        if (!_selectedRangeAvailable) return nil;
         AXValueRef value = AXValueCreate(kAXValueCFRangeType, &_selectedRange);
         return CFBridgingRelease(value);
     }
     return nil;
+}
+- (AXError)enableAccessibilityForApplicationPID:(pid_t)pid {
+    _manualAccessibilityEnableCount++;
+    _lastManualAccessibilityPID = pid;
+    return _manualAccessibilityError;
 }
 - (AXError)isAttributeSettable:(CFStringRef)attribute onElement:(AXUIElementRef)element settable:(Boolean *)settable {
     if (!CFEqual(element, self.current) || !CFEqual(attribute, kAXValueAttribute)) return kAXErrorInvalidUIElement;
@@ -165,6 +196,95 @@ static void TestUntrustedNeverReadsAccessibility(void) {
     PEAccessRequire(client.length == NSNotFound, @"untrusted accessibility client must be inert");
     PEAccessRequire(api.focusedCallCount == 0, @"authorization is checked before AX focused-element access");
     PEAccessRequire([client.safeError containsString:@"Accessibility permission"], @"untrusted state has a generic explanation");
+    PEAccessRequire(api.manualAccessibilityEnableCount == 0, @"untrusted clients never opt a host into Accessibility");
+}
+
+static void TestElectronAccessibilityBootstrapIsCodexScopedAndPerProcess(void) {
+    PEAccessibilityAPIMock *api = nil;
+    PEAccessibilityClient *client = PEAccessClient(NULL, &api);
+    (void)client.length;
+    PEAccessRequire(api.manualAccessibilityEnableCount == 1 && api.lastManualAccessibilityPID == 701,
+                    @"the verified frontmost Codex process receives Electron's AX bootstrap once");
+    (void)client.length;
+    PEAccessRequire(api.manualAccessibilityEnableCount == 1, @"repeated reads never repeatedly bootstrap one Codex process");
+
+    api.useAlternate = YES;
+    api.frontPID = 702;
+    (void)client.length;
+    PEAccessRequire(api.manualAccessibilityEnableCount == 2 && api.lastManualAccessibilityPID == 702,
+                    @"a new verified Codex process is bootstrapped once");
+
+    PEAccessibilityAPIMock *unsupportedAPI = nil;
+    client = PEAccessClient(NULL, &unsupportedAPI);
+    unsupportedAPI.manualAccessibilityError = kAXErrorAttributeUnsupported;
+    PEAccessRequire(client.length == (NSInteger)unsupportedAPI.value.length,
+                    @"an unsupported Electron opt-in does not block an already-readable public AX field");
+    unsupportedAPI.lacksFocusedElement = YES;
+    PEAccessRequire(client.length == NSNotFound && [client.safeError containsString:@"opt-in was unsupported"],
+                    @"an unavailable field after an unsupported opt-in reports that specific safe stage");
+
+    PENativeClientMock *native = nil;
+    client = PEAccessClient(&native, &api);
+    native.bundle = @"com.example.other";
+    (void)client.length;
+    PEAccessRequire(api.manualAccessibilityEnableCount == 0, @"a non-Codex client never bootstraps the frontmost application");
+}
+
+static void TestMissingAXRangeUsesStableNativeCaret(void) {
+    PENativeClientMock *native = nil;
+    PEAccessibilityAPIMock *api = nil;
+    PEAccessibilityClient *client = PEAccessClient(&native, &api);
+    api.selectedRangeAvailable = NO;
+    native.selection = NSMakeRange(api.value.length, 0);
+
+    PEAccessRequire(NSEqualRanges(client.selectedRange, native.selection),
+                    @"a missing AX selection range may use an identical stable native caret");
+    PEAccessRequire([[client attributedSubstringFromRange:NSMakeRange(0, 5)].string isEqualToString:@"Draft"],
+                    @"a complete AX value remains readable without an AX selection range");
+    (void)client.length;
+    [client insertText:@" accepted" replacementRange:NSMakeRange(NSNotFound, 0)];
+    PEAccessRequire([native.insertedText isEqualToString:@" accepted"],
+                    @"Tab revalidates the same safe native-caret fallback before writing");
+}
+
+static void TestMissingAXRangeRejectsAnUnstableOrInvalidNativeCaret(void) {
+    PENativeClientMock *native = nil;
+    PEAccessibilityAPIMock *api = nil;
+    PEAccessibilityClient *client = PEAccessClient(&native, &api);
+    api.selectedRangeAvailable = NO;
+    native.selection = NSMakeRange(api.value.length, 0);
+    native.changedSelection = NSMakeRange(api.value.length - 1, 0);
+    native.changesSelectionAfterFirstRead = YES;
+    PEAccessRequire(client.selectedRange.location == NSNotFound,
+                    @"a native caret changing during the bracketed AX read is rejected");
+
+    native = nil;
+    api = nil;
+    client = PEAccessClient(&native, &api);
+    api.selectedRangeAvailable = NO;
+    native.selection = NSMakeRange(api.value.length + 1, 0);
+    PEAccessRequire(client.selectedRange.location == NSNotFound,
+                    @"a native caret outside the AX value is rejected before any write");
+}
+
+static void TestMissingAXRangeRejectsChangedFocusOrText(void) {
+    PENativeClientMock *native = nil;
+    PEAccessibilityAPIMock *api = nil;
+    PEAccessibilityClient *client = PEAccessClient(&native, &api);
+    api.selectedRangeAvailable = NO;
+    native.selection = NSMakeRange(api.value.length, 0);
+    api.changesFocusOnSecondRead = YES;
+    PEAccessRequire(client.selectedRange.location == NSNotFound,
+                    @"a focus change during native-caret verification is rejected");
+
+    native = nil;
+    api = nil;
+    client = PEAccessClient(&native, &api);
+    api.selectedRangeAvailable = NO;
+    native.selection = NSMakeRange(api.value.length, 0);
+    api.changesValueOnSecondRead = YES;
+    PEAccessRequire(client.selectedRange.location == NSNotFound,
+                    @"a text change during native-caret verification is rejected");
 }
 
 static void TestReadsFullAccessibilityValueAndUsesExternalPreview(void) {
@@ -282,6 +402,10 @@ static void TestFailedWritesPreserveOrRestoreTheOriginalSelection(void) {
 int PEAccessibilityClientTests(void) {
     @autoreleasepool {
         TestUntrustedNeverReadsAccessibility();
+        TestElectronAccessibilityBootstrapIsCodexScopedAndPerProcess();
+        TestMissingAXRangeUsesStableNativeCaret();
+        TestMissingAXRangeRejectsAnUnstableOrInvalidNativeCaret();
+        TestMissingAXRangeRejectsChangedFocusOrText();
         TestReadsFullAccessibilityValueAndUsesExternalPreview();
         TestSecureFieldIsRejectedWithoutParentTraversal();
         TestExternalGeometryUsesAuthorizedAXBoundsInsteadOfNativePlaceholders();

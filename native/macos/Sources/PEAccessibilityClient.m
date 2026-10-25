@@ -46,6 +46,29 @@ static BOOL PEReadAXRange(id value, CFRange *range);
     return AXUIElementSetAttributeValue(element, attribute, value);
 }
 
+- (AXError)enableAccessibilityForApplicationPID:(pid_t)pid {
+    if (pid <= 0) return kAXErrorIllegalArgument;
+    static NSMutableDictionary<NSNumber *, NSNumber *> *attemptResults;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        attemptResults = [NSMutableDictionary dictionary];
+    });
+    @synchronized (attemptResults) {
+        NSNumber *cached = attemptResults[@(pid)];
+        if (cached != nil) return (AXError)cached.intValue;
+        AXUIElementRef application = AXUIElementCreateApplication(pid);
+        AXError error = kAXErrorFailure;
+        if (application != NULL) {
+            // Electron documents AXManualAccessibility as the opt-in that
+            // lets third-party assistive software receive its AX tree.
+            error = AXUIElementSetAttributeValue(application, CFSTR("AXManualAccessibility"), kCFBooleanTrue);
+            CFRelease(application);
+        }
+        attemptResults[@(pid)] = @(error);
+        return error;
+    }
+}
+
 - (AXError)copyBoundsForRange:(CFRange)range fromElement:(AXUIElementRef)element rect:(CGRect *)rect {
     AXValueRef rangeValue = AXValueCreate(kAXValueCFRangeType, &range);
     if (rangeValue == NULL) return kAXErrorFailure;
@@ -80,6 +103,8 @@ static BOOL PEReadAXRange(id value, CFRange *range);
 @property(nonatomic, copy, readwrite, nullable) NSString *safeError;
 @property(nonatomic) AXUIElementRef boundElement;
 @property(nonatomic) pid_t boundPID;
+@property(nonatomic) pid_t manualAccessibilityAttemptPID;
+@property(nonatomic) AXError manualAccessibilityBootstrapError;
 @end
 
 @implementation PEAccessibilityClient
@@ -121,8 +146,11 @@ static BOOL PEReadAXRange(id value, CFRange *range);
 
 - (NSInteger)length {
     NSString *value = nil;
-    NSRange selection;
-    return [self readFocusedValue:&value selection:&selection bind:YES] ? (NSInteger)value.length : NSNotFound;
+    AXUIElementRef element = NULL;
+    BOOL found = [self copyFocusedElementValue:&value element:&element];
+    if (found) [self bindElement:element];
+    if (element != NULL) CFRelease(element);
+    return found ? (NSInteger)value.length : NSNotFound;
 }
 
 - (NSRange)selectedRange {
@@ -133,8 +161,11 @@ static BOOL PEReadAXRange(id value, CFRange *range);
 
 - (NSAttributedString *)attributedSubstringFromRange:(NSRange)range {
     NSString *value = nil;
-    NSRange selection;
-    if (![self readFocusedValue:&value selection:&selection bind:YES] || range.location == NSNotFound || NSMaxRange(range) > value.length) return nil;
+    AXUIElementRef element = NULL;
+    BOOL found = [self copyFocusedElementValue:&value element:&element];
+    if (found) [self bindElement:element];
+    if (element != NULL) CFRelease(element);
+    if (!found || range.location == NSNotFound || NSMaxRange(range) > value.length) return nil;
     return [[NSAttributedString alloc] initWithString:[value substringWithRange:range]];
 }
 
@@ -234,9 +265,8 @@ static BOOL PEReadAXRange(id value, CFRange *range);
 
 - (NSRect)accessibilityRectForRange:(NSRange)range {
     NSString *value = nil;
-    NSRange selection;
     AXUIElementRef element = NULL;
-    if (![self copyFocusedValue:&value selection:&selection element:&element] || range.location == NSNotFound || NSMaxRange(range) > value.length) {
+    if (![self copyFocusedElementValue:&value element:&element] || range.location == NSNotFound || NSMaxRange(range) > value.length) {
         if (element != NULL) CFRelease(element);
         return NSZeroRect;
     }
@@ -261,8 +291,26 @@ static BOOL PEReadAXRange(id value, CFRange *range);
 }
 
 - (BOOL)copyFocusedValue:(NSString * _Nullable * _Nonnull)value selection:(NSRange *)selection element:(AXUIElementRef _Nullable * _Nonnull)outElement {
+    AXUIElementRef element = NULL;
+    if (![self copyFocusedElementValue:value element:&element]) {
+        *selection = NSMakeRange(NSNotFound, 0);
+        *outElement = NULL;
+        return NO;
+    }
+    NSRange resolvedSelection = NSMakeRange(NSNotFound, 0);
+    if (![self resolveSelectionForElement:element value:*value selection:&resolvedSelection]) {
+        CFRelease(element);
+        *selection = NSMakeRange(NSNotFound, 0);
+        *outElement = NULL;
+        return NO;
+    }
+    *selection = resolvedSelection;
+    *outElement = element;
+    return YES;
+}
+
+- (BOOL)copyFocusedElementValue:(NSString * _Nullable * _Nonnull)value element:(AXUIElementRef _Nullable * _Nonnull)outElement {
     *value = nil;
-    *selection = NSMakeRange(NSNotFound, 0);
     *outElement = NULL;
     if (![self.accessibilityAPI isTrusted]) {
         [self setSafeError:@"Accessibility permission is required to read the active Codex draft."];
@@ -275,10 +323,25 @@ static BOOL PEReadAXRange(id value, CFRange *range);
         [self setSafeError:@"Prompt Enhance can only access the active Codex draft."];
         return NO;
     }
+    // The installed Codex app is Electron-based. Its documented opt-in is
+    // intentionally attempted only after both the native and frontmost app
+    // identify as Codex, and at most once for each process instance. An
+    // unsupported opt-in is not fatal: some hosts already expose their AX
+    // tree, which we still validate through the normal public attributes.
+    if ([clientBundle isEqualToString:@"com.openai.codex"] && _manualAccessibilityAttemptPID != frontPID) {
+        _manualAccessibilityAttemptPID = frontPID;
+        _manualAccessibilityBootstrapError = [self.accessibilityAPI enableAccessibilityForApplicationPID:frontPID];
+    }
 
     AXUIElementRef candidate = [self.accessibilityAPI copyFocusedElement];
     if (candidate == NULL) {
-        [self setSafeError:@"Prompt Enhance requires the focused Codex message field."];
+        if (_manualAccessibilityAttemptPID == frontPID && _manualAccessibilityBootstrapError == kAXErrorAttributeUnsupported) {
+            [self setSafeError:@"Codex did not expose its message field after the Electron Accessibility opt-in was unsupported."];
+        } else if (_manualAccessibilityAttemptPID == frontPID && _manualAccessibilityBootstrapError != kAXErrorSuccess) {
+            [self setSafeError:@"Codex did not expose its message field after the Electron Accessibility opt-in failed."];
+        } else {
+            [self setSafeError:@"Prompt Enhance requires the focused Codex message field."];
+        }
         return NO;
     }
     pid_t elementPID = [self.accessibilityAPI processIdentifierForElement:candidate];
@@ -298,18 +361,48 @@ static BOOL PEReadAXRange(id value, CFRange *range);
         return NO;
     }
     id rawValue = [self.accessibilityAPI copyAttribute:kAXValueAttribute fromElement:candidate];
-    id rawRange = [self.accessibilityAPI copyAttribute:kAXSelectedTextRangeAttribute fromElement:candidate];
-    CFRange axRange;
-    if (![rawValue isKindOfClass:NSString.class] || [(NSString *)rawValue length] > PEMaximumPromptUTF16Length
-        || !PEReadAXRange(rawRange, &axRange) || axRange.location < 0 || axRange.length < 0
-        || (NSUInteger)(axRange.location + axRange.length) > [(NSString *)rawValue length]) {
+    if (![rawValue isKindOfClass:NSString.class] || [(NSString *)rawValue length] > PEMaximumPromptUTF16Length) {
         CFRelease(candidate);
         [self setSafeError:@"Codex did not provide a supported Accessibility draft."];
         return NO;
     }
     *value = rawValue;
-    *selection = NSMakeRange((NSUInteger)axRange.location, (NSUInteger)axRange.length);
     *outElement = candidate;
+    return YES;
+}
+
+- (BOOL)resolveSelectionForElement:(AXUIElementRef)element value:(NSString *)value selection:(NSRange *)selection {
+    id rawRange = [self.accessibilityAPI copyAttribute:kAXSelectedTextRangeAttribute fromElement:element];
+    CFRange axRange;
+    if (PEReadAXRange(rawRange, &axRange) && axRange.location >= 0 && axRange.length >= 0
+        && (NSUInteger)(axRange.location + axRange.length) <= value.length) {
+        *selection = NSMakeRange((NSUInteger)axRange.location, (NSUInteger)axRange.length);
+        return YES;
+    }
+
+    // Chromium can expose a complete focused AX text area before it exposes
+    // its AX selection range. The input-method selection is usable only when
+    // it is stable across a second exact AX field/value read. This never uses
+    // IMK text, never walks parents, and rejects a noncollapsed selection.
+    NSRange first = [self.nativeClient selectedRange];
+    if (first.location == NSNotFound || first.length != 0 || first.location > value.length) {
+        [self setSafeError:@"Codex did not provide a stable cursor for the focused draft."];
+        return NO;
+    }
+    NSString *confirmedValue = nil;
+    AXUIElementRef confirmedElement = NULL;
+    BOOL confirmed = [self copyFocusedElementValue:&confirmedValue element:&confirmedElement];
+    NSRange second = [self.nativeClient selectedRange];
+    BOOL stable = confirmed && confirmedElement != NULL && CFEqual(element, confirmedElement)
+        && [value isEqualToString:confirmedValue]
+        && NSEqualRanges(first, second) && second.location != NSNotFound && second.length == 0
+        && second.location <= confirmedValue.length;
+    if (confirmedElement != NULL) CFRelease(confirmedElement);
+    if (!stable) {
+        [self setSafeError:@"Codex did not provide a stable cursor for the focused draft."];
+        return NO;
+    }
+    *selection = first;
     return YES;
 }
 

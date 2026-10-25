@@ -10,6 +10,7 @@
 @property (nonatomic) BOOL externalPreview;
 @property (nonatomic) BOOL replaceResult;
 @property (nonatomic) NSUInteger replaceCalls;
+@property (nonatomic, copy) NSString *safeError;
 @end
 
 @implementation PEMockClient
@@ -144,6 +145,7 @@ static void TestExternalPreviewRejectsStaleAcceptAndDelegatesRestore(void) {
     [engine attachClient:client]; [engine activate]; [engine scheduleSuggestion]; Drain(); completion(@" with tests", nil); Drain();
     client.text = @"Write a safer AX adapter";
     client.selection = NSMakeRange(client.text.length, 0);
+    Require([[engine readCurrentPrompt] isEqualToString:client.text] && !engine.suggestion, @"observing an eventless AX edit invalidates the old suffix before rebinding its prefix");
     Require(![engine acceptSuggestion], @"external preview refuses a stale Tab acceptance");
     Require([client.text isEqualToString:@"Write a safer AX adapter"], @"stale external preview does not alter the draft");
 
@@ -177,4 +179,15 @@ static void TestUnsupportedCodeDraftRangeFailsClosed(void) {
     Require([engine.safeError isEqualToString:@"Codex did not provide a supported draft range."], @"unsupported Codex draft ranges report a safe error");
 }
 
-int PEEngineTests(void) { @autoreleasepool { TestAcceptDismissAndUTF16(); TestStaleAndMouseBlurSafety(); TestDebounceSamplesAfterHostEdit(); TestAcceptRequiresUnchangedPrefix(); TestScopeAndUnsafeRanges(); TestRestoreGuard(); TestExternalPreviewDefersEditsUntilTab(); TestExternalPreviewRejectsStaleAcceptAndDelegatesRestore(); TestExternalPreviewAppendFailureFailsClosed(); TestUnsupportedCodeDraftRangeFailsClosed(); NSLog(@"PECompletionEngine tests passed"); } return 0; }
+static void TestAccessibilityReadFailureRemainsActionable(void) {
+    __block NSUInteger calls = 0;
+    PEMockClient *client = [[PEMockClient alloc] initWithText:@"An unreadable editor draft" bundle:@"com.openai.codex"];
+    client.selection = NSMakeRange(NSNotFound, 0);
+    client.safeError = @"Codex did not expose the focused field's caret range.";
+    PECompletionEngine *engine = EngineWithCapture(^(PECompletionResponse response, NSString *prompt, NSUInteger cursor) { calls++; });
+    [engine attachClient:client]; [engine activate]; [engine scheduleSuggestion]; Drain();
+    Require(calls == 0 && !engine.suggestion, @"an unreadable AX draft never reaches the backend");
+    Require([engine.safeError isEqualToString:client.safeError], @"the specific content-free AX failure remains visible for diagnosis");
+}
+
+int PEEngineTests(void) { @autoreleasepool { TestAcceptDismissAndUTF16(); TestStaleAndMouseBlurSafety(); TestDebounceSamplesAfterHostEdit(); TestAcceptRequiresUnchangedPrefix(); TestScopeAndUnsafeRanges(); TestRestoreGuard(); TestExternalPreviewDefersEditsUntilTab(); TestExternalPreviewRejectsStaleAcceptAndDelegatesRestore(); TestExternalPreviewAppendFailureFailsClosed(); TestUnsupportedCodeDraftRangeFailsClosed(); TestAccessibilityReadFailureRemainsActionable(); NSLog(@"PECompletionEngine tests passed"); } return 0; }

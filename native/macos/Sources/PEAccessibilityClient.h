@@ -13,6 +13,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable id)copyAttribute:(CFStringRef)attribute fromElement:(AXUIElementRef)element;
 - (AXError)isAttributeSettable:(CFStringRef)attribute onElement:(AXUIElementRef)element settable:(Boolean *)settable;
 - (AXError)setAttribute:(CFStringRef)attribute value:(CFTypeRef)value onElement:(AXUIElementRef)element;
+/// Electron applications need this documented, per-process opt-in before
+/// they expose their Accessibility tree to third-party assistive software.
+/// Test doubles record this call without constructing a real application AX
+/// element.
+- (AXError)enableAccessibilityForApplicationPID:(pid_t)pid;
 - (AXError)copyBoundsForRange:(CFRange)range fromElement:(AXUIElementRef)element rect:(CGRect *)rect;
 - (pid_t)processIdentifierForElement:(AXUIElementRef)element;
 - (pid_t)frontmostApplicationPID;

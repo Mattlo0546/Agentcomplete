@@ -12,6 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable NSString *)bundleIdentifier;
 - (NSRect)firstRectForCharacterRange:(NSRange)range actualRange:(nullable NSRangePointer)actualRange;
 @optional
+/// A content-free reason a focused draft could not be read.
+@property (nonatomic, copy, readonly, nullable) NSString *safeError;
 - (NSRect)caretRect;
 - (BOOL)isPointInMarkedText:(NSPoint)point;
 /// When enabled by an accessibility-authorized adapter, the coordinator draws

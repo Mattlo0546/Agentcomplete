@@ -141,6 +141,11 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
     if (self.suggestion && [self ownsExactlyMarkedSuggestionInClient:self.client]) return self.prompt;
     PECompletionSnapshot *snapshot = [self snapshotForClient:self.client requireNoMarkedText:YES];
     if (!snapshot) return nil;
+    // AX draft observation can run without a corresponding IME key event.
+    // Keep a displayed suffix bound to its original prefix: discovering a
+    // changed draft must invalidate the old suffix before updating prompt.
+    if (self.suggestion.length && [self usesExternalPreviewForClient:self.client]
+        && ![snapshot.text isEqualToString:self.prompt]) [self textWillChange];
     self.prompt = snapshot.text;
     return snapshot.text;
 }
@@ -196,12 +201,12 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
     if (![self clientIsAllowed:client]) return nil;
     NSInteger documentLength = [client length];
     if (documentLength == NSNotFound || documentLength < 0 || (NSUInteger)documentLength > PE_MAX_PROMPT_UNITS) {
-        [self setSafeError:@"Codex did not provide a supported draft range."];
+        [self setSafeError:[self readFailureForClient:client]];
         return nil;
     }
     NSRange selection = [client selectedRange];
     if (selection.location == NSNotFound || selection.length != 0 || selection.location != (NSUInteger)documentLength) {
-        [self setSafeError:@"Codex did not provide a supported draft range."];
+        [self setSafeError:[self readFailureForClient:client]];
         return nil;
     }
     NSRange marked = [client markedRange];
@@ -210,13 +215,18 @@ static const NSUInteger PE_MIN_PROMPT_UNITS = 12;
     if (requireNoMarkedText && marked.location != NSNotFound && marked.length != 0) return nil;
     NSAttributedString *attributed = [client attributedSubstringFromRange:NSMakeRange(0, (NSUInteger)documentLength)];
     if (!attributed || attributed.string.length != (NSUInteger)documentLength) {
-        [self setSafeError:@"Codex did not provide a supported draft range."];
+        [self setSafeError:[self readFailureForClient:client]];
         return nil;
     }
     PECompletionSnapshot *snapshot = [PECompletionSnapshot new];
     snapshot.text = attributed.string;
     snapshot.cursor = selection.location;
     return snapshot;
+}
+
+- (NSString *)readFailureForClient:(id<PETextClient>)client {
+    if ([client respondsToSelector:@selector(safeError)] && client.safeError.length) return client.safeError;
+    return @"Codex did not provide a supported draft range.";
 }
 
 - (BOOL)clientIsAllowed:(id<PETextClient>)client {

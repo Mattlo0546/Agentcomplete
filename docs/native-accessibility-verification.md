@@ -34,3 +34,11 @@ The installed development helper has a CDHash-only ad-hoc designated requirement
 The build script now accepts and validates `PROMPT_ENHANCE_SIGN_IDENTITY`. Installation preserves an identical signed bundle, and changed ad-hoc replacements explain the required permission refresh. An isolated installer regression confirms that an unchanged bundle retains its inode and avoids a replacement/backup. A coordinator regression confirms that requests resume on the first key event after permission is granted. All six native test groups pass. Diagnostics now retain a current permission-blocked Codex report rather than hiding it behind an enabled-engine guard.
 
 These source changes do not replace the installed build 9 during permission recovery. After the stale permission entry was removed and the current app was added, its own report changed to `accessibilityTrusted: true`; Setup showed Allowed. The installed designated CDHash remained `d59b3d513a6010126c1372a45854ad6906d369c3` throughout. The source was reconnected for the final manual Codex autocomplete, saving and restoration check.
+
+## Build 10 editor compatibility repair
+
+The user then confirmed that build 9 still showed neither suggestion nor clock despite trusted access and the selected input source. Build 10 adds Electron's documented third-party `AXManualAccessibility` request for the exact trusted, frontmost Codex PID. Unsupported requests do not prevent using an already accessible field. It also observes changes to the authorized focused draft, so missing input-method key callbacks no longer prevent automatic requests. Initial delayed field publication and eventless edits are covered by coordinator regressions.
+
+Missing AX selection can use a collapsed input-method caret only when two readings match across a second read of the exact same focused AX field, PID, bundle and full value. Tests reject changing carets, fields, text and out-of-bounds ranges. An eventless edit invalidates an old visible suggestion before changing its stored prefix, preventing Tab from applying a suffix to a different draft.
+
+All six native test groups pass with these changes. Build 10 requires its own final macOS permission refresh because its development signature differs from build 9. Actual Codex preview, saving and restoration remain pending the host check.
