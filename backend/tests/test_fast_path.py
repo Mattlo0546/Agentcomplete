@@ -113,6 +113,20 @@ async def test_body_terms_rank_metadata_supported_candidates():
     assert [candidate.id for candidate in result.candidates] == [specific["id"], generic["id"]]
 
 
+async def test_shared_single_metadata_term_requires_semantic_fallback():
+    documents = [
+        row("Acme transaction guide", ["acme", "transaction"], "A mandatory field."),
+        row("Acme session guide", ["acme", "session"], "Keep data online."),
+        row("Acme migration guide", ["acme", "migration"], "Safely make a field mandatory."),
+        row("Acme query guide", ["acme", "query"], "Look up a field."),
+    ]
+    install(documents)
+    assert await catalog.select("Keep Acme writes online while making a field mandatory and") is None
+    # A distinct metadata concept gives the shortlist evidence beyond its shared platform name.
+    result = await catalog.select("Add an Acme transaction and")
+    assert result is not None and result.candidates[0].id == documents[0]["id"]
+
+
 async def test_current_full_prompt_replaces_previous_topic(corpus):
     install(corpus)
     react = await catalog.select("React login form")
@@ -127,11 +141,21 @@ async def test_current_full_prompt_replaces_previous_topic(corpus):
 
 
 def test_token_boundaries_unicode_and_inflections():
-    assert {"c++", "c#", "next.js", "日本語"} <= catalog.tokens("C++ C# Next.js 日本語")
+    assert {"c++", "c#", "next.js", "日本語"} == catalog.tokens("C++ C# Next.js 日本語")
     assert "react" not in catalog.tokens("reactive reactor")
-    assert "retry" in catalog.tokens("retries")
-    assert "test" in catalog.tokens("testing tests")
+    assert catalog.tokens("retry retries") == {"retry"}
+    assert catalog.tokens("testing tests test") == {"test"}
+    assert catalog.tokens("write writes writing make makes making create creates creating while") == set()
     assert catalog.tokens("retry " * 100) == catalog.tokens("retry")
+
+
+def test_completion_routing_distinguishes_check_noun_from_unfinished_clause():
+    settings = AppSettings()
+    for prompt, expected in (
+        ("Perform a security check", False),
+        ("Write Vitest tests for the login form that check", True),
+    ):
+        assert complete.use_completion(prompt, utf16_len(prompt), settings) is expected
 
 
 def fake_database(monkeypatch, rows, during_read=None):
