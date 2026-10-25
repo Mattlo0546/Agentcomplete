@@ -32,7 +32,7 @@ jobs:
       - name: Stage only the public architecture assets
         run: |
           mkdir -p _site/architecture-view/vendor _site/assets
-          cp docs/architecture-view/index.html docs/architecture-view/styles.css docs/architecture-view/app.js docs/architecture-view/data.js docs/architecture-view/models.js _site/architecture-view/
+          cp docs/architecture-view/index.html docs/architecture-view/styles.css docs/architecture-view/app.js docs/architecture-view/data.js docs/architecture-view/models.js docs/architecture-view/export-stl.js _site/architecture-view/
           cp docs/architecture-view/vendor/* _site/architecture-view/vendor/
           cp docs/assets/architecture.png _site/assets/
           cp docs/architecture-view/landing.html _site/index.html

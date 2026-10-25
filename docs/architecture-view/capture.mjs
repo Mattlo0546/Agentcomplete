@@ -2,6 +2,7 @@
 // Then:  node docs/architecture-view/capture.mjs
 // Uses the repository's existing frontend Playwright dependency; never calls app services.
 import assert from "node:assert/strict";
+import { writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 const require = createRequire(
@@ -13,7 +14,7 @@ const browser = await chromium.launch({
 });
 try {
   const page = await browser.newPage({
-    viewport: { width: 1600, height: 1100 },
+    viewport: { width: 1600, height: 900 },
     deviceScaleFactor: 1.5,
     reducedMotion: "reduce",
   });
@@ -41,6 +42,9 @@ try {
       "true",
     );
   }
+  await page.locator(".component-index").evaluate((el) => {
+    el.open = true;
+  });
   await page
     .locator("#component-buttons")
     .getByRole("button", { name: "Gemini", exact: true })
@@ -59,10 +63,30 @@ try {
   assert.equal(await page.locator("#motion").innerText(), "Pause flow");
   await page.locator("#motion").click();
   await page.locator("#reset").click();
+  await page.evaluate(() => document.body.classList.add("capture"));
+  await page.waitForFunction(
+    () => document.querySelector("#canvas-host").clientHeight === innerHeight,
+  );
   await page.screenshot({
     path: fileURLToPath(new URL("../assets/architecture.png", import.meta.url)),
     fullPage: true,
   });
+  const stl = Buffer.from(
+    await page.evaluate(async () => {
+      const { exportNativeSTL } = await import("./app.js");
+      return Array.from(await exportNativeSTL());
+    }),
+  );
+  assert.equal(stl.length, 84 + stl.readUInt32LE(80) * 50);
+  assert.ok(
+    stl.length < 10_000_000,
+    "Native GitHub model must stay below 10 MB",
+  );
+  await writeFile(new URL("../assets/architecture.stl", import.meta.url), stl);
+  await page.evaluate(() => document.body.classList.remove("capture"));
+  await page.waitForFunction(
+    () => document.querySelector("#canvas-host").clientHeight < innerHeight,
+  );
   // Orbit and zoom should move the projected labels; reset restores their positions.
   const before = await page.locator("#labels button").first().boundingBox();
   const stage = await page.locator("#canvas-host").boundingBox();
@@ -89,6 +113,9 @@ try {
   await page
     .getByRole("button", { name: "Local semantic", exact: true })
     .click();
+  await page.locator(".component-index").evaluate((el) => {
+    el.open = true;
+  });
   await page
     .locator("#component-buttons")
     .getByRole("button", { name: "Codex", exact: true })
@@ -96,7 +123,7 @@ try {
   assert.equal(await page.locator("#detail-title").innerText(), "Codex plugin");
   await page.locator('[data-route="overview"]').click();
   await page.screenshot({
-    path: "/tmp/agentcomplete-architecture-mobile.png",
+    path: "/tmp/skill-issue-architecture-mobile.png",
     fullPage: true,
   });
   const fallbackPage = await browser.newPage();
@@ -110,6 +137,9 @@ try {
   await fallbackPage.waitForFunction(
     () => document.documentElement.dataset.sceneReady === "fallback",
   );
+  await fallbackPage.locator(".component-index").evaluate((el) => {
+    el.open = true;
+  });
   await fallbackPage
     .locator("#component-buttons")
     .getByRole("button", { name: "Snowflake", exact: true })

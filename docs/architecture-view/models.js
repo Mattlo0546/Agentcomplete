@@ -59,7 +59,7 @@ function screenTexture(terminal = false) {
   });
   ctx.fillStyle = terminal ? "#edf4ff" : "#26344b";
   ctx.font = "bold 34px monospace";
-  ctx.fillText(terminal ? "> Codex" : "Agentcomplete", 35, 125);
+  ctx.fillText(terminal ? "> Codex" : "Skill Issue", 35, 125);
   ctx.font = "25px monospace";
   ctx.fillText(terminal ? "$ get_refined_prompt" : "Add retries with", 35, 194);
   ctx.fillStyle = terminal ? "#a9c9fa" : "#728bb0";

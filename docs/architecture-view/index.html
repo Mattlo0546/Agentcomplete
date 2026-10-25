@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Explore Agentcomplete's architecture: a modeled Three.js view of local retrieval, Gemini generation, Tiger Data, Codex, and Snowflake."
+      content="Skill Issue architecture: local retrieval, Gemini review and generation, Tiger Data, Codex, and Snowflake."
     />
-    <meta name="theme-color" content="#eef3fa" />
-    <title>Agentcomplete — Architecture explorer</title>
+    <title>Skill Issue · Architecture</title>
     <link rel="stylesheet" href="styles.css" />
     <script type="importmap">
       {
@@ -20,127 +19,101 @@
     </script>
   </head>
   <body>
-    <header class="masthead">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">a<span>↗</span></span
-        ><span
-          >Agentcomplete<span class="brand-caption"
-            >Architecture explorer</span
-          ></span
-        >
-      </div>
-      <a href="https://github.com/Mattlo0546/Agentcomplete"
-        >View repository <span aria-hidden="true">↗</span></a
-      >
-    </header>
     <main>
-      <section class="intro" aria-labelledby="page-title">
-        <div>
-          <p class="eyebrow">KNOWLEDGE → CONTEXT → BETTER PROMPTS</p>
-          <h1 id="page-title">A little context.<br />A better next thought.</h1>
+      <header class="toolbar">
+        <h1>Skill Issue <span>/ Architecture</span></h1>
+        <nav class="route-nav" aria-label="Explore a request path">
+          <button data-route="overview" aria-pressed="true">Full system</button>
+          <button data-route="semantic" aria-pressed="false">
+            Local semantic
+          </button>
+          <button data-route="lexical" aria-pressed="false">
+            Lexical fallback
+          </button>
+          <button data-route="fallback" aria-pressed="false">
+            Remote fallback
+          </button>
+          <button data-route="handoff" aria-pressed="false">
+            Codex handoff
+          </button>
+          <button data-route="analytics" aria-pressed="false">
+            Offline analytics
+          </button>
+        </nav>
+      </header>
+      <section class="stage" id="stage" aria-label="Interactive architecture">
+        <div class="stage-caption">
+          <strong>Skill Issue</strong
+          ><span
+            >Semantic retrieval → fresh Gemini review → validated
+            suggestion</span
+          >
         </div>
-        <p class="intro-copy">
-          Follow a draft through local retrieval, fresh Gemini review, and a
-          validated suggestion.<span>Source defaults · 25 October 2026</span>
-        </p>
-      </section>
-      <nav class="route-nav" aria-label="Explore a request path">
-        <button data-route="overview" aria-pressed="true">Full system</button>
-        <button data-route="lexical" aria-pressed="false">
-          Lexical fast path
-        </button>
-        <button data-route="semantic" aria-pressed="false">
-          Local semantic
-        </button>
-        <button data-route="fallback" aria-pressed="false">
-          Remote fallback
-        </button>
-        <button data-route="handoff" aria-pressed="false">Codex handoff</button>
-        <button data-route="analytics" aria-pressed="false">
-          Offline analytics
-        </button>
-      </nav>
-      <section class="explorer" aria-label="Interactive architecture">
-        <div class="stage" id="stage">
-          <div class="stage-caption">
-            <span class="live-dot"></span> LOGICAL COMPONENTS
-            <span class="caption-note">Single user · one API worker</span>
-          </div>
-          <div id="canvas-host"></div>
-          <div id="labels" aria-label="Select a component"></div>
-          <div id="fallback" hidden>
-            <p>
-              3D rendering is unavailable in this browser. The component buttons
-              and route descriptions still work.
-            </p>
-            <img
-              src="../assets/architecture.png"
-              alt="Static view of the Agentcomplete architecture"
-            />
-          </div>
-          <div class="stage-tools">
-            <span id="interaction-hint"
-              >Drag to orbit · scroll to zoom · select a model</span
-            ><button id="reset" aria-label="Reset camera view">
-              Reset view ↺</button
-            ><button id="motion" aria-pressed="false">Pause flow</button>
-          </div>
-        </div>
-        <aside class="inspector" aria-labelledby="detail-title">
-          <p class="eyebrow" id="detail-kicker">THE SYSTEM</p>
-          <h2 id="detail-title">Grounded, then generated.</h2>
-          <p id="detail-body">
-            A fast shortlist brings relevant knowledge into one fresh Gemini
-            review and generation call. Each result is validated before it
-            reaches the editor.
+        <div class="stage-note">LOGICAL COMPONENTS · SINGLE API WORKER</div>
+        <div id="canvas-host"></div>
+        <div id="labels" aria-label="Select a component"></div>
+        <div id="fallback" hidden>
+          <p>
+            3D rendering is unavailable. Select a component below to read its
+            description.
           </p>
+          <img
+            src="../assets/architecture.png"
+            alt="Skill Issue architecture"
+          />
+        </div>
+        <aside
+          class="inspector"
+          id="inspector"
+          aria-labelledby="detail-title"
+          hidden
+        >
+          <button id="close-detail" aria-label="Close component details">
+            ×
+          </button>
+          <p class="eyebrow" id="detail-kicker"></p>
+          <h2 id="detail-title"></h2>
+          <p id="detail-body"></p>
           <dl id="detail-facts"></dl>
           <a
             id="detail-source"
             href="https://github.com/Mattlo0546/Agentcomplete/blob/main/backend/app/pipeline/run.py"
             >Inspect source ↗</a
           >
-          <div class="legend">
-            <span><i class="solid"></i>Request / response</span
-            ><span><i class="dashed"></i>Persistence / maintenance</span>
-          </div>
-          <p class="inspector-note">
-            Retrieval and validation run inside FastAPI. Models show logical
-            responsibilities, not separate servers.
-          </p>
         </aside>
-      </section>
-      <section class="route-summary" aria-live="polite">
-        <div>
-          <p class="eyebrow" id="route-kicker">HOW IT FITS TOGETHER</p>
-          <h2 id="route-title">One fresh review. Three ways to retrieve.</h2>
+        <div class="stage-tools">
+          <span id="interaction-hint"
+            >Drag to orbit · scroll to zoom · select a model</span
+          ><button id="reset">Reset view ↺</button
+          ><button id="motion" aria-pressed="false">Pause flow</button>
         </div>
-        <p id="route-copy">
-          Prefer local document/query embeddings, then eligible lexical
-          matching. If those cannot serve the request, use Gemini tags and Tiger
-          pgvector. Every route finishes with fresh review and validated output.
-        </p>
+        <div class="diagram-legend">
+          <span>→ Request / response</span
+          ><span>⇢ Persistence / maintenance</span
+          ><span>Retrieval and validation run inside FastAPI.</span>
+        </div>
       </section>
-      <section class="component-index" aria-label="Component details">
-        <span>Inspect a component</span>
-        <div id="component-buttons"></div>
+      <section class="description" aria-live="polite">
+        <div>
+          <h2 id="route-title">One fresh review. Three ways to retrieve.</h2>
+          <p id="route-copy">
+            Prefer local document/query embeddings, then eligible lexical
+            matching. If neither can serve the request, use Gemini tags and
+            Tiger pgvector. Every route finishes with fresh review and validated
+            output.
+          </p>
+        </div>
+        <p class="sr-only" id="route-kicker"></p>
+        <details class="component-index">
+          <summary>Select a component</summary>
+          <div id="component-buttons"></div>
+        </details>
       </section>
-      <footer>
-        <p>Real 3D meshes · Three.js r180 · Source-backed implementation map</p>
-        <a
-          href="https://github.com/Mattlo0546/Agentcomplete/blob/main/docs/architecture.md"
-          >Read the architecture guide ↗</a
-        >
-      </footer>
     </main>
     <noscript
-      ><p class="noscript">
-        Enable JavaScript to explore the 3D scene.
-        <a href="../assets/architecture.png">View the screenshot</a> or
-        <a
-          href="https://github.com/Mattlo0546/Agentcomplete/blob/main/docs/architecture.md"
-          >read the architecture guide</a
-        >.
+      ><p>
+        Enable JavaScript for 3D interaction, or
+        <a href="../assets/architecture.png">view the architecture image</a>.
       </p></noscript
     >
     <script type="module" src="app.js"></script>

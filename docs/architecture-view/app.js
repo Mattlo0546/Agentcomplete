@@ -9,6 +9,14 @@ let paused =
   reduced.matches || new URLSearchParams(location.search).has("still");
 const labels = new Map();
 const componentButtons = new Map();
+export async function exportNativeSTL() {
+  if (!viewer) throw new Error("3D scene is unavailable");
+  const [{ exportSTL }, THREE] = await Promise.all([
+    import("./export-stl.js"),
+    import("three"),
+  ]);
+  return exportSTL(THREE, viewer.meshes, components);
+}
 function setFacts(facts) {
   $("detail-facts").replaceChildren(
     ...facts.map(([term, value]) => {
@@ -23,6 +31,7 @@ function setFacts(facts) {
   );
 }
 function inspect(id) {
+  $("inspector").hidden = false;
   selected = id;
   const c = components.find((item) => item.id === id);
   $("detail-kicker").textContent = c.kicker;
@@ -82,6 +91,7 @@ function setRoute(id) {
   viewer?.route(route);
   if (route.selected) inspect(route.selected);
   else {
+    $("inspector").hidden = true;
     selected = null;
     $("detail-kicker").textContent = "THE SYSTEM";
     $("detail-title").textContent = "Grounded, then generated.";
@@ -132,6 +142,12 @@ reduced.addEventListener("change", (event) => {
   updateMotion();
 });
 $("reset").onclick = () => viewer?.reset();
+$("close-detail").onclick = () => {
+  $("inspector").hidden = true;
+};
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") $("inspector").hidden = true;
+});
 setRoute("overview");
 
 try {
@@ -337,6 +353,12 @@ try {
   new ResizeObserver(resize).observe(host);
   resize();
   viewer = {
+    meshes: [
+      ...groups.values(),
+      ...edges
+        .filter((e) => routes.overview.edges.includes(e.id))
+        .map((e) => e.group),
+    ],
     reset,
     select(id) {
       ring.visible = !!id;

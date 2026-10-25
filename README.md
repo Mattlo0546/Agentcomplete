@@ -1,12 +1,12 @@
-# Agentcomplete
+# Skill Issue
 
 **Better prompts, while you type.** A companion editor for Codex with knowledge-grounded ghost text, clarifying questions, and an explicit handoff to your agent.
 
-Agentcomplete retrieves relevant skills, example prompts, and agent graphs, then asks Gemini to review their relevance and produce a suggestion. Accept a suffix with **Tab**, choose an edit from a question, or keep writing.
+Skill Issue retrieves relevant skills, example prompts, and agent graphs, then asks Gemini to review their relevance and produce a suggestion. Accept a suffix with **Tab**, choose an edit from a question, or keep writing.
 
-![Agentcomplete architecture: a Three.js model of the companion editor, FastAPI, local retrieval, Gemini, validation, Tiger Data, Codex MCP plugin, and offline Snowflake analytics](docs/assets/architecture.png)
+[![Skill Issue architecture: a Three.js model of the companion editor, FastAPI, local retrieval, Gemini, validation, Tiger Data, Codex MCP plugin, and offline Snowflake analytics](docs/assets/architecture.png)](docs/assets/architecture.stl)
 
-[Architecture guide](docs/architecture.md) · [Interactive 3D scene & running instructions](docs/architecture-view/README.md) · [API contract](docs/api.md) · [Codex plugin](docs/codex-plugin.md)
+[Rotate the 3D model on GitHub](docs/assets/architecture.stl) · [Architecture guide](docs/architecture.md) · [Optional Three.js controls & running instructions](docs/architecture-view/README.md) · [API contract](docs/api.md) · [Codex plugin](docs/codex-plugin.md)
 
 ## What runs today
 
@@ -142,4 +142,4 @@ Operational logs contain metadata, not prompt bodies, knowledge bodies, or model
 | [`docs/performance.md`](docs/performance.md)         | Historical measurements and reproduction commands                 |
 | [`design.md`](design.md)                             | Companion visual system                                           |
 
-The README embeds a real screenshot of the Three.js scene. GitHub strips scripts from Markdown, so full 3D interaction runs as a static site or locally; see the [viewer guide](docs/architecture-view/README.md).
+The README embeds the architecture directly as a screenshot. Click it to rotate the geometry in GitHub’s native STL viewer; STL does not preserve colors or route controls. The optional minimal Three.js viewer adds colors, route buttons, and component descriptions; see the [viewer guide](docs/architecture-view/README.md).

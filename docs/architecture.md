@@ -1,10 +1,10 @@
-# Agentcomplete architecture
+# Skill Issue architecture
 
 Implementation snapshot: **25 October 2026**. This guide follows the current source defaults, including optional local EmbeddingGemma retrieval and bounded in-flight suffix adoption. Historical measurements live in [performance.md](performance.md); older research documents describe experiments, not necessarily the current request path.
 
 ![Three.js architecture model](assets/architecture.png)
 
-[Run and explore the interactive model](architecture-view/README.md). The models represent logical components: retrieval and validation run inside the FastAPI process, not as separately deployed services.
+[Rotate the model on GitHub](assets/architecture.stl) or use the [optional Three.js controls](architecture-view/README.md). The models represent logical components: retrieval and validation run inside the FastAPI process, not as separately deployed services.
 
 ## Runtime and ownership
 
@@ -68,7 +68,7 @@ Document vectors are prepared at startup and on background snapshot refresh. The
 Current conservative limits in `semantic.py`:
 
 - At most **256 documents**, **2,000,000 source characters**, and **4,096 chunks**.
-- The catalog currently prefetches up to **8,000 body characters per document** (plus title, summary, and tags). Document chunks preserve all text in that snapshot representation, splitting at Unicode boundaries with **1,800 UTF-8 bytes** per chunk.
+- The catalog fetches full document bodies within the bounded corpus (plus title, summary, and tags); oversized sources route to fallback. Document chunks preserve all text in the snapshot, splitting at Unicode boundaries with **1,800 UTF-8 bytes** per chunk.
 - Queries larger than **1,800 UTF-8 bytes** fall back; they are not silently truncated.
 - Local tokenizer input is bounded to **8,192 tokens** after search prefixes. Native inference runs off the async event loop, serialized, with at most **four pending jobs**.
 - Missing optional packages/model files, a warming or stale index, bounds violations, a busy encoder, and inference failures preserve the existing fallback.
