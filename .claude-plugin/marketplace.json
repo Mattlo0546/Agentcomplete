@@ -1,0 +1,12 @@
+{
+  "name": "prompt-enhance-local",
+  "description": "Prompt Enhance tools, handoff and saved prompt history for Claude Code.",
+  "owner": { "name": "Prompt Enhance" },
+  "plugins": [
+    {
+      "name": "prompt-enhance",
+      "source": "./plugin/prompt-enhance",
+      "description": "Prompt refinement and saved prompt versions for Claude Code."
+    }
+  ]
+}

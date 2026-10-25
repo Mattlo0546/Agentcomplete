@@ -20,6 +20,8 @@ type EditorFooterProps = {
   onSend: () => void;
   sending: boolean;
   narrow: boolean;
+  target: "Codex" | "Claude";
+  onTargetChange: (target: "Codex" | "Claude") => void;
 };
 
 /** design.md §4.1 footer: status left (rev · cursor | indicator | error), count + Send to Codex right. */
@@ -55,9 +57,25 @@ export function EditorFooter(props: EditorFooterProps) {
       <span className="text-data" aria-label={`${length} characters`}>
         {length}
       </span>
-      <Button size="sm" onClick={onSend} disabled={length === 0 || sending}>
+      <select
+        aria-label="Send target"
+        value={props.target}
+        disabled={sending}
+        onChange={(event) => props.onTargetChange(event.target.value === "Claude" ? "Claude" : "Codex")}
+        className="min-h-11 min-w-0 rounded-md border bg-card px-1 text-xs focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        <option>Codex</option>
+        <option>Claude</option>
+      </select>
+      <Button
+        size="sm"
+        className="min-h-11"
+        onClick={onSend}
+        disabled={length === 0 || sending}
+        aria-label={`Send to ${props.target}`}
+      >
         <Send />
-        Send to Codex
+        <span className={narrow ? "sr-only" : undefined}>Send to {props.target}</span>
       </Button>
     </div>
   );

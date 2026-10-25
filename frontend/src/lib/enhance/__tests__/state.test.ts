@@ -38,6 +38,21 @@ const autocomplete = (requestId: string, revision: number, insertAt: number, tex
 });
 
 describe("enhanceReducer", () => {
+  it("restores a version as a new revision and ignores the previous in-flight response", () => {
+    const typed = run([type("Current draft")]);
+    const pending = enhanceReducer(typed, request(typed, "old"));
+    const restored = enhanceReducer(pending, { type: "restore", prompt: "Saved version 👋" });
+    expect(restored).toMatchObject({
+      prompt: "Saved version 👋",
+      revision: 2,
+      pending: null,
+      suggestion: null,
+      traceId: null,
+      selectionEnd: 16,
+    });
+    expect(enhanceReducer(restored, autocomplete("old", 1, typed.prompt.length))).toBe(restored);
+    expect(enhanceReducer(restored, { type: "restore", prompt: restored.prompt }).revision).toBe(3);
+  });
   it("bumps the revision on every text change but not on selection changes", () => {
     let state = run([type("a"), type("ab")]);
     expect(state.revision).toBe(2);

@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ContextMenu } from "radix-ui";
 import { useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 
 import { KeyCap } from "@/components/common/key-cap";
@@ -20,6 +21,7 @@ type PromptEditorProps = {
   onSelect: (selectionStart: number, selectionEnd: number) => void;
   onAcceptGhost: () => void;
   onEscape: () => void;
+  onSaveSuggestion: (prompt: string, suggestion: string) => void;
   footer: ReactNode;
 };
 
@@ -31,6 +33,7 @@ type PromptEditorProps = {
 export function PromptEditor(props: PromptEditorProps) {
   const { prompt, selectionStart, selectionEnd, ghost, quiet, narrow, textareaRef, footer } = props;
   const caretRef = useRef<HTMLSpanElement>(null);
+  const menuSnapshot = useRef({ prompt, ghost });
   const reduced = useReducedMotion();
 
   // Keep the DOM selection in step with state (accepting/applying moves the cursor) and keep the caret visible.
@@ -100,7 +103,29 @@ export function PromptEditor(props: PromptEditorProps) {
                   exit={{ opacity: 0, transition: { duration: 0 } }}
                   transition={{ duration: reduced ? 0 : 0.12, ease: "easeOut" }}
                 >
-                  <span className="text-ghost">{ghost}</span>
+                  <ContextMenu.Root
+                    onOpenChange={(open) => {
+                      if (open) menuSnapshot.current = { prompt, ghost };
+                    }}
+                  >
+                    <ContextMenu.Trigger asChild>
+                      <span className="pointer-events-auto text-ghost" onMouseDown={(event) => event.preventDefault()}>
+                        {ghost}
+                      </span>
+                    </ContextMenu.Trigger>
+                    <ContextMenu.Portal>
+                      <ContextMenu.Content className="z-50 min-w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+                        <ContextMenu.Item
+                          onSelect={() =>
+                            props.onSaveSuggestion(menuSnapshot.current.prompt, menuSnapshot.current.ghost)
+                          }
+                          className="flex min-h-11 cursor-default items-center rounded-sm px-3 text-sm outline-none data-highlighted:bg-accent"
+                        >
+                          Save as prompt version
+                        </ContextMenu.Item>
+                      </ContextMenu.Content>
+                    </ContextMenu.Portal>
+                  </ContextMenu.Root>
                   <button
                     type="button"
                     tabIndex={-1}

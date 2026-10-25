@@ -23,6 +23,7 @@ export function useEnhance(delayMs: number = DEFAULT_TRIGGER_DELAY_MS) {
   const stateRef = useRef(state);
   const abortRef = useRef<AbortController | null>(null);
   const hydratedRef = useRef(false);
+  const queuedRef = useRef(false);
   const [, setDraft] = useLocalStorage({ key: DRAFT_STORAGE_KEY, defaultValue: "" });
 
   const dispatch = useCallback((action: EnhanceAction) => {
@@ -45,6 +46,7 @@ export function useEnhance(delayMs: number = DEFAULT_TRIGGER_DELAY_MS) {
   }, []);
 
   const send = useCallback(() => {
+    queuedRef.current = false;
     const current = stateRef.current;
     if (!canRequest(current)) return;
     abortRef.current?.abort();
@@ -80,8 +82,15 @@ export function useEnhance(delayMs: number = DEFAULT_TRIGGER_DELAY_MS) {
 
   const schedule = useDebouncedCallback(send, delayMs);
 
+  // Changing the delay cancels Mantine's old timer. Preserve any draft request
+  // queued before the initial settings response arrived.
+  useEffect(() => {
+    if (queuedRef.current) schedule();
+  }, [schedule]);
+
   /** Cancels whatever is in flight or queued before the state moves on. */
   const interrupt = useCallback(() => {
+    queuedRef.current = false;
     abortRef.current?.abort();
     abortRef.current = null;
     schedule.cancel();
@@ -100,7 +109,10 @@ export function useEnhance(delayMs: number = DEFAULT_TRIGGER_DELAY_MS) {
       if (before.suggestion) emit("superseded");
       interrupt();
       dispatch({ type: "change", prompt, selectionStart, selectionEnd });
-      if (canRequest(stateRef.current)) schedule();
+      if (canRequest(stateRef.current)) {
+        queuedRef.current = true;
+        schedule();
+      }
     },
     [dispatch, emit, interrupt, schedule],
   );
@@ -140,6 +152,19 @@ export function useEnhance(delayMs: number = DEFAULT_TRIGGER_DELAY_MS) {
     send();
   }, [interrupt, send]);
 
+  const restore = useCallback(
+    (prompt: string) => {
+      if (stateRef.current.suggestion) emit("superseded");
+      interrupt();
+      dispatch({ type: "restore", prompt });
+      if (canRequest(stateRef.current)) {
+        queuedRef.current = true;
+        schedule();
+      }
+    },
+    [dispatch, emit, interrupt, schedule],
+  );
+
   // "shown" fires once per displayed suggestion.
   const shownId = state.suggestion?.requestId;
   useEffect(() => {
@@ -161,7 +186,7 @@ export function useEnhance(delayMs: number = DEFAULT_TRIGGER_DELAY_MS) {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  return { state, change, select, acceptGhost, dismissGhost, declineQuestion, applyOption, retry };
+  return { state, change, select, acceptGhost, dismissGhost, declineQuestion, applyOption, retry, restore };
 }
 
 export type EnhanceController = ReturnType<typeof useEnhance>;

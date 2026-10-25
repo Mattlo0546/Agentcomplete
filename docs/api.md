@@ -58,6 +58,21 @@ Context for the Refine inspector (no prompt text stored).
 - `POST /v1/handoff` body `{ prompt }` → `{ id, created_at }` (stores the latest refined prompt; only the newest row is kept).
 - `GET /v1/handoff/latest` → `{ id, prompt, created_at }` | `404`.
 
+## Prompt history
+
+`PromptVersion` = `{ id, prompt, suggestion_text: string|null, saved_text, title: string|null, description: string|null, created_at, updated_at }`.
+`saved_text` is always computed by the server as `prompt + (suggestion_text ?? "")`; snapshots are immutable.
+
+- `POST /v1/prompt-history` body `{ prompt, suggestion_text?, title?, description? }` → `201 PromptVersion`.
+- `GET /v1/prompt-history?offset=0&limit=50` → `{ items: PromptVersion[], total: int }`, newest first with UUID tie-break; `limit` is 1–200 and `offset` is nonnegative.
+- `GET /v1/prompt-history/{id}` → `PromptVersion` | `404`.
+- `PATCH /v1/prompt-history/{id}` body `{ title?, description? }` → `PromptVersion` | `404`. Only metadata can change; `null` removes a label/description.
+- `DELETE /v1/prompt-history/{id}` → `204` | `404`.
+
+Validation: nonblank base prompt; base prompt and combined saved prompt each ≤20,000 UTF-16 units; suggestion ≤4,000 UTF-16 units; title ≤120 characters and nonblank when supplied; description ≤1,000 characters. Unknown create/patch fields are rejected with `422`; metadata whitespace is trimmed. Saving an unaccepted autocomplete records its base and suggestion separately without accepting it in the editor. Diffs and restore use `saved_text`.
+
+History is deliberate, user-requested prompt-content storage. Versions remain until explicitly deleted; the 30-day telemetry retention policy does not apply. History content is never added to request logs, traces, derived features, or Snowflake exports. The API has no user authentication and is intended for localhost/single-user use; authenticated ownership and access controls are required before sharing it across users.
+
 ## Activity
 
 - `GET /v1/logs?kind=all|ai|api&status=any|2xx|4xx|5xx&request_id=&before=<iso>&limit=100`
