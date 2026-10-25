@@ -40,6 +40,7 @@
 @interface PEAccessibilityAPIMock : NSObject <PEAccessibilityAPI> {
     AXUIElementRef _primary;
     AXUIElementRef _alternate;
+    AXUIElementRef _child;
 }
 @property(nonatomic) BOOL trusted;
 @property(nonatomic, copy) NSString *frontBundle;
@@ -50,6 +51,7 @@
 @property(nonatomic) AXError valueSetError;
 @property(nonatomic) BOOL secure;
 @property(nonatomic) BOOL useAlternate;
+@property(nonatomic) BOOL focusedChild;
 @property(nonatomic) NSUInteger focusedCallCount;
 @property(nonatomic) NSUInteger parentCallCount;
 @property(nonatomic) NSUInteger valueSetCount;
@@ -61,6 +63,7 @@
     if ((self = [super init])) {
         _primary = AXUIElementCreateApplication(701);
         _alternate = AXUIElementCreateApplication(702);
+        _child = AXUIElementCreateApplication(703);
         _trusted = YES;
         _frontBundle = @"com.openai.codex";
         _frontPID = 701;
@@ -73,15 +76,23 @@
 - (void)dealloc {
     if (_primary != NULL) CFRelease(_primary);
     if (_alternate != NULL) CFRelease(_alternate);
+    if (_child != NULL) CFRelease(_child);
 }
-- (AXUIElementRef)current { return _useAlternate ? _alternate : _primary; }
+- (AXUIElementRef)current { return _focusedChild ? _child : (_useAlternate ? _alternate : _primary); }
 - (BOOL)isTrusted { return _trusted; }
 - (AXUIElementRef)copyFocusedElement {
     _focusedCallCount++;
     return (AXUIElementRef)CFRetain(self.current);
 }
-- (AXUIElementRef)copyParentOfElement:(AXUIElementRef)element { (void)element; _parentCallCount++; return NULL; }
+- (AXUIElementRef)copyParentOfElement:(AXUIElementRef)element {
+    _parentCallCount++;
+    return CFEqual(element, _child) ? (AXUIElementRef)CFRetain(_primary) : NULL;
+}
 - (id)copyAttribute:(CFStringRef)attribute fromElement:(AXUIElementRef)element {
+    if (CFEqual(element, _child)) {
+        if (CFEqual(attribute, kAXRoleAttribute)) return [@"AXGroup" copy];
+        return nil;
+    }
     if (!CFEqual(element, self.current)) return nil;
     if (CFEqual(attribute, kAXRoleAttribute)) return [(__bridge NSString *)kAXTextAreaRole copy];
     if (CFEqual(attribute, kAXSubroleAttribute)) return _secure ? [@"AXSecureTextField" copy] : nil;
@@ -120,7 +131,7 @@
     return kAXErrorSuccess;
 }
 - (pid_t)processIdentifierForElement:(AXUIElementRef)element {
-    return CFEqual(element, _primary) ? 701 : (CFEqual(element, _alternate) ? 702 : 0);
+    return (CFEqual(element, _primary) || CFEqual(element, _child)) ? 701 : (CFEqual(element, _alternate) ? 702 : 0);
 }
 - (pid_t)frontmostApplicationPID { return _frontPID; }
 - (NSString *)frontmostApplicationBundleIdentifier { return _frontBundle; }
@@ -168,6 +179,14 @@ static void TestSecureFieldIsRejectedWithoutParentTraversal(void) {
     api.secure = YES;
     PEAccessRequire(client.length == NSNotFound, @"secure accessibility fields are never readable");
     PEAccessRequire(api.parentCallCount == 0, @"a secure focused leaf is rejected before a parent walk");
+}
+
+static void TestFocusedChildNeverEscalatesToAParentTextArea(void) {
+    PEAccessibilityAPIMock *api = nil;
+    PEAccessibilityClient *client = PEAccessClient(NULL, &api);
+    api.focusedChild = YES;
+    PEAccessRequire(client.length == NSNotFound, @"a focused child control is not a readable draft");
+    PEAccessRequire(api.parentCallCount == 0, @"the adapter never walks from a focused child into a broader parent text area");
 }
 
 static void TestTabInsertRequiresTheBoundFocusedField(void) {
@@ -235,6 +254,7 @@ int PEAccessibilityClientTests(void) {
         TestUntrustedNeverReadsAccessibility();
         TestReadsFullAccessibilityValueAndUsesExternalPreview();
         TestSecureFieldIsRejectedWithoutParentTraversal();
+        TestFocusedChildNeverEscalatesToAParentTextArea();
         TestTabInsertRequiresTheBoundFocusedField();
         TestRestoreRevalidatesAndUsesSettableAXValue();
         TestRestoreFallbackUsesSelectedRangeAndNativeInsert();

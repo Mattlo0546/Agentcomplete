@@ -281,38 +281,40 @@ static BOOL PEValidRect(NSRect rect);
     }
 
     AXUIElementRef candidate = [self.accessibilityAPI copyFocusedElement];
-    for (NSUInteger depth = 0; candidate != NULL && depth <= 3; depth++) {
-        pid_t elementPID = [self.accessibilityAPI processIdentifierForElement:candidate];
-        id role = [self.accessibilityAPI copyAttribute:kAXRoleAttribute fromElement:candidate];
-        id subrole = [self.accessibilityAPI copyAttribute:kAXSubroleAttribute fromElement:candidate];
-        BOOL isTextArea = [role isKindOfClass:NSString.class] && [role isEqualToString:(__bridge NSString *)kAXTextAreaRole];
-        BOOL isSecure = ([role isKindOfClass:NSString.class] && [role isEqualToString:@"AXSecureTextField"])
-            || ([subrole isKindOfClass:NSString.class] && [subrole isEqualToString:@"AXSecureTextField"]);
-        if (isSecure) {
-            CFRelease(candidate);
-            [self setSafeError:@"Prompt Enhance cannot access secure text fields."];
-            return NO;
-        }
-        if (elementPID == frontPID && isTextArea && !isSecure) {
-            id rawValue = [self.accessibilityAPI copyAttribute:kAXValueAttribute fromElement:candidate];
-            id rawRange = [self.accessibilityAPI copyAttribute:kAXSelectedTextRangeAttribute fromElement:candidate];
-            CFRange axRange;
-            if ([rawValue isKindOfClass:NSString.class] && [(NSString *)rawValue length] <= PEMaximumPromptUTF16Length
-                && PEReadAXRange(rawRange, &axRange) && axRange.location >= 0 && axRange.length >= 0
-                && (NSUInteger)(axRange.location + axRange.length) <= [(NSString *)rawValue length]) {
-                *value = rawValue;
-                *selection = NSMakeRange((NSUInteger)axRange.location, (NSUInteger)axRange.length);
-                *outElement = candidate;
-                return YES;
-            }
-            [self setSafeError:@"Codex did not provide a supported Accessibility draft."];
-        }
-        AXUIElementRef parent = depth < 3 ? [self.accessibilityAPI copyParentOfElement:candidate] : NULL;
-        CFRelease(candidate);
-        candidate = parent;
+    if (candidate == NULL) {
+        [self setSafeError:@"Prompt Enhance requires the focused Codex message field."];
+        return NO;
     }
-    [self setSafeError:@"Prompt Enhance requires the focused Codex message field."];
-    return NO;
+    pid_t elementPID = [self.accessibilityAPI processIdentifierForElement:candidate];
+    id role = [self.accessibilityAPI copyAttribute:kAXRoleAttribute fromElement:candidate];
+    id subrole = [self.accessibilityAPI copyAttribute:kAXSubroleAttribute fromElement:candidate];
+    BOOL isTextArea = [role isKindOfClass:NSString.class] && [role isEqualToString:(__bridge NSString *)kAXTextAreaRole];
+    BOOL isSecure = ([role isKindOfClass:NSString.class] && [role isEqualToString:@"AXSecureTextField"])
+        || ([subrole isKindOfClass:NSString.class] && [subrole isEqualToString:@"AXSecureTextField"]);
+    if (isSecure) {
+        CFRelease(candidate);
+        [self setSafeError:@"Prompt Enhance cannot access secure text fields."];
+        return NO;
+    }
+    if (elementPID != frontPID || !isTextArea) {
+        CFRelease(candidate);
+        [self setSafeError:@"Prompt Enhance requires the focused Codex message field."];
+        return NO;
+    }
+    id rawValue = [self.accessibilityAPI copyAttribute:kAXValueAttribute fromElement:candidate];
+    id rawRange = [self.accessibilityAPI copyAttribute:kAXSelectedTextRangeAttribute fromElement:candidate];
+    CFRange axRange;
+    if (![rawValue isKindOfClass:NSString.class] || [(NSString *)rawValue length] > PEMaximumPromptUTF16Length
+        || !PEReadAXRange(rawRange, &axRange) || axRange.location < 0 || axRange.length < 0
+        || (NSUInteger)(axRange.location + axRange.length) > [(NSString *)rawValue length]) {
+        CFRelease(candidate);
+        [self setSafeError:@"Codex did not provide a supported Accessibility draft."];
+        return NO;
+    }
+    *value = rawValue;
+    *selection = NSMakeRange((NSUInteger)axRange.location, (NSUInteger)axRange.length);
+    *outElement = candidate;
+    return YES;
 }
 
 - (void)bindElement:(AXUIElementRef)element {
