@@ -29,7 +29,7 @@ The lexical-first run used 45 lexical selections and four semantic queries. Its 
 
 Semantic-first is available with `CATALOG_REVIEW_ENABLED=false` and `SEMANTIC_FIRST_ENABLED=true`, but is not the default: its browser experiment regressed median visible latency from 987 to 1,288 ms. Its first retrieval took 2,080 ms; the aggregate trace could not distinguish snapshot refresh from local encoder cost. Added stage timings now separate those paths. No unproven warmup workaround was introduced.
 
-Reproduce the two retrieval runs with [the fixture probe](https://github.com/Mattlo0546/Agentcomplete/blob/9388e43/backend/scripts/probe_production_semantics.py). Evidence: [lexical-first routing](evidence/semantic-production-local-fallback.json), [semantic first](evidence/semantic-production-local-final.json), and [browser comparison](evidence/latency-browser-challenge-comparison.json).
+Reproduce the two retrieval runs with [the fixture probe](https://github.com/Mattlo0546/skill-issue/blob/9388e43/backend/scripts/probe_production_semantics.py). Evidence: [lexical-first routing](evidence/semantic-production-local-fallback.json), [semantic first](evidence/semantic-production-local-final.json), and [browser comparison](evidence/latency-browser-challenge-comparison.json).
 
 ## Run it locally
 

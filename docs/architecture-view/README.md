@@ -32,7 +32,7 @@ To publish after committing the presentation:
 
 1. In repository **Settings → Pages → Build and deployment**, select **GitHub Actions** as the source.
 2. Run the manual **Publish architecture explorer** workflow from Actions on `main`.
-3. After the workflow succeeds, use its deployment URL. The project is named **Skill Issue**; the existing repository URL still uses `Agentcomplete`. With that repository slug and no custom domain, the expected viewer URL is `https://mattlo0546.github.io/Agentcomplete/architecture-view/`.
+3. After the workflow succeeds, use its deployment URL. With the `skill-issue` repository slug and no custom domain, the expected viewer URL is `https://mattlo0546.github.io/skill-issue/architecture-view/`.
 
 That URL is an expected deployment location, not a claim that the site is already published. The README's technical diagram works independently of Pages. The workflow follows [GitHub's custom-workflow guidance](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
