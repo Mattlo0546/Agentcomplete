@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Skill Issue — Product Video</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --bg: #0a0b0f;
+        --panel: #14161d;
+        --line: #262a35;
+        --purple: #a78bfa;
+        --green: #5ee3c0;
+        --muted: #8b90a0;
+        --light: #f4f4f6;
+        --ink: #0a0b0f;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: white;
+        font-family: sans-serif;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      .cam {
+        position: absolute;
+        inset: 0;
+      }
+      .brand {
+        position: absolute;
+        left: 90px;
+        top: 60px;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+      .kicker {
+        position: absolute;
+        right: 90px;
+        top: 64px;
+        font-size: 18px;
+        letter-spacing: 0.18em;
+        color: var(--muted);
+      }
+      h1 {
+        margin: 0;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.02;
+      }
+      .line {
+        display: block;
+      }
+      .chip {
+        position: absolute;
+        width: 84px;
+        height: 84px;
+        border-radius: 20px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 28px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+      }
+      #flash {
+        position: absolute;
+        inset: 0;
+        background: white;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Captions */
+      .cap {
+        position: absolute;
+        inset: 0;
+        padding-bottom: 54px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        pointer-events: none;
+      }
+      .cap-pill {
+        background: rgba(10, 11, 15, 0.85);
+        border-radius: 18px;
+        padding: 16px 36px;
+        font-size: 54px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        color: white;
+        white-space: nowrap;
+      }
+      .cap-pill .w {
+        display: inline-block;
+        margin-right: 0.26em;
+      }
+      .cap-pill .w:last-child {
+        margin-right: 0;
+      }
+      .cap-pill .hl {
+        color: var(--green);
+      }
+
+      /* Scene 1 — title */
+      #s1-title {
+        position: absolute;
+        left: 120px;
+        top: 250px;
+        font-size: 220px;
+      }
+      #s1-sub {
+        position: absolute;
+        left: 128px;
+        top: 730px;
+        font-size: 46px;
+        color: #c9ccd6;
+        line-height: 1.35;
+      }
+      #s1-logo-wrap {
+        position: absolute;
+        left: 1130px;
+        top: 250px;
+        width: 480px;
+        height: 480px;
+        border-radius: 90px;
+        background: linear-gradient(160deg, #1b1d26, #101118);
+        border: 2px solid #2e3240;
+        box-shadow: 0 40px 120px rgba(167, 139, 250, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #s1-logo-wrap svg {
+        width: 340px;
+      }
+
+      /* Scene 2 — problem (light) */
+      #s2 {
+        background: var(--light);
+        color: var(--ink);
+      }
+      #s2 .kicker {
+        color: #5f6472;
+      }
+      #s2 .chip {
+        background: white;
+        border-color: #e1e3ea;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      }
+      #s2-title {
+        position: absolute;
+        left: 120px;
+        top: 200px;
+        font-size: 120px;
+      }
+      #s2-prompt {
+        position: absolute;
+        left: 1080px;
+        top: 330px;
+        width: 720px;
+        height: 290px;
+        background: white;
+        border-radius: 28px;
+        box-shadow: 0 30px 80px rgba(20, 20, 40, 0.14);
+        padding: 44px 52px;
+        box-sizing: border-box;
+      }
+      .prompt-label {
+        font-size: 18px;
+        letter-spacing: 0.16em;
+        color: #5f6472;
+      }
+      #s2-typed {
+        margin-top: 34px;
+        font-size: 64px;
+        font-weight: 700;
+        height: 80px;
+        white-space: nowrap;
+      }
+      #s2-q {
+        margin-top: 30px;
+        font-size: 26px;
+        color: #5f6472;
+      }
+      .pains {
+        position: absolute;
+        left: 120px;
+        right: 120px;
+        top: 720px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .pain {
+        width: 520px;
+        font-size: 50px;
+        font-weight: 800;
+      }
+      .pain i {
+        font-style: normal;
+        color: #d1343a;
+        margin-right: 14px;
+      }
+
+      /* Scene 3 — solution */
+      #s3-title {
+        position: absolute;
+        left: 120px;
+        top: 140px;
+        font-size: 100px;
+      }
+      .src {
+        position: absolute;
+        left: 120px;
+        width: 420px;
+        height: 140px;
+        padding: 22px 30px;
+        box-sizing: border-box;
+      }
+      .src b {
+        font-size: 26px;
+      }
+      .src div {
+        margin-top: 16px;
+        display: flex;
+        gap: 22px;
+        font-family: monospace;
+        font-size: 30px;
+        color: var(--purple);
+      }
+      #s3-hub {
+        position: absolute;
+        left: 660px;
+        top: 570px;
+        width: 120px;
+        height: 120px;
+        border-radius: 30px;
+        background: #e9e3ff;
+        color: #4c2fb5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 52px;
+        font-weight: 800;
+      }
+      #s3-hub-label {
+        position: absolute;
+        left: 620px;
+        top: 705px;
+        width: 200px;
+        text-align: center;
+        font-size: 18px;
+        letter-spacing: 0.14em;
+        color: var(--muted);
+      }
+      #s3-wires {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+      }
+      #s3-editor {
+        position: absolute;
+        left: 900px;
+        top: 400px;
+        width: 900px;
+        height: 440px;
+        overflow: hidden;
+      }
+      .ed-bar {
+        height: 64px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        padding: 0 28px;
+        gap: 12px;
+      }
+      .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+      }
+      .ed-body {
+        padding: 44px 48px;
+      }
+      #s3-typed {
+        font-size: 50px;
+        font-weight: 700;
+        height: 64px;
+        white-space: nowrap;
+      }
+      #s3-ghost {
+        margin-top: 18px;
+        font-size: 42px;
+        line-height: 1.35;
+        color: rgba(94, 227, 192, 0.5);
+        width: 780px;
+      }
+      #s3-ghost .w {
+        display: inline-block;
+        margin-right: 0.26em;
+      }
+      #s3-tab {
+        position: absolute;
+        right: 40px;
+        bottom: 36px;
+        background: white;
+        color: var(--ink);
+        font-weight: 800;
+        font-size: 24px;
+        padding: 10px 20px;
+        border-radius: 10px;
+      }
+
+      /* Demo scene — real app recording */
+      #sd-bg {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse at 50% 40%, #241d45 0%, #0a0b0f 70%);
+      }
+      #sd-label {
+        position: absolute;
+        left: 90px;
+        top: 60px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+      }
+      #sd-live {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #ff4d5e;
+      }
+      #demo-frame {
+        position: absolute;
+        left: 300px;
+        top: 46px;
+        width: 1320px;
+        height: 870px;
+        border-radius: 26px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 50px 140px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(167, 139, 250, 0.5);
+      }
+      #demo-chrome {
+        height: 46px;
+        background: #ececf0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 20px;
+      }
+      #demo-view {
+        position: relative;
+        width: 1320px;
+        height: 824px;
+        overflow: hidden;
+      }
+      #demo-zoom {
+        position: absolute;
+        left: 10px;
+        top: 0;
+        width: 1300px;
+        height: 824px;
+        transform-origin: 50% 88%;
+      }
+      #demo-input {
+        position: absolute;
+        left: 112px;
+        top: 690px;
+        width: 1110px;
+        height: 40px;
+        background: white;
+        display: flex;
+        align-items: center;
+        font-size: 23px;
+        color: #1f2328;
+        white-space: nowrap;
+      }
+      #demo-typed {
+        white-space: pre;
+      }
+      #demo-ghost {
+        color: #9aa0ab;
+      }
+      #demo-tab {
+        margin-left: 14px;
+        font-size: 15px;
+        font-weight: 700;
+        color: #4c2fb5;
+        background: #efeaff;
+        border-radius: 6px;
+        padding: 3px 8px;
+      }
+      #demo-vid {
+        width: 1300px;
+        height: 824px;
+        display: block;
+      }
+
+      /* Scene 4 — architecture (light) */
+      #s4 {
+        background: var(--light);
+        color: var(--ink);
+      }
+      #s4 .kicker {
+        color: #5f6472;
+      }
+      #s4-title {
+        position: absolute;
+        left: 120px;
+        top: 140px;
+        font-size: 100px;
+      }
+      .steps {
+        position: absolute;
+        left: 120px;
+        top: 330px;
+        display: flex;
+        gap: 34px;
+      }
+      .step {
+        width: 304px;
+        height: 280px;
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 16px 40px rgba(20, 20, 40, 0.08);
+        padding: 30px;
+        box-sizing: border-box;
+        position: relative;
+      }
+      .step .n {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 22px;
+      }
+      .step h3 {
+        margin: 24px 0 6px;
+        font-size: 33px;
+        white-space: nowrap;
+      }
+      .step p {
+        margin: 0;
+        font-size: 22px;
+        color: #5f6472;
+      }
+      .step .tech {
+        position: absolute;
+        left: 30px;
+        bottom: 30px;
+        font-size: 20px;
+        font-weight: 700;
+        color: #4c2fb5;
+        background: #efeaff;
+        padding: 8px 14px;
+        border-radius: 10px;
+      }
+      #s4-stat {
+        position: absolute;
+        right: 120px;
+        top: 150px;
+        text-align: right;
+      }
+      #s4-stat b {
+        display: block;
+        font-size: 64px;
+        font-weight: 800;
+        color: #4c2fb5;
+      }
+      #s4-stat span {
+        display: block;
+        font-size: 22px;
+        color: #5f6472;
+      }
+      #s4-handoff {
+        position: absolute;
+        left: 120px;
+        top: 660px;
+        width: 860px;
+        height: 190px;
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 16px 40px rgba(20, 20, 40, 0.08);
+        padding: 30px 36px;
+        box-sizing: border-box;
+      }
+      #s4-handoff h3 {
+        margin: 0;
+        font-size: 36px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      #s4-handoff h3 i {
+        font-style: normal;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #6d4fe0;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+      }
+      .targets {
+        margin-top: 26px;
+        display: flex;
+        gap: 26px;
+        font-size: 34px;
+        font-weight: 800;
+      }
+      .targets span {
+        padding: 12px 26px;
+        border-radius: 14px;
+        background: #f2f3f7;
+      }
+      #s4-snow {
+        position: absolute;
+        left: 1040px;
+        top: 660px;
+        width: 760px;
+        height: 190px;
+        background: #e6f3fc;
+        border-radius: 24px;
+        padding: 34px 40px;
+        box-sizing: border-box;
+      }
+      #s4-snow h3 {
+        margin: 0;
+        font-size: 40px;
+      }
+      #s4-snow p {
+        margin: 14px 0 0;
+        font-size: 26px;
+        color: #2f5d7c;
+      }
+
+      /* Scene 5 — outro */
+      #s5-glow {
+        position: absolute;
+        left: 560px;
+        top: 40px;
+        width: 800px;
+        height: 800px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(167, 139, 250, 0.35), rgba(167, 139, 250, 0) 65%);
+      }
+      #s5-logo {
+        position: absolute;
+        left: 730px;
+        top: 130px;
+        width: 460px;
+      }
+      #s5-name {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 540px;
+        text-align: center;
+        font-size: 150px;
+      }
+      #s5-tag {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 725px;
+        text-align: center;
+        font-size: 52px;
+        color: #c9ccd6;
+      }
+      #s5-sub {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 820px;
+        text-align: center;
+        font-size: 24px;
+        letter-spacing: 0.24em;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-a774"
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-width="1920"
+      data-height="1080"
+      data-duration="60"
+    >
+      <!-- Scene 1: Title (bars 0–3) -->
+      <section data-hf-id="hf-fbhk" id="s1" class="clip" data-start="0" data-duration="7.5" data-track-index="0">
+        <div data-hf-id="hf-12x1" class="cam">
+          <div data-hf-id="hf-8iaj" class="kicker">CONTEXT, COMPLETED</div>
+          <div data-hf-id="hf-js0c" class="chip s1-chip" style="left: 1000px; top: 130px; color: #a78bfa">&lt;/&gt;</div>
+          <div data-hf-id="hf-ra99" class="chip s1-chip" style="left: 1300px; top: 90px; color: #5ee3c0">{ }</div>
+          <div data-hf-id="hf-aaje" class="chip s1-chip" style="left: 1700px; top: 190px; color: #5ee3c0">DB</div>
+          <div data-hf-id="hf-lu1z" class="chip s1-chip" style="left: 940px; top: 470px; color: #f4c95d">&gt;_</div>
+          <div data-hf-id="hf-ezrs" class="chip s1-chip" style="left: 1690px; top: 470px; color: #60a5fa">TS</div>
+          <div data-hf-id="hf-y508" class="chip s1-chip" style="left: 1020px; top: 780px; color: #a78bfa">⑂</div>
+          <div data-hf-id="hf-c5rh" class="chip s1-chip" style="left: 1400px; top: 810px; color: #5ee3c0">⚡</div>
+          <div data-hf-id="hf-6dqu" class="chip s1-chip" style="left: 1700px; top: 770px; color: #f472b6">▤</div>
+          <div data-hf-id="hf-ef08" id="s1-logo-wrap">
+            <svg data-hf-id="hf-3q2x" viewBox="90 50 670 500">
+              <polygon data-hf-id="hf-lwse" fill="#a78bfa" points="243,53 494,53 494,162 292,162 233,221 292,281 568,281 568,400 421,548 198,548 198,439 370,439 428,380 370,321 94,321 94,202" />
+              <polygon data-hf-id="hf-17u4" fill="#5ee3c0" points="642,58 753,58 707,353 625,353" />
+              <rect data-hf-id="hf-pth9" fill="#5ee3c0" x="612" y="421" width="104" height="104" rx="24" />
+            </svg>
+          </div>
+          <h1 data-hf-id="hf-f60y" id="s1-title"><span data-hf-id="hf-o23z" class="line s1-word">Skill</span><span data-hf-id="hf-568d" class="line s1-word">Issue</span></h1>
+          <div data-hf-id="hf-v7z0" id="s1-sub"><span data-hf-id="hf-j02x" class="line s1-sub">Your next thought.</span><span data-hf-id="hf-gxk0" class="line s1-sub">With the right context.</span></div>
+        </div>
+      </section>
+
+      <!-- Scene 2: Problem (bars 4–7) -->
+      <section data-hf-id="hf-mmtr" id="s2" class="clip" data-start="7.5" data-duration="9.375" data-track-index="0">
+        <div data-hf-id="hf-wcpl" class="cam">
+          <div data-hf-id="hf-xfiv" class="brand">SKILL ISSUE</div>
+          <div data-hf-id="hf-vso1" class="kicker">THE PROBLEM</div>
+          <div data-hf-id="hf-4f0s" class="chip s2-chip" style="left: 1020px; top: 170px; color: #2563eb">▤</div>
+          <div data-hf-id="hf-v44w" class="chip s2-chip" style="left: 1240px; top: 120px; color: #2563eb">&lt;/&gt;</div>
+          <div data-hf-id="hf-9w0t" class="chip s2-chip" style="left: 1440px; top: 160px; color: #b45309">⑂</div>
+          <div data-hf-id="hf-eagr" class="chip s2-chip" style="left: 1640px; top: 110px; color: #0e7490">⚛</div>
+          <div data-hf-id="hf-4nja" class="chip s2-chip" style="left: 1780px; top: 230px; color: #047857">DB</div>
+          <div data-hf-id="hf-b85l" class="chip s2-chip" style="left: 960px; top: 640px; color: #047857">✓</div>
+          <div data-hf-id="hf-7sjl" class="chip s2-chip" style="left: 1800px; top: 640px; color: #2563eb">TS</div>
+          <h1 data-hf-id="hf-49m1" id="s2-title"><span data-hf-id="hf-nzuu" class="line s2-word">Great ideas.</span><span data-hf-id="hf-wyzc" class="line s2-word">Missing context.</span></h1>
+          <div data-hf-id="hf-hjjt" id="s2-prompt">
+            <div data-hf-id="hf-5g9j" class="prompt-label">&gt;_ YOUR PROMPT</div>
+            <div data-hf-id="hf-dew1" id="s2-typed"></div>
+            <div data-hf-id="hf-j45j" id="s2-q">Which stack? Which rules? Which details?</div>
+          </div>
+          <div data-hf-id="hf-l0zf" class="pains">
+            <div data-hf-id="hf-iyjr" class="pain"><i data-hf-id="hf-slcb">✕</i>Skills get buried</div>
+            <div data-hf-id="hf-73o6" class="pain"><i data-hf-id="hf-450r">✕</i>Stacks get retyped</div>
+            <div data-hf-id="hf-uieu" class="pain"><i data-hf-id="hf-3qpq">✕</i>Details slip away</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 3: Solution (bars 8–14, the drop) -->
+      <section data-hf-id="hf-fumw" id="s3" class="clip" data-start="16.875" data-duration="13.125" data-track-index="0">
+        <div data-hf-id="hf-xjmo" class="cam">
+          <div data-hf-id="hf-ej13" class="brand">SKILL ISSUE</div>
+          <div data-hf-id="hf-s7tl" class="kicker">THE SOLUTION</div>
+          <h1 data-hf-id="hf-icrk" id="s3-title"><span data-hf-id="hf-tv24" class="line s3-word">The right context.</span><span data-hf-id="hf-3jwv" class="line s3-word">Right as you type.</span></h1>
+          <svg data-hf-id="hf-ws3b" id="s3-wires" viewBox="0 0 1920 1080">
+            <path data-hf-id="hf-e3km" class="wire" d="M540 470 C 610 470, 600 630, 660 630" stroke="#a78bfa" stroke-width="3" fill="none" />
+            <path data-hf-id="hf-anta" class="wire" d="M540 630 L 660 630" stroke="#7dd3fc" stroke-width="3" fill="none" />
+            <path data-hf-id="hf-y9js" class="wire" d="M540 790 C 610 790, 600 630, 660 630" stroke="#5ee3c0" stroke-width="3" fill="none" />
+            <path data-hf-id="hf-nxy9" class="wire" d="M780 630 L 900 630" stroke="#5ee3c0" stroke-width="3" fill="none" />
+          </svg>
+          <div data-hf-id="hf-hc2p" class="card src" style="top: 400px"><b data-hf-id="hf-xvhb">Skills</b><div data-hf-id="hf-yeow"><span data-hf-id="hf-9txu">&lt;/&gt;</span><span data-hf-id="hf-vobd">⑂</span><span data-hf-id="hf-ls52">✓</span></div></div>
+          <div data-hf-id="hf-e8dm" class="card src" style="top: 560px"><b data-hf-id="hf-1fqt">Tech stack</b><div data-hf-id="hf-y7yw"><span data-hf-id="hf-xgwe">⚛</span><span data-hf-id="hf-okn4">⚡</span><span data-hf-id="hf-h4j0">PG</span></div></div>
+          <div data-hf-id="hf-lcyk" class="card src" style="top: 720px"><b data-hf-id="hf-a9rf">Knowledge</b><div data-hf-id="hf-x11t"><span data-hf-id="hf-kdi7">▤</span><span data-hf-id="hf-c1pp">⑂</span><span data-hf-id="hf-won7">☰</span></div></div>
+          <div data-hf-id="hf-1j9c" id="s3-hub">⌕</div>
+          <div data-hf-id="hf-fuyt" id="s3-hub-label">SMART RETRIEVAL</div>
+          <div data-hf-id="hf-e6pw" id="s3-editor" class="card">
+            <div data-hf-id="hf-8r17" class="ed-bar">
+              <div data-hf-id="hf-ykdy" class="dot" style="background: #f87171"></div>
+              <div data-hf-id="hf-6ij2" class="dot" style="background: #fbbf24"></div>
+              <div data-hf-id="hf-buc0" class="dot" style="background: #4ade80"></div>
+              <span data-hf-id="hf-qj73" style="margin-left: 300px; font-size: 18px; letter-spacing: 0.16em; color: #8b90a0">PROMPT</span>
+            </div>
+            <div data-hf-id="hf-3sgw" class="ed-body">
+              <div data-hf-id="hf-vpic" id="s3-typed"></div>
+              <div data-hf-id="hf-xlyj" id="s3-ghost">with FastAPI + Postgres, retries, auth and tests.</div>
+            </div>
+            <div data-hf-id="hf-d1xf" id="s3-tab">Tab ↵</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Demo scene: real recording (bars 15–18) -->
+      <section data-hf-id="hf-pq13" id="sd" class="clip" data-start="30" data-duration="7.5" data-track-index="0">
+        <div data-hf-id="hf-ykgw" id="sd-bg"></div>
+        <div data-hf-id="hf-7e2m" id="sd-label"><div data-hf-id="hf-7c87" id="sd-live"></div>DEMO</div>
+      </section>
+      <div data-hf-id="hf-olfs" id="demo-frame">
+        <div data-hf-id="hf-cq5j" id="demo-chrome">
+          <div data-hf-id="hf-gpay" class="dot" style="background: #f87171"></div>
+          <div data-hf-id="hf-8bbm" class="dot" style="background: #fbbf24"></div>
+          <div data-hf-id="hf-90rs" class="dot" style="background: #4ade80"></div>
+        </div>
+        <div data-hf-id="hf-165e" id="demo-view">
+          <div data-hf-id="hf-ycus" id="demo-zoom">
+            <video data-hf-id="hf-fceu" id="demo-vid" class="clip" src="assets/demo.mp4" muted playsinline data-start="30" data-duration="7.5" data-track-index="3"></video>
+            <div id="demo-input"><span id="demo-typed"></span><span id="demo-ghost">a real-time chat app with Next.js, Postgres, auth and tests</span><span id="demo-tab">Tab ↹</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 4: Architecture (bars 19–24) -->
+      <section data-hf-id="hf-7iax" id="s4" class="clip" data-start="37.5" data-duration="13.125" data-track-index="0">
+        <div data-hf-id="hf-x5bn" class="cam">
+          <div data-hf-id="hf-e4q2" class="brand">SKILL ISSUE</div>
+          <div data-hf-id="hf-7gkt" class="kicker">THE ARCHITECTURE</div>
+          <h1 data-hf-id="hf-unhq" id="s4-title">From thought to context.</h1>
+          <div data-hf-id="hf-70xd" class="steps">
+            <div class="step"><div class="n">1</div><h3>Type</h3><p>Companion panel</p><div class="tech">Next · React · TS</div></div>
+            <div class="step"><div class="n">2</div><h3>Route</h3><p>FastAPI</p><div class="tech">Pydantic · Uvicorn</div></div>
+            <div class="step"><div class="n">3</div><h3>Match</h3><p>Local Tiger snapshot</p><div class="tech">Fast path</div></div>
+            <div class="step"><div class="n">4</div><h3>Fallback</h3><p>Gemini tags + pgvector</p><div class="tech">Semantic retrieval</div></div>
+            <div class="step"><div class="n">5</div><h3>Review + write</h3><p>Gemini Flash-Lite</p><div class="tech">One call</div></div>
+          </div>
+          <div id="s4-stat"><b>~0.95s</b><span>median, keystroke → suggestion</span></div>
+          <div data-hf-id="hf-jm8x" id="s4-handoff">
+            <h3 data-hf-id="hf-7d5z"><i data-hf-id="hf-ab0e">6</i>Accept + hand off</h3>
+            <div data-hf-id="hf-s622" class="targets"><span data-hf-id="hf-hd3j">MCP</span><span data-hf-id="hf-1vio">Codex</span><span data-hf-id="hf-fncj">Claude</span></div>
+          </div>
+          <div data-hf-id="hf-degc" id="s4-snow">
+            <h3 data-hf-id="hf-18u4">❄ Snowflake</h3>
+            <p data-hf-id="hf-8lgn">Outcomes → acceptance classifier. Every accept makes it smarter.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 5: Outro (bars 25–29) -->
+      <section data-hf-id="hf-y0is" id="s5" class="clip" data-start="50.625" data-duration="9.375" data-track-index="0">
+        <div data-hf-id="hf-v5si" class="cam">
+          <div data-hf-id="hf-gkvx" id="s5-glow"></div>
+          <svg data-hf-id="hf-1b3z" id="s5-logo" viewBox="90 50 670 500">
+            <polygon data-hf-id="hf-5vfw" id="s5-s" fill="#a78bfa" points="243,53 494,53 494,162 292,162 233,221 292,281 568,281 568,400 421,548 198,548 198,439 370,439 428,380 370,321 94,321 94,202" />
+            <g data-hf-id="hf-ij72" id="s5-bang">
+              <polygon data-hf-id="hf-5htw" fill="#5ee3c0" points="642,58 753,58 707,353 625,353" />
+              <rect data-hf-id="hf-g49d" fill="#5ee3c0" x="612" y="421" width="104" height="104" rx="24" />
+            </g>
+          </svg>
+          <h1 data-hf-id="hf-kbz5" id="s5-name">skill issue</h1>
+          <div data-hf-id="hf-hy2k" id="s5-tag">Context clicks.</div>
+          <div data-hf-id="hf-f88q" id="s5-sub">SKILLS / STACK / KNOWLEDGE</div>
+        </div>
+      </section>
+
+      <!-- Captions (narration) -->
+      <div class="cap clip" data-start="0.15" data-duration="2.34" data-track-index="1"><div class="cap-pill">This is <em>Skill Issue.</em></div></div>
+      <div class="cap clip" data-start="3.75" data-duration="3.30" data-track-index="1"><div class="cap-pill">Your next thought, with the <em>right context.</em></div></div>
+      <div class="cap clip" data-start="7.6" data-duration="2.62" data-track-index="1"><div class="cap-pill">Great ideas. <em>Missing context.</em></div></div>
+      <div class="cap clip" data-start="10.3" data-duration="1.72" data-track-index="1"><div class="cap-pill">Your <em>skills</em> get buried.</div></div>
+      <div class="cap clip" data-start="12.1" data-duration="2.37" data-track-index="1"><div class="cap-pill">Your <em>stack</em> gets retyped.</div></div>
+      <div class="cap clip" data-start="14.55" data-duration="2.32" data-track-index="1"><div class="cap-pill">And the <em>details</em> slip away.</div></div>
+      <div class="cap clip" data-start="16.95" data-duration="1.42" data-track-index="1"><div class="cap-pill"><em>Not anymore.</em></div></div>
+      <div class="cap clip" data-start="18.45" data-duration="3.17" data-track-index="1"><div class="cap-pill">The <em>right context,</em> right as you type.</div></div>
+      <div class="cap clip" data-start="21.7" data-duration="3.77" data-track-index="1"><div class="cap-pill">Your <em>skills, stack and knowledge.</em> Pulled in instantly.</div></div>
+      <div class="cap clip" data-start="25.55" data-duration="1.97" data-track-index="1"><div class="cap-pill">It finishes the thought <em>for you.</em></div></div>
+      <div class="cap clip" data-start="27.6" data-duration="2.38" data-track-index="1"><div class="cap-pill">Hit <em>Tab.</em> Done.</div></div>
+      <div class="cap clip" data-start="30.1" data-duration="2.27" data-track-index="1"><div class="cap-pill">Here it is, <em>in action.</em></div></div>
+      <div class="cap clip" data-start="32.8" data-duration="1.67" data-track-index="1"><div class="cap-pill">Type the <em>big idea.</em></div></div>
+      <div class="cap clip" data-start="34.55" data-duration="2.97" data-track-index="1"><div class="cap-pill">Send it with <em>full context.</em></div></div>
+      <div class="cap clip" data-start="37.6" data-duration="3.67" data-track-index="1"><div class="cap-pill">Match. Review. Write. <em>In about a second.</em></div></div>
+      <div class="cap clip" data-start="41.35" data-duration="4.12" data-track-index="1"><div class="cap-pill">Powered by <em>Gemini, Tiger Data</em> and <em>Snowflake.</em></div></div>
+      <div class="cap clip" data-start="45.55" data-duration="4.46" data-track-index="1"><div class="cap-pill">Hand it to <em>Claude, Codex,</em> or any <em>MCP</em> tool.</div></div>
+      <div class="cap clip" data-start="50.7" data-duration="2.22" data-track-index="1"><div class="cap-pill">Stop fighting your tools.</div></div>
+      <div class="cap clip" data-start="53.0" data-duration="2.50" data-track-index="1"><div class="cap-pill">Go build <em>something massive.</em></div></div>
+      <div class="cap clip" data-start="55.9" data-duration="4.02" data-track-index="1"><div class="cap-pill">Skill Issue. <em>Context clicks.</em></div></div>
+
+      <div data-hf-id="hf-hmg5" id="flash"></div>
+
+      <audio data-hf-id="hf-ep0w" id="bgm" src="assets/mix.mp3" data-start="0" data-duration="60" data-track-index="2" data-volume="0.9"></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const out = "expo.out";
+      const B = 60 / 128; // one beat at 128 BPM
+      const END = 60;
+      tl.set("#flash", { opacity: 0 }, 0);
+      const scenes = [
+        ["#s1 .cam", 0, 7.5],
+        ["#s2 .cam", 7.5, 16.875],
+        ["#s3 .cam", 16.875, 30],
+        ["#sd", 30, 37.5],
+        ["#s4 .cam", 37.5, 50.625],
+        ["#s5 .cam", 50.625, END],
+      ];
+
+      // split text nodes into word spans; <em> words get the highlight class
+      function splitWords(el) {
+        const parts = [];
+        el.childNodes.forEach((node) => {
+          const hl = node.nodeType === 1;
+          node.textContent
+            .split(/\s+/)
+            .filter(Boolean)
+            .forEach((w) => parts.push({ w, hl }));
+        });
+        el.innerHTML = parts.map((p) => `<span class="w${p.hl ? " hl" : ""}">${p.w}</span>`).join("");
+        return el.querySelectorAll(".w");
+      }
+
+      // seek-safe typewriter driven by a proxy tween
+      function typeInto(sel, text, at, dur) {
+        const el = document.querySelector(sel);
+        const p = { n: 0 };
+        tl.to(
+          p,
+          {
+            n: text.length,
+            duration: dur,
+            ease: "none",
+            onUpdate: () => {
+              el.textContent = text.slice(0, Math.round(p.n)) + "|";
+            },
+          },
+          at,
+        );
+      }
+
+      // captions: words pop in with the voice, pill exits quickly
+      document.querySelectorAll(".cap").forEach((cap) => {
+        const start = parseFloat(cap.dataset.start);
+        const dur = parseFloat(cap.dataset.duration);
+        const pill = cap.querySelector(".cap-pill");
+        const words = splitWords(pill);
+        const stagger = Math.min(0.12, (dur - 0.6) / Math.max(1, words.length));
+        tl.fromTo(pill, { scale: 0.92, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.18, ease: "back.out(3)" }, start);
+        tl.fromTo(words, { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.22, stagger, ease: out }, start);
+        tl.fromTo(pill, { opacity: 1, y: 0 }, { opacity: 0, y: 10, duration: 0.12, immediateRender: false }, start + dur - 0.12);
+      });
+
+      // every scene: punch-in camera + drift + whip exit; white flash on each cut
+      scenes.forEach(([cam, start, end]) => {
+        if (cam === "#sd") return;
+        tl.fromTo(cam, { scale: 1.12 }, { scale: 1, duration: 0.6, ease: out }, start);
+        tl.to(cam, { scale: 1.03, duration: end - start - 0.9, ease: "none" }, start + 0.6);
+        if (end < END) tl.fromTo(cam, { x: 0, opacity: 1 }, { x: -260, opacity: 0, duration: 0.25, ease: "power3.in", immediateRender: false }, end - 0.25);
+      });
+      scenes.slice(1).forEach(([, start]) => {
+        tl.fromTo("#flash", { opacity: 0.55 }, { opacity: 0, duration: 0.35, ease: "power2.out", immediateRender: false }, start);
+      });
+
+      // Scene 1 (0–7.5)
+      tl.fromTo("#s1-logo-wrap", { scale: 0.3, opacity: 0, rotation: -20 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.6, ease: "back.out(2)" }, 0);
+      tl.fromTo(".s1-chip", { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.35, stagger: 0.05, ease: "back.out(3)" }, 0.25);
+      tl.fromTo(".s1-word", { x: -140, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, stagger: B, ease: out }, 0.15);
+      tl.fromTo(".s1-sub", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, stagger: B * 2, ease: out }, 3.75);
+      tl.fromTo("#s1-logo-wrap", { scale: 1.06 }, { scale: 1, duration: B, ease: "power2.out", repeat: 7 }, 3.75);
+      tl.to(".s1-chip", { y: -16, duration: B * 2, stagger: 0.08, yoyo: true, repeat: 5, ease: "sine.inOut" }, 1);
+
+      // Scene 2 (7.5–16.875)
+      tl.fromTo(".s2-word", { y: 90, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, stagger: 0.18, ease: out }, 7.55);
+      tl.fromTo(".s2-chip", { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.3, stagger: 0.04, ease: "back.out(3)" }, 7.7);
+      tl.fromTo("#s2-prompt", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: out }, 7.9);
+      typeInto("#s2-typed", "“Build an API.”", 8.2, 0.75);
+      tl.fromTo("#s2-q", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3 }, 9.0);
+      tl.to(".s2-chip", { y: 340, x: (i) => (i % 2 ? 80 : -80), rotation: (i) => (i % 2 ? 40 : -40), opacity: 0, duration: 0.9, stagger: 0.05, ease: "power2.in" }, 10.3);
+      tl.to("#s2-prompt", { x: 10, duration: 0.05, yoyo: true, repeat: 5 }, 10.3);
+      [10.3, 12.1, 14.55].forEach((t, i) => {
+        tl.fromTo(`.pain:nth-child(${i + 1})`, { y: 50, opacity: 0, scale: 1.2 }, { y: 0, opacity: 1, scale: 1, duration: 0.3, ease: out }, t);
+      });
+
+      // Scene 3 (16.875–30) — the drop
+      tl.fromTo(".s3-word", { y: 120, opacity: 0, scale: 1.1 }, { y: 0, opacity: 1, scale: 1, duration: 0.4, stagger: 0.12, ease: out }, 16.875);
+      tl.fromTo("#s3 .src", { x: -100, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, stagger: 0.1, ease: out }, 17.775);
+      document.querySelectorAll("#s3 .wire").forEach((w) => {
+        const len = w.getTotalLength();
+        w.style.strokeDasharray = len;
+        w.style.strokeDashoffset = len;
+      });
+      tl.fromTo("#s3-hub", { scale: 0, opacity: 0, rotation: -90 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.4, ease: "back.out(2.5)" }, 18.175);
+      tl.fromTo("#s3-hub-label", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 18.375);
+      tl.fromTo("#s3-editor", { x: 120, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: out }, 18.275);
+      tl.to("#s3 .wire", { strokeDashoffset: 0, duration: 0.45, stagger: 0.08, ease: "power2.inOut" }, 18.775);
+      typeInto("#s3-typed", "Build a secure API", 19.0, 1.1);
+      tl.fromTo("#s3 .src", { borderColor: "#262a35" }, { borderColor: "#a78bfa", duration: 0.15, stagger: B, yoyo: true, repeat: 1 }, 21.7);
+      tl.fromTo("#s3-hub", { boxShadow: "0 0 0 0 rgba(167,139,250,0.8)" }, { boxShadow: "0 0 0 46px rgba(167,139,250,0)", duration: B * 2, repeat: 3 }, 21.7);
+      const ghost = splitWords(document.querySelector("#s3-ghost"));
+      tl.fromTo(ghost, { opacity: 0, x: 14 }, { opacity: 1, x: 0, duration: 0.15, stagger: 0.025, ease: out }, 20.25);
+      tl.fromTo("#s3-tab", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.25, ease: "back.out(3)" }, 20.4);
+      tl.to("#s3-tab", { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1 }, 22.0);
+      tl.to("#s3-tab", { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1 }, 27.6);
+      tl.to("#s3-ghost .w", { color: "#5ee3c0", duration: 0.12, stagger: 0.02 }, 22.1);
+      tl.fromTo("#s3-editor", { boxShadow: "0 0 0 rgba(94,227,192,0)" }, { boxShadow: "0 0 120px rgba(94,227,192,0.55)", duration: 0.3 }, 22.1);
+      tl.fromTo("#s3-editor", { scale: 1.04 }, { scale: 1, duration: 0.4, ease: out }, 22.1);
+
+      // Demo (30–37.5): frame flies in, slow push toward the composer, flies out
+      tl.set("#demo-frame", { opacity: 0 }, 0);
+      tl.fromTo("#demo-frame", { opacity: 0, y: 200, scale: 0.85, rotationX: 18 }, { opacity: 1, y: 0, scale: 1, rotationX: 0, duration: 0.6, ease: out }, 30);
+      tl.fromTo("#demo-zoom", { scale: 1 }, { scale: 1.18, duration: 6.4, ease: "power1.inOut" }, 30.475);
+      tl.fromTo("#sd-label", { x: -40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, ease: out }, 30.175);
+      tl.fromTo("#sd-live", { opacity: 1 }, { opacity: 0.25, duration: B, yoyo: true, repeat: 13 }, 30.175);
+      tl.fromTo("#demo-frame", { x: 0, opacity: 1 }, { x: -260, opacity: 0, duration: 0.25, ease: "power3.in", immediateRender: false }, 36.95);
+      typeInto("#demo-typed", "I want to build ", 30.6, 0.85);
+      tl.fromTo("#demo-ghost", { opacity: 0 }, { opacity: 1, duration: 0.12 }, 31.65);
+      tl.fromTo("#demo-tab", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.2, ease: "back.out(3)" }, 31.75);
+      tl.to("#demo-tab", { scale: 0.8, duration: 0.07, yoyo: true, repeat: 1 }, 32.9);
+      tl.fromTo("#demo-ghost", { color: "#9aa0ab" }, { color: "#1f2328", duration: 0.12, immediateRender: false }, 33.0);
+      tl.to("#demo-tab", { opacity: 0, duration: 0.15 }, 33.1);
+      tl.set("#demo-typed", { textContent: "I want to build " }, 33.0);
+
+      // Scene 4 (37.5–50.625)
+      tl.fromTo("#s4-title", { y: 90, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: out }, 37.525);
+      tl.fromTo(".step", { y: 80, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.35, stagger: B, ease: out }, 37.975);
+      tl.to(".step .n", { background: "#6d4fe0", duration: 0.15, stagger: B }, 38.125);
+      tl.fromTo("#s4-stat", { x: 80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "back.out(2)" }, 39.6);
+      tl.fromTo("#s4-stat b", { scale: 1.3 }, { scale: 1, duration: 0.35, ease: out }, 39.6);
+      tl.fromTo("#s4-snow", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: out }, 41.35);
+      tl.fromTo("#s4-handoff", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: out }, 45.55);
+      tl.fromTo(".targets span", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, stagger: B, ease: "back.out(3)" }, 46.6);
+
+      // Scene 5 (50.625–60)
+      tl.fromTo("#s5-glow", { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.8, ease: out }, 50.65);
+      tl.fromTo("#s5-s", { x: -260, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: out }, 50.65);
+      tl.fromTo("#s5-bang", { y: -360, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "bounce.out" }, 50.85);
+      tl.fromTo("#s5-name", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, ease: out }, 51.35);
+      tl.fromTo("#s5-logo", { scale: 1.06 }, { scale: 1, duration: B, ease: "power2.out", repeat: 7 }, 52.5);
+      tl.fromTo("#s5-glow", { scale: 1.08 }, { scale: 1, duration: B, ease: "power2.out", repeat: 7 }, 52.5);
+      tl.fromTo("#s5-logo", { scale: 1.15 }, { scale: 1, duration: 0.6, ease: out }, 56.25);
+      tl.fromTo("#s5-tag", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: out }, 56.25);
+      tl.fromTo("#s5-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: out }, 56.65);
+      tl.fromTo("#s5 .cam", { opacity: 1 }, { opacity: 0, duration: 0.6, immediateRender: false }, 59.4);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
