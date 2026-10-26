@@ -1,5 +1,5 @@
 export const repository =
-  "https://github.com/Mattlo0546/Agentcomplete/blob/main/";
+  "https://github.com/Mattlo0546/skill-issue/blob/main/";
 export const components = [
   {
     id: "editor",
